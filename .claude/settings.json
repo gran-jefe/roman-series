@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -I 'http://localhost:3000/dashboard')",
+      "Bash(curl -s -I 'http://localhost:3000/practice/session?sessionId=test')",
+      "Bash(curl -s -I 'http://localhost:3000/practice/results?sessionId=test')"
+    ]
+  }
+}
