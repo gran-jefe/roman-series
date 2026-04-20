@@ -14,6 +14,7 @@ export interface University {
   name: string;
   short_code: string;
   colour_token: string;
+  is_available?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,19 @@ export interface Subject {
 }
 
 /**
+ * Topic model
+ * Represents a topic within a subject for a specific university
+ */
+export interface Topic {
+  id: string;
+  name: string;
+  subject_id: string;
+  university_id: string;
+  question_count: number;
+  created_at: string;
+}
+
+/**
  * Question model
  * Represents an exam question
  */
@@ -38,9 +52,11 @@ export interface Question {
   id: string;
   subject_id: string;
   university_id: string;
-  year: number;
+  year?: number;
   body: string;
   explanation?: string;
+  topic_id?: string;
+  topic_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -83,6 +99,7 @@ export interface Session {
   user_id: string;
   subject_id?: string;
   university_id?: string;
+  topic_id?: string;
   total_questions: number;
   score: number;
   time_taken_seconds?: number;
@@ -208,9 +225,10 @@ export interface AuthResponse {
  * Request body for creating/updating a session
  */
 export interface CreateSessionRequest {
-  subject_id?: string;
-  university_id?: string;
-  total_questions: number;
+  subject_id: string;
+  university_id: string;
+  topic_id?: string;
+  total_questions: number | string; // 10, 20, 30, 40, 50, or 'all'
 }
 
 /**
@@ -250,11 +268,14 @@ export interface SubjectWithCount extends Subject {
 }
 
 /**
- * Session history item with enriched subject/university names
+ * Session history item with enriched subject/university/topic names
  */
 export interface SessionHistoryItem extends Session {
   subject_name: string | null;
+  subject_colour_token?: string;
   university_name: string | null;
+  university_short_code?: string;
+  topic_name?: string;
   percentage: number;
 }
 
@@ -290,7 +311,8 @@ export interface StudentQuestion {
   id: string;
   subject_id: string;
   university_id: string;
-  year: number;
+  topic_id?: string;
+  topic_name?: string;
   body: string;
   options: StudentOption[];
 }
@@ -303,6 +325,7 @@ export interface StartSessionResponse {
   questions: StudentQuestion[];
   subject: Subject;
   university: University;
+  topic?: Topic;
   total_questions: number;
 }
 

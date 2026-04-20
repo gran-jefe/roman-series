@@ -12,7 +12,7 @@ import { createClient } from "@supabase/supabase-js";
 
 // ============ Question Parser (inlined to avoid ESM resolution issues) ============
 interface ParsedOption {
-  label: 'A' | 'B' | 'C' | 'D';
+  label: 'A' | 'B' | 'C' | 'D' | 'E';
   body: string;
   is_correct: boolean;
 }
@@ -21,117 +21,254 @@ interface ParsedQuestion {
   body: string;
   options: ParsedOption[];
   explanation: string | null;
+  topic: string;
+  topic_name: string;
+  question_number: number;
 }
 
 interface ParseResult {
   questions: ParsedQuestion[];
-  skipped: number;
+  topics: string[];
+  total_parsed: number;
+  total_matched: number;
+  total_unmatched: number;
   errors: string[];
 }
 
-function parseQuestionsFromText(text: string): ParseResult {
+function parseRomanSeriesDocument(text: string): ParseResult {
   const questions: ParsedQuestion[] = [];
   const errors: string[] = [];
-  let skipped = 0;
 
-  const questionBlocks = text.split(/\n(?=\d+\.\s)/);
+  // STEP 1: Split into questions and solutions sections
+  const solutionsIndex = text.toUpperCase().indexOf('SOLUTIONS');
+  if (solutionsIndex === -1) {
+    errors.push('SOLUTIONS section not found in document');
+    return { questions: [], topics: [], total_parsed: 0, total_matched: 0, total_unmatched: 0, errors };
+  }
 
-  for (const block of questionBlocks) {
-    if (!block.trim()) continue;
+  const questionsSection = text.substring(0, solutionsIndex);
+  const solutionsSection = text.substring(solutionsIndex);
 
-    try {
-      const parsed = parseQuestionBlock(block);
-      if (parsed) {
-        questions.push(parsed);
-      } else {
-        skipped++;
-      }
-    } catch (error) {
-      skipped++;
-      errors.push(`Failed to parse question: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  // STEP 2: Parse questions section
+  const parsedQuestions = parseQuestionsSection(questionsSection, errors);
+
+  // STEP 3: Parse solutions section
+  const solutionsMap = parseSolutionsSection(solutionsSection);
+
+  // STEP 4: Match questions with solutions
+  const matchedQuestions: ParsedQuestion[] = [];
+  for (const q of parsedQuestions) {
+    const solution = solutionsMap.get(`${q.topic}|${q.question_number}`);
+    if (solution) {
+      const updatedQuestion = { ...q };
+      updatedQuestion.options = q.options.map(opt => ({
+        ...opt,
+        is_correct: opt.label === solution.correctLetter,
+      }));
+      updatedQuestion.explanation = solution.explanation;
+      matchedQuestions.push(updatedQuestion);
+    } else {
+      matchedQuestions.push(q);
     }
   }
 
-  return { questions, skipped, errors };
-}
+  // STEP 5: Extract unique topics
+  const uniqueTopics = Array.from(new Set(matchedQuestions.map(q => q.topic_name)));
 
-function parseQuestionBlock(block: string): ParsedQuestion | null {
-  const lines = block.split('\n').map(l => l.trim()).filter(l => l);
-
-  if (lines.length < 6) return null;
-
-  let idx = 0;
-
-  const firstLine = lines[idx];
-  if (/^\d+\.\s/.test(firstLine)) {
-    lines[idx] = firstLine.replace(/^\d+\.\s/, '');
-  }
-
-  const bodyLines: string[] = [];
-  while (idx < lines.length && !/^[A-D]\.\s/.test(lines[idx]) && !/^Answer:\s*/i.test(lines[idx])) {
-    bodyLines.push(lines[idx]);
-    idx++;
-  }
-
-  if (bodyLines.length === 0) return null;
-
-  const body = bodyLines.join(' ').trim();
-  if (!body) return null;
-
-  const options: ParsedOption[] = [];
-  let correctAnswer = '';
-
-  while (idx < lines.length && /^[A-D]\.\s/.test(lines[idx])) {
-    const match = lines[idx].match(/^([A-D])\.\s(.+)$/);
-    if (match) {
-      const [, letter, optionBody] = match;
-      options.push({
-        label: letter as 'A' | 'B' | 'C' | 'D',
-        body: optionBody,
-        is_correct: false,
-      });
-    }
-    idx++;
-  }
-
-  if (options.length !== 4) return null;
-
-  while (idx < lines.length) {
-    const line = lines[idx];
-    if (/^Answer:\s*([A-D])/i.test(line)) {
-      const match = line.match(/^Answer:\s*([A-D])/i);
-      if (match) {
-        correctAnswer = match[1];
-      }
-      idx++;
-      break;
-    }
-    idx++;
-  }
-
-  if (!correctAnswer) return null;
-
-  const correctOption = options.find(o => o.label === correctAnswer);
-  if (correctOption) {
-    correctOption.is_correct = true;
-  }
-
-  const explanationLines: string[] = [];
-  while (idx < lines.length) {
-    const line = lines[idx].trim();
-    if (line && !/^\d+\./.test(line)) {
-      explanationLines.push(line);
-    }
-    idx++;
-  }
-
-  const explanation = explanationLines.length > 0 ? explanationLines.join(' ').trim() : null;
+  // STEP 6: Return results
+  const totalMatched = matchedQuestions.filter(q =>
+    q.options.some(opt => opt.is_correct)
+  ).length;
 
   return {
-    body,
-    options,
-    explanation,
+    questions: matchedQuestions,
+    topics: uniqueTopics,
+    total_parsed: matchedQuestions.length,
+    total_matched: totalMatched,
+    total_unmatched: matchedQuestions.length - totalMatched,
+    errors,
   };
+}
+
+function parseQuestionsSection(text: string, errors: string[]): ParsedQuestion[] {
+  const questions: ParsedQuestion[] = [];
+  const lines = text.split('\n');
+
+  let currentTopic = 'General';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // Check for topic heading (all caps, no number at start)
+    if (line && /^[A-Z][A-Z\s:]+$/.test(line) && !/^\d+/.test(line)) {
+      currentTopic = line.replace(/[:\s]+$/, '').trim();
+      i++;
+      continue;
+    }
+
+    // Check for question number
+    if (/^\d+[.\)]/.test(line)) {
+      const questionStart = i;
+      const match = line.match(/^(\d+)[.\)]\s?(.*)$/);
+      if (match) {
+        const questionNumber = parseInt(match[1], 10);
+        const firstLineText = match[2];
+
+        // Collect question body lines
+        const bodyLines: string[] = firstLineText ? [firstLineText] : [];
+        i++;
+
+        while (i < lines.length) {
+          const currentLine = lines[i].trim();
+          if (!currentLine) {
+            i++;
+            continue;
+          }
+          // Stop if we hit next question number or a topic heading
+          if (/^\d+[.\)]/.test(currentLine) || (/^[A-Z][A-Z\s:]+$/.test(currentLine) && !/^\d+/.test(currentLine))) {
+            break;
+          }
+          // Stop if we hit options
+          if (/^[A-E]\.\s/.test(currentLine)) {
+            break;
+          }
+          bodyLines.push(currentLine);
+          i++;
+        }
+
+        // Parse options
+        const options: ParsedOption[] = [];
+        while (i < lines.length) {
+          const currentLine = lines[i].trim();
+          if (!currentLine) {
+            i++;
+            continue;
+          }
+          const optMatch = currentLine.match(/^([A-E])\.\s+(.+)$/);
+          if (optMatch) {
+            const [, label, body] = optMatch;
+            options.push({
+              label: label as 'A' | 'B' | 'C' | 'D' | 'E',
+              body: body.trim(),
+              is_correct: false,
+            });
+            i++;
+          } else {
+            break;
+          }
+        }
+
+        // Create question if we have at least 4 options and body
+        if (bodyLines.length > 0 && options.length >= 4) {
+          questions.push({
+            body: bodyLines.join(' ').trim(),
+            options: options.slice(0, 5),
+            explanation: null,
+            topic: currentTopic,
+            topic_name: currentTopic,
+            question_number: questionNumber,
+          });
+        }
+      } else {
+        i++;
+      }
+    } else {
+      i++;
+    }
+  }
+
+  return questions;
+}
+
+function parseSolutionsSection(text: string): Map<string, { correctLetter: string; explanation: string }> {
+  const solutionsMap = new Map<string, { correctLetter: string; explanation: string }>();
+  const lines = text.split('\n');
+
+  let currentTopic = 'General';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // Check for topic heading
+    if (line && /^[A-Z][A-Z\s:]+$/.test(line) && !/^\d+/.test(line)) {
+      currentTopic = line.replace(/[:\s]+$/, '').trim();
+      i++;
+      continue;
+    }
+
+    // Check for solution number
+    if (/^\d+[.\)]/.test(line)) {
+      const match = line.match(/^(\d+)[.\)]\s?(.*)$/);
+      if (match) {
+        const questionNumber = parseInt(match[1], 10);
+        const firstLineText = match[2];
+
+        // Collect all solution lines
+        const solutionLines: string[] = firstLineText ? [firstLineText] : [];
+        i++;
+
+        while (i < lines.length) {
+          const currentLine = lines[i].trim();
+          if (!currentLine) {
+            i++;
+            continue;
+          }
+          // Stop if we hit next question number or a topic heading
+          if (/^\d+[.\)]/.test(currentLine) || (/^[A-Z][A-Z\s:]+$/.test(currentLine) && !/^\d+/.test(currentLine))) {
+            break;
+          }
+          solutionLines.push(currentLine);
+          i++;
+        }
+
+        // Extract correct answer and explanation
+        const fullText = solutionLines.join(' ');
+
+        // Try multiple patterns to extract answer letter
+        let correctLetter = '';
+
+        // Pattern 1: "A IS CORRECT", "B is correct"
+        const pattern1 = /\b([A-E])\s+(?:IS\s+)?CORRECT\b/i;
+        const match1 = fullText.match(pattern1);
+        if (match1) {
+          correctLetter = match1[1].toUpperCase();
+        }
+
+        // Pattern 2: "ANSWER: A", "ANSWER: B"
+        if (!correctLetter) {
+          const pattern2 = /ANSWER[:\s]+([A-E])/i;
+          const match2 = fullText.match(pattern2);
+          if (match2) {
+            correctLetter = match2[1].toUpperCase();
+          }
+        }
+
+        // Pattern 3: Start of solution "A-" or "A. " or "A "
+        if (!correctLetter) {
+          const pattern3 = /^([A-E])[-.\s]/;
+          const match3 = fullText.match(pattern3);
+          if (match3) {
+            correctLetter = match3[1].toUpperCase();
+          }
+        }
+
+        if (correctLetter) {
+          solutionsMap.set(`${currentTopic}|${questionNumber}`, {
+            correctLetter,
+            explanation: fullText,
+          });
+        }
+      } else {
+        i++;
+      }
+    } else {
+      i++;
+    }
+  }
+
+  return solutionsMap;
 }
 
 // import authRoutes from "./routes/auth.routes.ts";
@@ -584,8 +721,73 @@ app.get("/api/universities", async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("universities")
-      .select("*")
+      .select("id, name, short_code, colour_token, is_available, created_at, updated_at")
       .order("name");
+
+    if (error) {
+      res.status(400).json({
+        status: "error",
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Mark UI as available, others as locked
+    const universities = (data || []).map((u: any) => ({
+      ...u,
+      is_available: u.short_code === "UI" || u.is_available === true,
+    }));
+
+    res.json({
+      status: "success",
+      data: universities,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[universities] Error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// ============================================================================
+// TOPICS ROUTES
+// ============================================================================
+
+// GET /api/topics - Fetch topics for subject + university
+app.get("/api/topics", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({
+        status: "error",
+        message: "Missing or invalid Authorization header",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const { subjectId, universityId } = req.query;
+
+    if (!subjectId || !universityId) {
+      res.status(400).json({
+        status: "error",
+        message: "Missing required query parameters: subjectId, universityId",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("topics")
+      .select("*")
+      .eq("subject_id", subjectId as string)
+      .eq("university_id", universityId as string)
+      .order("name", { ascending: true });
 
     if (error) {
       res.status(400).json({
@@ -598,11 +800,55 @@ app.get("/api/universities", async (req: Request, res: Response) => {
 
     res.json({
       status: "success",
-      data: data,
+      data: data || [],
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[universities] Error:", error);
+    console.error("[topics] Error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// GET /api/topics/:id - Fetch single topic
+app.get("/api/topics/:id", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({
+        status: "error",
+        message: "Missing or invalid Authorization header",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const { data, error } = await supabaseAdmin
+      .from("topics")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      res.status(404).json({
+        status: "error",
+        message: "Topic not found",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    res.json({
+      status: "success",
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[topics/:id] Error:", error);
     res.status(500).json({
       status: "error",
       message: "Internal server error",
@@ -925,24 +1171,32 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
     let {
       subject_id,
       university_id,
+      topic_id,
       total_questions,
-      year,
     } = req.body;
 
-    if (!subject_id || !university_id || !total_questions) {
+    if (!subject_id || !university_id) {
       res.status(400).json({
         status: "error",
-        message: "Missing required fields: subject_id, university_id, total_questions",
+        message: "Missing required fields: subject_id, university_id",
         timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    // Free user cap
-    if (profile.subscription_status === "free") {
-      total_questions = Math.min(total_questions, 10);
+    // Handle total_questions - can be 10, 20, 30, 40, 50, or 'all'/0 for all questions
+    let questionLimit = 20; // default
+    if (total_questions === "all" || total_questions === 0) {
+      questionLimit = 0; // 0 means fetch all
+    } else {
+      const parsed = typeof total_questions === "string" ? parseInt(total_questions, 10) : total_questions;
+      questionLimit = Math.min(Math.max(parsed, 10), 50); // clamp between 10 and 50
     }
-    total_questions = Math.min(total_questions, 50);
+
+    // Free user cap at 10 questions
+    if (profile.subscription_status === "free") {
+      questionLimit = Math.min(questionLimit || 10, 10);
+    }
 
     // Fetch all matching question IDs
     let idQuery = supabaseAdmin
@@ -951,8 +1205,8 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
       .eq("subject_id", subject_id)
       .eq("university_id", university_id);
 
-    if (year) {
-      idQuery = idQuery.eq("year", year);
+    if (topic_id) {
+      idQuery = idQuery.eq("topic_id", topic_id);
     }
 
     const { data: questionIds, error: idError } = await idQuery;
@@ -968,7 +1222,9 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
 
     // Shuffle and select random questions
     const shuffled = shuffleArray(questionIds);
-    const selectedIds = shuffled.slice(0, total_questions).map((q: any) => q.id);
+    const selectedIds = questionLimit === 0
+      ? shuffled.map((q: any) => q.id)
+      : shuffled.slice(0, questionLimit).map((q: any) => q.id);
 
     // Fetch full question data
     const { data: questions, error: qError } = await supabaseAdmin
@@ -992,6 +1248,7 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
         user_id: user.id,
         subject_id,
         university_id,
+        topic_id: topic_id || null,
         total_questions: questions.length,
         score: 0,
         completed: false,
@@ -1018,8 +1275,8 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
       };
     });
 
-    // Fetch subject and university
-    const [{ data: subject }, { data: university }] = await Promise.all([
+    // Fetch subject, university, and topic
+    const fetchPromises: any = [
       supabaseAdmin
         .from("subjects")
         .select("*")
@@ -1030,17 +1287,38 @@ app.post("/api/sessions/start", async (req: Request, res: Response) => {
         .select("*")
         .eq("id", university_id)
         .single(),
-    ]);
+    ];
+
+    if (topic_id) {
+      fetchPromises.push(
+        supabaseAdmin
+          .from("topics")
+          .select("*")
+          .eq("id", topic_id)
+          .single()
+      );
+    }
+
+    const results = await Promise.all(fetchPromises);
+    const { data: subject } = results[0];
+    const { data: university } = results[1];
+    const topic = results[2] ? results[2].data : null;
+
+    const responseData: any = {
+      session_id: session.id,
+      questions: sanitizedQuestions,
+      subject,
+      university,
+      total_questions: questions.length,
+    };
+
+    if (topic) {
+      responseData.topic = topic;
+    }
 
     res.status(201).json({
       status: "success",
-      data: {
-        session_id: session.id,
-        questions: sanitizedQuestions,
-        subject,
-        university,
-        total_questions: questions.length,
-      },
+      data: responseData,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -2522,7 +2800,7 @@ app.post("/api/admin/upload/docx", upload.single("file"), async (req: Request, r
     const text = result.value;
 
     // Parse questions
-    const parseResult = parseQuestionsFromText(text);
+    const parseResult = parseRomanSeriesDocument(text);
 
     // Generate upload token
     const uploadToken = crypto.randomUUID();
@@ -2537,13 +2815,16 @@ app.post("/api/admin/upload/docx", upload.single("file"), async (req: Request, r
       expiresAt: Date.now() + ttl,
     });
 
-    // Return preview
+    // Return preview and all questions for expandable section
     res.json({
       status: "success",
       data: {
         preview: parseResult.questions.slice(0, 5),
-        total_parsed: parseResult.questions.length,
-        skipped: parseResult.skipped,
+        all_questions: parseResult.questions,
+        topics: parseResult.topics,
+        total_parsed: parseResult.total_parsed,
+        total_matched: parseResult.total_matched,
+        total_unmatched: parseResult.total_unmatched,
         errors: parseResult.errors,
         upload_token: uploadToken,
       },
@@ -2587,51 +2868,123 @@ app.post("/api/admin/upload/confirm", async (req: Request, res: Response) => {
       return;
     }
 
-    const { questions } = cached.parsed;
+    const { questions, topics } = cached.parsed;
     let created = 0;
-    let failed = 0;
+    let skipped = 0;
     const errors: string[] = [];
+    const affectedTopicIds: string[] = [];
 
-    // Insert in batches of 20
-    for (let i = 0; i < questions.length; i += 20) {
-      const batch = questions.slice(i, i + 20);
+    try {
+      // Step 1: Create or get topics
+      const topicMap = new Map<string, string>();
 
-      for (const question of batch) {
+      for (const topicName of topics) {
         try {
-          // Insert question
-          const { data: questionData, error: qError } = await supabaseAdmin
-            .from("questions")
-            .insert({
-              subject_id,
-              university_id,
-              year,
-              body: question.body,
-              explanation: question.explanation,
-            })
-            .select()
+          // Check if topic exists
+          const { data: existing } = await supabaseAdmin
+            .from("topics")
+            .select("id")
+            .eq("subject_id", subject_id)
+            .eq("university_id", university_id)
+            .eq("name", topicName)
             .single();
 
-          if (qError) throw qError;
+          if (existing) {
+            topicMap.set(topicName, existing.id);
+            affectedTopicIds.push(existing.id);
+          } else {
+            // Create new topic
+            const topicId = crypto.randomUUID();
+            const { error: tError } = await supabaseAdmin
+              .from("topics")
+              .insert({
+                id: topicId,
+                name: topicName,
+                subject_id,
+                university_id,
+                question_count: 0,
+              });
 
-          // Insert options
-          const optionRows = question.options.map((o: any) => ({
-            id: crypto.randomUUID(),
-            question_id: questionData.id,
-            label: o.label,
-            body: o.body,
-            is_correct: o.is_correct,
-          }));
-
-          const { error: oError } = await supabaseAdmin.from("options").insert(optionRows);
-
-          if (oError) throw oError;
-
-          created++;
+            if (tError) throw tError;
+            topicMap.set(topicName, topicId);
+            affectedTopicIds.push(topicId);
+          }
         } catch (error) {
-          failed++;
-          errors.push(`Failed to save question: ${error instanceof Error ? error.message : "Unknown error"}`);
+          errors.push(`Failed to create topic "${topicName}": ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       }
+
+      // Step 2: Insert questions in batches of 20
+      for (let i = 0; i < questions.length; i += 20) {
+        const batch = questions.slice(i, i + 20);
+
+        for (const question of batch) {
+          try {
+            // Skip if no option has is_correct = true
+            const hasCorrectAnswer = question.options.some((o: any) => o.is_correct);
+            if (!hasCorrectAnswer) {
+              skipped++;
+              continue;
+            }
+
+            const topicId = topicMap.get(question.topic_name);
+
+            // Insert question
+            const { data: questionData, error: qError } = await supabaseAdmin
+              .from("questions")
+              .insert({
+                subject_id,
+                university_id,
+                year,
+                body: question.body,
+                explanation: question.explanation,
+                topic_id: topicId || null,
+                topic_name: question.topic_name,
+              })
+              .select()
+              .single();
+
+            if (qError) throw qError;
+
+            // Insert options
+            const optionRows = question.options.map((o: any) => ({
+              id: crypto.randomUUID(),
+              question_id: questionData.id,
+              label: o.label,
+              body: o.body,
+              is_correct: o.is_correct,
+            }));
+
+            const { error: oError } = await supabaseAdmin.from("options").insert(optionRows);
+
+            if (oError) throw oError;
+
+            created++;
+          } catch (error) {
+            skipped++;
+            errors.push(`Failed to save question: ${error instanceof Error ? error.message : "Unknown error"}`);
+          }
+        }
+      }
+
+      // Step 3: Update topic question counts
+      for (const topicId of affectedTopicIds) {
+        try {
+          const { data: count } = await supabaseAdmin
+            .from("questions")
+            .select("id", { count: "exact" })
+            .eq("topic_id", topicId);
+
+          await supabaseAdmin
+            .from("topics")
+            .update({ question_count: count || 0 })
+            .eq("id", topicId);
+        } catch (error) {
+          errors.push(`Failed to update topic count: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
+      }
+    } catch (error) {
+      errors.push(`Upload process failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 
     // Clear cache
@@ -2641,7 +2994,7 @@ app.post("/api/admin/upload/confirm", async (req: Request, res: Response) => {
       status: "success",
       data: {
         created,
-        failed,
+        skipped,
         errors,
       },
       timestamp: new Date().toISOString(),

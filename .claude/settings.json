@@ -34,7 +34,9 @@
       "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r kill -9)"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",
