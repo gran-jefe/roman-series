@@ -1,0 +1,94 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+
+interface AdminStats {
+  total_users: number;
+  sessions_today: number;
+  total_revenue: number;
+  total_questions: number;
+  new_users_this_week: number;
+}
+
+export default function AdminPage() {
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get("/api/admin/stats");
+        setStats(res.data.data);
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return <div className="text-gray-600">Loading...</div>;
+  }
+
+  if (!stats) {
+    return <div className="text-red-600">Failed to load statistics</div>;
+  }
+
+  const metricCards = [
+    {
+      label: "Total Users",
+      value: stats.total_users,
+      color: "blue",
+    },
+    {
+      label: "Sessions Today",
+      value: stats.sessions_today,
+      color: "green",
+    },
+    {
+      label: "Total Revenue",
+      value: `₦${stats.total_revenue.toLocaleString()}`,
+      color: "emerald",
+    },
+    {
+      label: "Total Questions",
+      value: stats.total_questions,
+      color: "purple",
+    },
+    {
+      label: "New Users This Week",
+      value: stats.new_users_this_week,
+      color: "orange",
+    },
+  ];
+
+  const colorClasses = {
+    blue: "bg-blue-50 border-blue-200 text-blue-700",
+    green: "bg-green-50 border-green-200 text-green-700",
+    emerald: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    purple: "bg-purple-50 border-purple-200 text-purple-700",
+    orange: "bg-orange-50 border-orange-200 text-orange-700",
+  };
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-navy mb-8">Admin Overview</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {metricCards.map((card) => (
+          <div
+            key={card.label}
+            className={`border-l-4 rounded-lg p-6 ${colorClasses[card.color as keyof typeof colorClasses]}`}
+          >
+            <p className="text-sm font-medium opacity-90 mb-2">{card.label}</p>
+            <p className="text-3xl font-bold">{card.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

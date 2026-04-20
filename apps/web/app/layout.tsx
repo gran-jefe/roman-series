@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -15,8 +16,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Roman Series - Post-UTME Exam Prep",
-  description: "Prepare for Post-UTME exams with Roman Series",
+  title: "Roman Series — Post-UTME Past Questions",
+  description: "Practice Post-UTME past questions for UI, OAU, UNILAG, ABU, FUTA and more. Timed practice, instant scoring, performance tracking.",
+  openGraph: {
+    title: "Roman Series — Post-UTME Past Questions",
+    description: "Practice Post-UTME past questions for UI, OAU, UNILAG, ABU, FUTA and more.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -30,6 +36,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>{children}</AuthProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            success: { style: { background: "#1A7A4A", color: "#fff" } },
+            error: { style: { background: "#C4522A", color: "#fff" } },
+          }}
+        />
       </body>
     </html>
   );

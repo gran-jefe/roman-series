@@ -190,7 +190,7 @@ export default function PracticeSetupPage() {
               <select
                 value={selectedUniversityId}
                 onChange={(e) => setSelectedUniversityId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
+                className="w-full px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
               >
                 <option value="">-- Choose a university --</option>
                 {universities.map((uni) => (
@@ -209,7 +209,7 @@ export default function PracticeSetupPage() {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
+                className="w-full px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
               >
                 <option value="any">Any Year</option>
                 {years.map((year) => (

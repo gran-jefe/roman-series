@@ -311,7 +311,7 @@ export default function PracticeSessionPage() {
                 <button
                   key={q.id}
                   onClick={() => handleGoToQuestion(idx)}
-                  className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center transition-all ${bgColor} ${
+                  className={`w-8 h-8 rounded text-xs font-bold text-gray-400 flex items-center justify-center transition-all ${bgColor} ${
                     isCurrentQuestion ? "ring-2 ring-navy" : ""
                   }`}
                 >

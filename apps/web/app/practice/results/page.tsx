@@ -4,7 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import type { SessionResult } from "types";
+import type { SessionResult, UserStats } from "types";
+
+interface SessionMeta {
+  subject: any;
+  university: any;
+  total_questions: number;
+}
 
 export default function PracticeResultsPage() {
   const router = useRouter();
@@ -12,6 +18,8 @@ export default function PracticeResultsPage() {
   const sessionId = searchParams.get("sessionId");
 
   const [results, setResults] = useState<SessionResult | null>(null);
+  const [sessionMeta, setSessionMeta] = useState<SessionMeta | null>(null);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -25,36 +33,42 @@ export default function PracticeResultsPage() {
       try {
         // Try sessionStorage first
         const resultsRaw = sessionStorage.getItem(`session_results_${sessionId}`);
-        if (resultsRaw) {
+        const metaRaw = sessionStorage.getItem(`session_meta_${sessionId}`);
+
+        if (resultsRaw && metaRaw) {
           setResults(JSON.parse(resultsRaw));
-          setPageLoading(false);
-          return;
+          setSessionMeta(JSON.parse(metaRaw));
+        } else {
+          // Fallback to API
+          const res = await api.get(`/api/sessions/${sessionId}`);
+          if (res.data.data) {
+            const session = res.data.data;
+            const reconstructedResults: SessionResult = {
+              score: session.score,
+              total: session.total_questions,
+              percentage: Math.round(
+                (session.score / session.total_questions) * 100
+              ),
+              answers: session.session_answers.map((answer: any) => ({
+                question_id: answer.question_id,
+                question_body: answer.question?.body || "Question not found",
+                selected_option_id: answer.selected_option_id,
+                is_correct: answer.is_correct,
+                correct_option_id: answer.question?.options?.find(
+                  (o: any) => o.is_correct
+                )?.id,
+                explanation: answer.question?.explanation,
+                options: answer.question?.options || [],
+              })),
+            };
+            setResults(reconstructedResults);
+          }
         }
 
-        // Fallback to API
-        const res = await api.get(`/api/sessions/${sessionId}`);
-        if (res.data.data) {
-          // Reconstruct results from session data (this is a fallback)
-          const session = res.data.data;
-          const reconstructedResults: SessionResult = {
-            score: session.score,
-            total: session.total_questions,
-            percentage: Math.round(
-              (session.score / session.total_questions) * 100
-            ),
-            answers: session.session_answers.map((answer: any) => ({
-              question_id: answer.question_id,
-              question_body: answer.question?.body || "Question not found",
-              selected_option_id: answer.selected_option_id,
-              is_correct: answer.is_correct,
-              correct_option_id: answer.question?.options?.find(
-                (o: any) => o.is_correct
-              )?.id,
-              explanation: answer.question?.explanation,
-              options: answer.question?.options || [],
-            })),
-          };
-          setResults(reconstructedResults);
+        // Fetch user stats for comparison
+        const statsRes = await api.get("/api/stats/me");
+        if (statsRes.data.data) {
+          setUserStats(statsRes.data.data);
         }
       } catch (error) {
         console.error("Failed to load results:", error);
@@ -192,6 +206,63 @@ export default function PracticeResultsPage() {
             </div>
           </div>
         </div>
+
+        {/* How You Compare */}
+        {sessionMeta && userStats && (
+          <div className="mb-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-8">
+            <h2 className="text-xl font-bold text-navy mb-4">How You Compare</h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-2">Your Score</div>
+                <div className="text-4xl font-bold text-blue-600">
+                  {results?.percentage}%
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-2">
+                  {sessionMeta.subject?.name} Average
+                </div>
+                <div className="text-4xl font-bold text-indigo-600">
+                  {userStats.avg_score_by_subject?.find(
+                    (s) =>
+                      s.subject_id === sessionMeta.subject?.id
+                  )?.avg_percentage ?? "—"}
+                  %
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              {results && userStats.avg_score_by_subject && (
+                (() => {
+                  const subjectAvg = userStats.avg_score_by_subject.find(
+                    (s) =>
+                      s.subject_id === sessionMeta.subject?.id
+                  )?.avg_percentage ?? 0;
+                  const diff = (results.percentage ?? 0) - subjectAvg;
+                  if (diff > 5) {
+                    return (
+                      <p className="text-green-700 font-medium">
+                        ✓ You're above average! Great performance.
+                      </p>
+                    );
+                  } else if (diff < -5) {
+                    return (
+                      <p className="text-amber-700 font-medium">
+                        Keep practicing to reach the subject average.
+                      </p>
+                    );
+                  } else {
+                    return (
+                      <p className="text-gray-700 font-medium">
+                        You're on par with the subject average.
+                      </p>
+                    );
+                  }
+                })()
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Answer Review */}
         <div className="mb-12">

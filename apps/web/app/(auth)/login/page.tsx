@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AxiosError } from "axios";
-import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -28,17 +29,8 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await api.post("/api/auth/login", formData);
-
-      const { access_token, refresh_token } = response.data.data;
-
-      // Store tokens in localStorage
-      localStorage.setItem("access_token", access_token);
-      localStorage.setItem("refresh_token", refresh_token);
-
-      // Set auth cookie for middleware
-      document.cookie = `auth_token=${access_token}; path=/`;
-
+      // Use AuthContext login which handles tokens and user state
+      await authLogin(formData.email, formData.password);
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (err) {
@@ -46,7 +38,6 @@ export default function LoginPage() {
       setError(
         error.response?.data?.message || "Failed to login. Please try again.",
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -76,7 +67,7 @@ export default function LoginPage() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="you@example.com"
             />
           </div>
@@ -91,7 +82,7 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="••••••••"
             />
           </div>

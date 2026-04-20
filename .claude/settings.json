@@ -3,7 +3,36 @@
     "allow": [
       "Bash(curl -s -I 'http://localhost:3000/dashboard')",
       "Bash(curl -s -I 'http://localhost:3000/practice/session?sessionId=test')",
-      "Bash(curl -s -I 'http://localhost:3000/practice/results?sessionId=test')"
+      "Bash(curl -s -I 'http://localhost:3000/practice/results?sessionId=test')",
+      "Bash(pkill -f \"npm run dev\")",
+      "Bash(node -c /Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/api/src/index.ts)",
+      "Bash(node --check src/index.ts)",
+      "Bash(npx ts-node *)",
+      "Bash(awk 'NR>1 {print $2}')",
+      "Bash(xargs kill *)",
+      "Bash(pkill -f \"node --loader\\\\|nodemon\")",
+      "Bash(turbo dev *)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://localhost:4000/api/subjects)",
+      "Bash(pkill -f \"node --loader\\\\|nodemon\\\\|next\")",
+      "Bash(chmod +x /tmp/test_api.sh)",
+      "Bash(/tmp/test_api.sh)",
+      "Bash(chmod +x /tmp/create_users.sh)",
+      "Bash(/tmp/create_users.sh)",
+      "Bash(curl -s \"http://localhost:4000/api/admin/users?page=1&limit=20\")",
+      "Bash(pkill -9 node nodemon)",
+      "Bash(curl -s http://localhost:3000/admin/questions -I)",
+      "Bash(curl -s http://localhost:4000/api/subjects -I)",
+      "Bash(curl -s -X POST http://localhost:4000/api/admin/upload/docx -H 'Content-Type: application/json' -H 'Authorization: Bearer invalid-token')",
+      "Bash(curl -s -X POST http://localhost:4000/api/admin/upload/docx -H 'Authorization: Bearer invalid-token')",
+      "Bash(npx turbo *)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(pkill -f \"turbo dev\" sleep 2 npm run dev)",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"not-an-email\",\"password\":\"123\",\"full_name\":\"Test\"}')"
+    ],
+    "additionalDirectories": [
+      "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",
+      "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/src/routes"
     ]
   }
 }

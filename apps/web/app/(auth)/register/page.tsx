@@ -25,7 +25,7 @@ export default function RegisterPage() {
       try {
         const response = await api.get("/api/universities");
         setUniversities(response.data.data);
-      } catch (err) {
+      } catch {
         console.log("Universities endpoint not yet available");
       }
     };
@@ -34,7 +34,7 @@ export default function RegisterPage() {
   }, []);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setFormData({
       ...formData,
@@ -72,11 +72,16 @@ export default function RegisterPage() {
       });
 
       router.push(
-        `/login?message=Account created successfully. Check your email to verify your account.`
+        `/login?message=Account created successfully. Check your email to verify your account.`,
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as {
+        response?: { data?: { message?: string } };
+      };
+
       setError(
-        err.response?.data?.message || "Failed to create account. Please try again."
+        apiError?.response?.data?.message ||
+          "Failed to create account. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -108,7 +113,7 @@ export default function RegisterPage() {
               value={formData.full_name}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="John Doe"
             />
           </div>
@@ -123,7 +128,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="you@example.com"
             />
           </div>
@@ -138,12 +143,10 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="••••••••"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              At least 8 characters
-            </p>
+            <p className="text-xs text-gray-500 mt-1">At least 8 characters</p>
           </div>
 
           <div>
@@ -156,7 +159,7 @@ export default function RegisterPage() {
               value={formData.confirm_password}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               placeholder="••••••••"
             />
           </div>
@@ -170,7 +173,7 @@ export default function RegisterPage() {
                 name="target_university_id"
                 value={formData.target_university_id}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+                className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               >
                 <option value="">Select a university (optional)</option>
                 {universities.map((uni) => (
@@ -193,7 +196,10 @@ export default function RegisterPage() {
 
         <div className="mt-6 text-center text-sm text-gray-600">
           Already have an account?{" "}
-          <Link href="/login" className="text-forest font-medium hover:underline">
+          <Link
+            href="/login"
+            className="text-forest font-medium hover:underline"
+          >
             Sign in
           </Link>
         </div>
