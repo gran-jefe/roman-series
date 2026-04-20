@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+export const dynamic = "force-dynamic";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 

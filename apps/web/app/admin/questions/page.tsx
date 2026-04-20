@@ -512,7 +512,7 @@ Explanation: Leguminous plants require...
                     </p>
                     {parsePreview.errors.length > 0 && (
                       <div className="mt-2 text-xs text-amber-800">
-                        {parsePreview.errors.slice(0, 3).map((e, i) => (
+                        {parsePreview.errors.slice(0, 3).map((e: string, i: number) => (
                           <p key={i}>• {e}</p>
                         ))}
                       </div>

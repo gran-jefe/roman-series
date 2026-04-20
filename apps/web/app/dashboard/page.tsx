@@ -256,22 +256,6 @@ export default function DashboardPage() {
           <div className="mb-8 bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-navy">Your Performance</h3>
-              {stats.weakest_subject && stats.strongest_subject && (
-                <div className="flex gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 bg-amber-400 rounded-full" />
-                    <span className="text-sm text-gray-600">
-                      Weakest: {stats.weakest_subject.subject_name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 bg-green-500 rounded-full" />
-                    <span className="text-sm text-gray-600">
-                      Strongest: {stats.strongest_subject.subject_name}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Subject bars */}
@@ -423,7 +407,7 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="px-6 py-3 text-sm text-gray-700">
-                        {session.university_short_code || "N/A"}
+                        {session.university_name || "N/A"}
                       </td>
                       <td className="px-6 py-3 text-sm">
                         <span
