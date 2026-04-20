@@ -30,7 +30,8 @@
       "Bash(pkill -f \"turbo dev\" sleep 2 npm run dev)",
       "Bash(curl -s -X POST http://localhost:4000/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"not-an-email\",\"password\":\"123\",\"full_name\":\"Test\"}')",
       "Bash(timeout 5 npm start)",
-      "Bash(npm start *)"
+      "Bash(npm start *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",
