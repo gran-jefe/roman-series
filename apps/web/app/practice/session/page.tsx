@@ -17,6 +17,7 @@ export default function PracticeSessionPage() {
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [subject, setSubject] = useState<Subject | null>(null);
   const [university, setUniversity] = useState<University | null>(null);
+  const [topicName, setTopicName] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
@@ -51,6 +52,9 @@ export default function PracticeSessionPage() {
       setQuestions(questionsData);
       setSubject(meta.subject);
       setUniversity(meta.university);
+      if (meta.topic) {
+        setTopicName(meta.topic.name);
+      }
 
       const calcTotalTime = questionsData.length * 60; // 1 minute per question
       setTotalTime(calcTotalTime);
@@ -204,7 +208,10 @@ export default function PracticeSessionPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Bar */}
       <div className="fixed top-0 left-0 right-0 h-16 bg-navy text-white px-4 flex items-center justify-between shadow-lg z-40">
-        <div className="text-sm font-medium">{subject?.name || "Practice"}</div>
+        <div className="text-sm font-medium">
+          {subject?.name || "Practice"}
+          {topicName && ` • ${topicName}`}
+        </div>
         <div className="text-sm font-medium">
           Question {currentIndex + 1} of {questions.length}
         </div>

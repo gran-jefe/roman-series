@@ -1,285 +1,226 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import EmptyState from "@/components/ui/EmptyState";
-import type {
-  SubjectWithCount,
-  SessionHistoryItem,
-  UserStats,
-  University,
-} from "types";
+import type { University, Subject, SessionHistoryItem, UserStats } from "types";
+import toast from "react-hot-toast";
+
+const subjectColours: Record<string, string> = {
+  Biology: "#1A7A4A",
+  Chemistry: "#8B2252",
+  Physics: "#7B4F1A",
+  Government: "#1E3A5F",
+  Literature: "#C4522A",
+  "Use of English": "#2166B2",
+  "C.R.S.": "#D97B20",
+  "I.R.S.": "#B0287A",
+};
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, profile, loading, logout } = useAuth();
-
-  const [subjects, setSubjects] = useState<SubjectWithCount[]>([]);
-  const [recentSessions, setRecentSessions] = useState<SessionHistoryItem[]>([]);
-  const [stats, setStats] = useState<UserStats | null>(null);
   const [universities, setUniversities] = useState<University[]>([]);
-  const [selectedUniversity, setSelectedUniversity] = useState<string>("all");
-  const [pageLoading, setPageLoading] = useState(true);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [subscription, setSubscription] = useState<any>(null);
 
-  // Check auth and redirect
+  // Fetch initial data
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [loading, user, router]);
-
-  // Fetch dashboard data
-  useEffect(() => {
-    if (loading || !user || !profile) {
-      return;
-    }
-
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const [subjectsRes, historyRes, statsRes, unisRes] =
-          await Promise.allSettled([
-            api.get(
-              `/api/subjects${
-                profile.target_university_id && selectedUniversity === "all"
-                  ? `?universityId=${profile.target_university_id}`
-                  : selectedUniversity !== "all"
-                    ? `?universityId=${selectedUniversity}`
-                    : ""
-              }`
-            ),
-            api.get("/api/sessions/history"),
-            api.get("/api/stats/me"),
-            api.get("/api/universities"),
-          ]);
+        // Get user info
+        const meRes = await api.get("/api/auth/me");
+        setUser(meRes.data.data.profile);
 
-        if (subjectsRes.status === "fulfilled") {
-          setSubjects(subjectsRes.value.data.data || []);
-        }
-        if (historyRes.status === "fulfilled") {
-          setRecentSessions(historyRes.value.data.data?.slice(0, 5) || []);
-        }
-        if (statsRes.status === "fulfilled") {
-          setStats(statsRes.value.data.data || null);
-        }
-        if (unisRes.status === "fulfilled") {
-          setUniversities(unisRes.value.data.data || []);
-        }
+        // Get subscription status
+        const subRes = await api.get("/api/payments/status");
+        setSubscription(subRes.data.data);
+
+        // Get universities
+        const uniRes = await api.get("/api/universities");
+        setUniversities(uniRes.data.data || []);
+
+        // Get subjects
+        const subjectsRes = await api.get("/api/subjects?universityId=" + (uniRes.data.data?.[0]?.id || ""));
+        setSubjects(subjectsRes.data.data || []);
+
+        // Get user stats
+        const statsRes = await api.get("/api/stats/me");
+        setStats(statsRes.data.data);
+
+        // Get session history
+        const sessionRes = await api.get("/api/sessions/history");
+        setSessions(sessionRes.data.data || []);
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load dashboard");
       } finally {
-        setPageLoading(false);
+        setLoading(false);
       }
     };
 
     fetchData();
-  }, [loading, user, profile, selectedUniversity]);
+  }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/login");
+  const handleSelectUniversity = (university: University) => {
+    if (!university.is_available) return;
+    setSelectedUniversity(university);
+
+    // Scroll to subjects section
+    setTimeout(() => {
+      const element = document.getElementById("subjects-section");
+      element?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+
+    // Fetch subjects for this university
+    api
+      .get(`/api/subjects?universityId=${university.id}`)
+      .then(res => setSubjects(res.data.data || []))
+      .catch(() => toast.error("Failed to load subjects"));
   };
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  const handleSelectSubject = (subject: Subject) => {
+    if (!selectedUniversity) return;
+    router.push(
+      `/practice/topics?subjectId=${subject.id}&universityId=${selectedUniversity.id}`
+    );
   };
 
-  if (loading || pageLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
       </div>
     );
   }
 
-  // Subject color class mapping
-  const SUBJECT_COLOUR_CLASSES: Record<string, string> = {
-    Biology: "bg-biology",
-    Government: "bg-government",
-    Chemistry: "bg-chemistry",
-    Literature: "bg-literature",
-    CRS: "bg-crs",
-    IRS: "bg-irs",
-    English: "bg-english",
-    Physics: "bg-physics",
-  };
-
-  const SUBJECT_COLOUR_HEX: Record<string, string> = {
-    Biology: "#1A7A4A",
-    Government: "#1E3A5F",
-    Chemistry: "#8B2252",
-    Literature: "#C4522A",
-    CRS: "#D97B20",
-    IRS: "#B0287A",
-    English: "#2166B2",
-    Physics: "#7B4F1A",
-  };
-
-  const getSubjectColourClass = (subjectName: string): string => {
-    return SUBJECT_COLOUR_CLASSES[subjectName] || "bg-navy";
-  };
-
-  const getSubjectColourHex = (subjectName: string): string => {
-    return SUBJECT_COLOUR_HEX[subjectName] || "#0D1B2A";
-  };
-
-  // Calculate average score for a subject
-  const getSubjectAverage = (subjectId: string): number => {
-    const subject = stats?.avg_score_by_subject?.find(
-      (s) => s.subject_id === subjectId
-    );
-    return subject?.avg_percentage ?? 0;
-  };
-
-  const overallAverage =
-    stats?.avg_score_by_subject && stats.avg_score_by_subject.length > 0
-      ? Math.round(
-          stats.avg_score_by_subject.reduce(
-            (sum, s) => sum + s.avg_percentage,
-            0
-          ) / stats.avg_score_by_subject.length
-        )
-      : 0;
+  const subscriptionBadge =
+    subscription?.subscription_status === "active"
+      ? { label: "Pro", colour: "bg-green-100 text-green-800" }
+      : { label: `Free (${10 - (sessions.length % 10)}/10)`, colour: "bg-amber-100 text-amber-800" };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
+      <nav className="bg-navy text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-forest rounded-full" />
-            <h1 className="text-xl font-bold">Roman Series</h1>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <Link
-              href="/leaderboard"
-              className="text-sm text-gray-300 hover:text-white transition-colors"
-            >
-              Leaderboard
-            </Link>
-            <Link
-              href="/pricing"
-              className="text-sm text-gray-300 hover:text-white transition-colors"
-            >
-              Upgrade
-            </Link>
-            <span className="text-sm text-gray-300">
-              Welcome, {profile?.full_name || "Student"}
+          <h1 className="text-xl font-bold">Roman Series</h1>
+          <div className="flex items-center gap-4">
+            <span className={`text-sm font-semibold px-3 py-1 rounded-full ${subscriptionBadge.colour}`}>
+              {subscriptionBadge.label}
             </span>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-forest hover:bg-opacity-90 rounded-lg text-sm font-medium transition-opacity"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-sm">{user?.full_name || "User"}</span>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("access_token");
+                  router.push("/login");
+                }}
+                className="text-sm text-gray-200 hover:text-white"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-12">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-navy mb-2">
-            Welcome back, {profile?.full_name || "Student"}!
+        <div className="mb-12">
+          <h2 className="text-3xl font-bold text-navy mb-8">
+            Welcome back, {user?.full_name?.split(" ")[0]}
           </h2>
-          <p className="text-gray-600">
-            You're logged in and ready to start preparing for your Post-UTME
-            exams.
-          </p>
-          {profile?.target_university_id && (
-            <div className="mt-4 inline-block">
-              <span className="inline-block bg-deep-blue text-white px-3 py-1 rounded-full text-sm font-medium">
-                Target University Selected
-              </span>
+
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg shadow p-6">
+                <p className="text-sm text-gray-600 mb-1">Total Sessions</p>
+                <p className="text-2xl font-bold text-forest">{stats.total_sessions}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <p className="text-sm text-gray-600 mb-1">Average Score</p>
+                <p className="text-2xl font-bold text-forest">
+                  {stats.avg_score_by_subject.length > 0
+                    ? Math.round(
+                        stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
+                          stats.avg_score_by_subject.length
+                      )
+                    : 0}
+                  %
+                </p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <p className="text-sm text-gray-600 mb-1">Best Score</p>
+                <p className="text-2xl font-bold text-forest">{stats.best_score_percentage}%</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <p className="text-sm text-gray-600 mb-1">Questions Answered</p>
+                <p className="text-2xl font-bold text-forest">{stats.total_questions_answered}</p>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Free User Banner */}
-        {profile?.subscription_status === "free" && (
-          <div className="mb-8 bg-amber-50 border-l-4 border-amber-400 rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-amber-900 mb-1">
-                  Free Plan Limit Reached
-                </h3>
-                <p className="text-sm text-amber-800">
-                  You've used 10 of your free questions. Upgrade to unlimited access across all subjects and universities.
-                </p>
-              </div>
-              <Link
-                href="/pricing"
-                className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity whitespace-nowrap ml-4"
+        {/* Universities Section */}
+        <div className="mb-12">
+          <h3 className="text-xl font-bold text-navy mb-6">Select University</h3>
+          <div className="grid grid-cols-3 gap-6">
+            {universities.map(uni => (
+              <div
+                key={uni.id}
+                onClick={() => handleSelectUniversity(uni)}
+                className={`rounded-lg p-6 cursor-pointer transition-all ${
+                  uni.is_available
+                    ? "bg-white shadow hover:shadow-lg border-2 border-forest"
+                    : "bg-gray-200 opacity-50 cursor-not-allowed"
+                }`}
               >
-                Upgrade Now
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-3xl font-bold text-forest">
-              {stats?.total_sessions || 0}
-            </div>
-            <p className="text-gray-600 text-sm mt-2">Total Sessions</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-3xl font-bold text-forest">
-              {overallAverage}%
-            </div>
-            <p className="text-gray-600 text-sm mt-2">Average Score</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-3xl font-bold text-english">
-              {stats?.best_score_percentage || 0}%
-            </div>
-            <p className="text-gray-600 text-sm mt-2">Best Score</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-3xl font-bold text-chemistry">
-              {stats?.total_questions_answered || 0}
-            </div>
-            <p className="text-gray-600 text-sm mt-2">Questions Answered</p>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-navy mb-2">{uni.name}</h4>
+                    <p className="text-sm text-gray-600">{uni.short_code}</p>
+                  </div>
+                  {!uni.is_available && (
+                    <div className="text-right">
+                      <p className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold mb-2">
+                        Coming Soon
+                      </p>
+                      <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Performance Section */}
-        {stats?.avg_score_by_subject && stats.avg_score_by_subject.length > 0 && (
-          <div className="mb-8 bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-navy">Your Performance</h3>
-            </div>
-
-            {/* Subject bars */}
-            <div className="space-y-4">
-              {stats.avg_score_by_subject.map((subject) => (
-                <div key={subject.subject_id}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      {subject.subject_name}
-                    </span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {subject.avg_percentage}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{
-                        width: `${subject.avg_percentage}%`,
-                        backgroundColor: getSubjectColourHex(
-                          subject.subject_name
-                        ),
-                      }}
-                    />
+        {/* Subjects Section */}
+        {selectedUniversity && (
+          <div id="subjects-section" className="mb-12 animate-fadeIn">
+            <h3 className="text-xl font-bold text-navy mb-6">
+              Select Subject — {selectedUniversity.short_code}
+            </h3>
+            <div className="grid grid-cols-4 gap-4">
+              {subjects.map(subject => (
+                <div
+                  key={subject.id}
+                  onClick={() => handleSelectSubject(subject)}
+                  className="rounded-lg p-6 text-white cursor-pointer shadow hover:shadow-lg transition-all"
+                  style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
+                >
+                  <h4 className="font-bold mb-2">{subject.name}</h4>
+                  <div className="text-sm opacity-90">
+                    <p>Topics: N/A</p>
+                    <p>Questions: N/A</p>
                   </div>
                 </div>
               ))}
@@ -287,160 +228,80 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* University Filter */}
-        {universities.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold text-navy mb-3">
-              Filter by University
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedUniversity("all")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedUniversity === "all"
-                    ? "bg-forest text-white"
-                    : "bg-white border border-gray-300 text-gray-700 hover:border-forest"
-                }`}
-              >
-                All Universities
-              </button>
-              {universities.map((uni) => (
-                <button
-                  key={uni.id}
-                  onClick={() => setSelectedUniversity(uni.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedUniversity === uni.id
-                      ? "bg-forest text-white"
-                      : "bg-white border border-gray-300 text-gray-700 hover:border-forest"
-                  }`}
-                >
-                  {uni.short_code}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Subject Grid */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-bold text-navy mb-4">
-            Select a Subject to Practice
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {subjects.length > 0 ? (
-              subjects.map((subject) => {
-                const avgScore = getSubjectAverage(subject.id);
-                return (
-                  <button
-                    key={subject.id}
-                    onClick={() =>
-                      router.push(`/practice/setup?subjectId=${subject.id}`)
-                    }
-                    className={`${getSubjectColourClass(
-                      subject.name
-                    )} text-white rounded-lg shadow-md p-6 hover:scale-105 transition-transform duration-200 text-left relative`}
-                  >
-                    {avgScore > 0 && (
-                      <div className="absolute top-3 right-3 bg-white bg-opacity-90 text-navy rounded-full w-10 h-10 flex items-center justify-center text-xs font-bold">
-                        {avgScore}%
-                      </div>
-                    )}
-                    <h4 className="text-lg font-bold mb-2">{subject.name}</h4>
-                    <p className="text-sm opacity-90">
-                      {avgScore > 0
-                        ? `${subject.question_count} questions`
-                        : "No attempts yet"}
-                    </p>
-                    {avgScore === 0 && (
-                      <div className="mt-3 h-1 bg-white bg-opacity-30 rounded-full" />
-                    )}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="col-span-full bg-white rounded-lg shadow p-8 text-center text-gray-600">
-                No subjects available yet. Please check back later.
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Recent Sessions */}
-        <div>
-          <h3 className="text-2xl font-bold text-navy mb-4">Recent Sessions</h3>
-          {recentSessions.length > 0 ? (
+        {sessions.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
+              <a href="#" className="text-forest font-medium text-sm hover:underline">
+                View All
+              </a>
+            </div>
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">
-                      Subject
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">
-                      University
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">
-                      Score
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">
-                      Action
-                    </th>
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Subject</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Topic</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">University</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Score</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentSessions.map((session) => (
+                  {sessions.slice(0, 5).map(session => (
                     <tr key={session.id} className="border-b hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm text-gray-700">
+                      <td className="px-6 py-3 text-sm">
                         <div className="flex items-center gap-2">
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{
-                              backgroundColor: getSubjectColourHex(
-                                session.subject_name || ""
-                              ),
-                            }}
+                            style={{ backgroundColor: session.subject_colour_token || "#666" }}
                           />
-                          {session.subject_name || "N/A"}
+                          {session.subject_name}
                         </div>
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {session.university_name || "N/A"}
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {session.topic_name || "—"}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {session.university_short_code}
                       </td>
                       <td className="px-6 py-3 text-sm">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                            session.percentage >= 50
-                              ? "bg-green-100 text-forest"
-                              : "bg-red-100 text-ember"
+                          className={`font-semibold ${
+                            session.percentage >= 50 ? "text-green-600" : "text-red-600"
                           }`}
                         >
                           {session.percentage}%
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-700">
-                        {formatDate(session.started_at)}
-                      </td>
-                      <td className="px-6 py-3 text-sm">
-                        <Link
-                          href={`/practice/results?sessionId=${session.id}`}
-                          className="text-forest hover:underline font-medium"
-                        >
-                          Review
-                        </Link>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {new Date(session.started_at).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <EmptyState message="No sessions yet. Start your first practice!" />
-          )}
-        </div>
+          </div>
+        )}
       </main>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,27 +1,38 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
-import type { Subject, University } from "types";
+import type { Subject, University, Topic } from "types";
+
+const subjectColours: Record<string, string> = {
+  Biology: "#1A7A4A",
+  Chemistry: "#8B2252",
+  Physics: "#7B4F1A",
+  Government: "#1E3A5F",
+  Literature: "#C4522A",
+  "Use of English": "#2166B2",
+  "C.R.S.": "#D97B20",
+  "I.R.S.": "#B0287A",
+};
 
 export default function PracticeSetupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, loading } = useAuth();
 
-  const [universities, setUniversities] = useState<University[]>([]);
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [selectedUniversityId, setSelectedUniversityId] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("any");
-  const [questionCount, setQuestionCount] = useState(20);
+  const [university, setUniversity] = useState<University | null>(null);
+  const [topic, setTopic] = useState<Topic | null>(null);
+  const [questionCount, setQuestionCount] = useState<number | "all">(20);
   const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const subjectId = searchParams.get("subjectId");
+  const universityId = searchParams.get("universityId");
+  const topicId = searchParams.get("topicId");
 
   // Auth check
   useEffect(() => {
@@ -32,38 +43,44 @@ export default function PracticeSetupPage() {
       return;
     }
 
-    if (!subjectId) {
+    if (!subjectId || !universityId) {
       router.push("/dashboard");
       return;
     }
-  }, [loading, user, subjectId, router]);
+  }, [loading, user, subjectId, universityId, router]);
 
   // Fetch data on mount
   useEffect(() => {
-    if (loading || !user || !subjectId) return;
+    if (loading || !user || !subjectId || !universityId) return;
 
     const fetchData = async () => {
       try {
-        const [unisRes, subjectsRes] = await Promise.allSettled([
-          api.get("/api/universities"),
+        const [subjectsRes, unisRes] = await Promise.allSettled([
           api.get("/api/subjects"),
+          api.get("/api/universities"),
         ]);
-
-        if (unisRes.status === "fulfilled") {
-          setUniversities(unisRes.value.data.data || []);
-          // Pre-fill with profile's target university
-          if (profile?.target_university_id) {
-            setSelectedUniversityId(profile.target_university_id);
-          }
-        }
 
         if (subjectsRes.status === "fulfilled") {
           const subjects = subjectsRes.value.data.data || [];
-          const foundSubject = subjects.find(
-            (s: Subject) => s.id === subjectId
-          );
+          const foundSubject = subjects.find((s: Subject) => s.id === subjectId);
           if (foundSubject) {
             setSubject(foundSubject);
+          }
+        }
+
+        if (unisRes.status === "fulfilled") {
+          const universities = unisRes.value.data.data || [];
+          const foundUni = universities.find((u: University) => u.id === universityId);
+          if (foundUni) {
+            setUniversity(foundUni);
+          }
+        }
+
+        // Fetch topic if provided
+        if (topicId) {
+          const topicRes = await api.get(`/api/topics/${topicId}`);
+          if (topicRes.data.status === "success") {
+            setTopic(topicRes.data.data);
           }
         }
       } catch (err) {
@@ -75,24 +92,24 @@ export default function PracticeSetupPage() {
     };
 
     fetchData();
-  }, [loading, user, subjectId, profile]);
+  }, [loading, user, subjectId, universityId, topicId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUniversityId || !subjectId) return;
+    if (!subjectId || !universityId) return;
 
     setSubmitting(true);
     setError("");
 
     try {
-      const payload: any = {
-        subject_id: subjectId,
-        university_id: selectedUniversityId,
-        total_questions: questionCount,
+      const payload: Record<string, string | number> = {
+        subject_id: subjectId || "",
+        university_id: universityId || "",
+        total_questions: questionCount === "all" ? 0 : questionCount,
       };
 
-      if (selectedYear !== "any") {
-        payload.year = parseInt(selectedYear);
+      if (topicId) {
+        payload.topic_id = topicId;
       }
 
       const res = await api.post("/api/sessions/start", payload);
@@ -102,7 +119,8 @@ export default function PracticeSetupPage() {
           session_id,
           questions,
           subject: sessionSubject,
-          university,
+          university: sessionUni,
+          topic: sessionTopic,
           total_questions,
         } = res.data.data;
 
@@ -115,19 +133,20 @@ export default function PracticeSetupPage() {
           `session_meta_${session_id}`,
           JSON.stringify({
             subject: sessionSubject,
-            university,
+            university: sessionUni,
+            topic: sessionTopic || null,
             total_questions,
           })
         );
 
         router.push(`/practice/session?sessionId=${session_id}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to start session:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to start practice session. Please try again."
-      );
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      const errorMessage = errorObj?.response?.data?.message ||
+        "Failed to start practice session. Please try again.";
+      setError(errorMessage);
       setSubmitting(false);
     }
   };
@@ -141,16 +160,19 @@ export default function PracticeSetupPage() {
   }
 
   const isFreeUser = profile?.subscription_status === "free";
-  const years = Array.from({ length: 10 }, (_, i) => 2024 - i);
+  const subjectColour = subject ? subjectColours[subject.name] || "#7B68EE" : "#7B68EE";
 
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-navy text-white shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-3 hover:opacity-80"
+          >
             <div className="w-8 h-8 bg-forest rounded-full" />
             <h1 className="text-xl font-bold">Roman Series</h1>
-          </Link>
+          </button>
         </div>
       </nav>
 
@@ -160,7 +182,8 @@ export default function PracticeSetupPage() {
             Set Up Your Practice Session
           </h1>
           <p className="text-gray-600 mb-8">
-            {subject?.name || "Loading..."} • University of Ibadan
+            {subject?.name} • {university?.short_code}
+            {topic && ` • ${topic.name}`}
           </p>
 
           {error && (
@@ -169,7 +192,7 @@ export default function PracticeSetupPage() {
             </div>
           )}
 
-          {isFreeUser && questionCount > 10 && (
+          {isFreeUser && questionCount !== "all" && questionCount > 10 && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800 font-medium mb-2">
                 Free Plan Limit
@@ -182,43 +205,25 @@ export default function PracticeSetupPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* University Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-navy mb-3">
-                Select University
-              </label>
-              <select
-                value={selectedUniversityId}
-                onChange={(e) => setSelectedUniversityId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
-              >
-                <option value="">-- Choose a university --</option>
-                {universities.map((uni) => (
-                  <option key={uni.id} value={uni.id}>
-                    {uni.name}
-                  </option>
-                ))}
-              </select>
+            {/* Subject Display */}
+            <div className="p-4 rounded-lg" style={{ backgroundColor: `${subjectColour}20` }}>
+              <p className="text-sm text-gray-600">Subject</p>
+              <p className="text-lg font-semibold text-navy">{subject?.name}</p>
             </div>
 
-            {/* Year Selection */}
+            {/* University Display */}
             <div>
-              <label className="block text-sm font-semibold text-navy mb-3">
-                Question Year (Optional)
-              </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
-              >
-                <option value="any">Any Year</option>
-                {years.map((year) => (
-                  <option key={year} value={year.toString()}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+              <p className="text-sm text-gray-600">University</p>
+              <p className="text-lg font-semibold text-navy">{university?.name}</p>
             </div>
+
+            {/* Topic Display (if applicable) */}
+            {topic && (
+              <div>
+                <p className="text-sm text-gray-600">Topic</p>
+                <p className="text-lg font-semibold text-navy">{topic.name}</p>
+              </div>
+            )}
 
             {/* Question Count */}
             <div>
@@ -246,6 +251,21 @@ export default function PracticeSetupPage() {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => setQuestionCount("all")}
+                  disabled={isFreeUser}
+                  className={`py-3 rounded-lg font-medium transition-colors ${
+                    questionCount === "all"
+                      ? "bg-forest text-white"
+                      : isFreeUser
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                        : "bg-gray-100 text-navy hover:bg-gray-200"
+                  }`}
+                  title={isFreeUser ? "Not available for free users" : "Practice all questions"}
+                >
+                  All
+                </button>
               </div>
               {isFreeUser && (
                 <p className="text-xs text-gray-500 mt-2">
@@ -254,18 +274,12 @@ export default function PracticeSetupPage() {
               )}
             </div>
 
-            {/* Error if university not selected */}
-            {!selectedUniversityId && (
-              <p className="text-sm text-ember">
-                Please select a university to continue
-              </p>
-            )}
-
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!selectedUniversityId || submitting}
-              className="w-full py-3 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              disabled={submitting}
+              className="w-full py-3 text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              style={{ backgroundColor: subjectColour }}
             >
               {submitting ? "Starting Session..." : "Start Practice Session"}
             </button>
