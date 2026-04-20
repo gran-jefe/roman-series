@@ -168,21 +168,25 @@ const webUrl = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
 app.use(helmet());
 
 // CORS configuration
-const allowedOrigin = process.env.ALLOWED_ORIGIN || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (origin === allowedOrigin || process.env.NODE_ENV !== "production") {
-        return callback(null, true);
-      }
-      callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.ALLOWED_ORIGIN,
+].filter(Boolean);
+
+app.options('*', cors());
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Body parsing middleware
 app.use(express.json());
