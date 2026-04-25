@@ -48,7 +48,8 @@
       "Bash(grep -v \"^$\")",
       "Bash(pkill -f \"ts-node\")",
       "Bash(pkill -f \"next dev\")",
-      "Bash(lsof -ti:3000,4000,5000)"
+      "Bash(lsof -ti:3000,4000,5000)",
+      "Bash(pkill -f \"turbo dev\")"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",

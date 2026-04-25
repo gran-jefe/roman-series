@@ -76,6 +76,17 @@ const uploadSchema = z.object({
   topics: z.array(topicSchema),
 });
 
+const subjectColours: Record<string, string> = {
+  Biology: "#1A7A4A",
+  Chemistry: "#8B2252",
+  Physics: "#7B4F1A",
+  Government: "#1E3A5F",
+  Literature: "#C4522A",
+  "Use of English": "#2166B2",
+  "C.R.S.": "#D97B20",
+  "I.R.S.": "#B0287A",
+};
+
 export function registerUploadRoutes(app: Express, deps: UploadDeps) {
   const { supabaseAdmin } = deps;
 
@@ -128,6 +139,7 @@ export function registerUploadRoutes(app: Express, deps: UploadDeps) {
           .from("subjects")
           .insert({
             name: subject,
+            colour_token: subjectColours[subject] || "#7B68EE",
           })
           .select("id")
           .single();
