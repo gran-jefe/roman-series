@@ -17,7 +17,14 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token");
+      let token = localStorage.getItem("access_token");
+
+      // Fallback: read from cookie if localStorage is empty
+      if (!token) {
+        const match = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
+        token = match ? match[1] : null;
+      }
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -35,15 +42,17 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    // Handle 401 Unauthorized
+    // Log 401 errors for debugging
     if (error.response?.status === 401) {
-      // Clear all stored data
-      if (typeof window !== "undefined") {
-        localStorage.clear();
-
-        // Redirect to login
-        window.location.href = "/login";
-      }
+      console.error("[API] 401 Unauthorized", {
+        url: error.config?.url,
+        response: error.response?.data,
+      });
+      // Optionally redirect, but for now just reject
+      // if (typeof window !== "undefined") {
+      //   localStorage.clear();
+      //   window.location.href = "/login";
+      // }
     }
 
     return Promise.reject(error);

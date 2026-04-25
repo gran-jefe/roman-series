@@ -58,15 +58,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           document.cookie = "auth_token=; path=/";
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[AuthContext] Failed to restore session:", error);
-      // Clear all data on error (401 will also clear via API interceptor)
-      if (typeof window !== "undefined") {
-        localStorage.clear();
-        document.cookie = "auth_token=; path=/";
+      // Only clear credentials on 401 (token actually invalid)
+      // Network errors should not clear credentials
+      if (error.response?.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.clear();
+          document.cookie = "auth_token=; path=/";
+        }
+        setUser(null);
+        setProfile(null);
       }
-      setUser(null);
-      setProfile(null);
+      // If network error, just leave state as is and keep trying
     } finally {
       setLoading(false);
     }
@@ -113,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear storage
       if (typeof window !== "undefined") {
         localStorage.clear();
-        document.cookie = "auth_token=; path=/";
+        document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
       }
 
       // Redirect to login

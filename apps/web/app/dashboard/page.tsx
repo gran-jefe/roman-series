@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import type { University, Subject, SessionHistoryItem, UserStats } from "types";
 import toast from "react-hot-toast";
+
+interface Subscription {
+  subscription_status: string;
+}
 
 const subjectColours: Record<string, string> = {
   Biology: "#1A7A4A",
@@ -19,27 +24,33 @@ const subjectColours: Record<string, string> = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { profile, logout } = useAuth();
   const [universities, setUniversities] = useState<University[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [userName, setUserName] = useState<string>("");
 
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      const token = localStorage.getItem("access_token");
+      console.log("[Dashboard] Token in storage:", token ? `${token.slice(0, 20)}...` : "MISSING");
       try {
-        // Get user info
-        const meRes = await api.get("/api/auth/me");
-        setUser(meRes.data.data.profile);
-
-        // Get subscription status
-        const subRes = await api.get("/api/payments/status");
-        setSubscription(subRes.data.data);
+        // Get user name
+        try {
+          const meRes = await api.get("/api/auth/me");
+          setUserName(meRes.data.data.profile.full_name);
+        } catch {
+          // Use profile from context if available
+          if (profile?.full_name) {
+            setUserName(profile.full_name);
+          }
+        }
 
         // Get universities
         const uniRes = await api.get("/api/universities");
@@ -50,14 +61,33 @@ export default function DashboardPage() {
         setSubjects(subjectsRes.data.data || []);
 
         // Get user stats
-        const statsRes = await api.get("/api/stats/me");
-        setStats(statsRes.data.data);
+        try {
+          const statsRes = await api.get("/api/stats/me");
+          setStats(statsRes.data.data);
+        } catch {
+          // Stats endpoint error - continue without it
+        }
 
         // Get session history
-        const sessionRes = await api.get("/api/sessions/history");
-        setSessions(sessionRes.data.data || []);
+        try {
+          const sessionRes = await api.get("/api/sessions/history");
+          setSessions(sessionRes.data.data || []);
+        } catch {
+          // Sessions endpoint error - continue without it
+        }
+
+        // Get subscription status (optional)
+        try {
+          const subRes = await api.get("/api/payments/status");
+          setSubscription(subRes.data.data);
+        } catch {
+          // Subscription endpoint error - continue without it
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
+        if (error instanceof Error) {
+          console.error("Error details:", error.message);
+        }
         toast.error("Failed to load dashboard");
       } finally {
         setLoading(false);
@@ -115,12 +145,9 @@ export default function DashboardPage() {
               {subscriptionBadge.label}
             </span>
             <div className="flex items-center gap-3">
-              <span className="text-sm">{user?.full_name || "User"}</span>
+              <span className="text-sm">{profile?.full_name || "User"}</span>
               <button
-                onClick={() => {
-                  localStorage.removeItem("access_token");
-                  router.push("/login");
-                }}
+                onClick={() => logout()}
                 className="text-sm text-gray-200 hover:text-white"
               >
                 Logout
@@ -134,7 +161,7 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-navy mb-8">
-            Welcome back, {user?.full_name?.split(" ")[0]}
+            Welcome back, {userName ? userName.split(" ")[0] : "User"}
           </h2>
 
           {/* Stats Cards */}
@@ -252,7 +279,7 @@ export default function DashboardPage() {
                   {sessions.slice(0, 5).map(session => (
                     <tr key={session.id} className="border-b hover:bg-gray-50">
                       <td className="px-6 py-3 text-sm">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center text-gray-900 gap-2">
                           <div
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: session.subject_colour_token || "#666" }}

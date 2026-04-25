@@ -36,7 +36,19 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(awk '{print $2}')",
-      "Bash(xargs -r kill -9)"
+      "Bash(xargs -r kill -9)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(pkill -f \"ts-node src/index.ts\")",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:4000/health -w \"\\\\n\")",
+      "Bash(curl -s http://localhost:4000)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(sed -n '1,13p' /Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/api/src/index.ts)",
+      "Bash(sed -n '262,$p' /Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/api/src/index.ts)",
+      "Bash(grep -v \"^$\")",
+      "Bash(pkill -f \"ts-node\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(lsof -ti:3000,4000,5000)"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",

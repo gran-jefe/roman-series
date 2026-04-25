@@ -1,0 +1,494 @@
+import { Express, Request, Response, NextFunction } from "express";
+import { SupabaseClient } from "@supabase/supabase-js";
+import multer from "multer";
+import crypto from "crypto";
+import { parseRomanSeriesDocument } from "../lib/questionParser";
+
+interface AdminDeps {
+  supabaseAdmin: SupabaseClient;
+  upload: multer.Multer;
+  uploadCache: Map<string, { parsed: any; expiresAt: number }>;
+}
+
+// Helper to check admin auth
+async function checkAdminAuth(
+  req: Request,
+  res: Response,
+  supabaseAdmin: SupabaseClient
+): Promise<string | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({
+      status: "error",
+      message: "Missing or invalid Authorization header",
+      timestamp: new Date().toISOString(),
+    });
+    return null;
+  }
+
+  const token = authHeader.substring(7);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAdmin.auth.getUser(token);
+
+  if (authError || !user) {
+    res.status(401).json({
+      status: "error",
+      message: "Invalid or expired token",
+      timestamp: new Date().toISOString(),
+    });
+    return null;
+  }
+
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    res.status(403).json({
+      status: "error",
+      message: "Admin access required",
+      timestamp: new Date().toISOString(),
+    });
+    return null;
+  }
+
+  return user.id;
+}
+
+export function registerAdminRoutes(app: Express, deps: AdminDeps) {
+  const { supabaseAdmin, upload, uploadCache } = deps;
+
+  console.log('[registerAdminRoutes] Registering admin routes...');
+  console.log('[registerAdminRoutes] upload middleware available:', !!upload);
+  console.log('[registerAdminRoutes] uploadCache available:', !!uploadCache);
+
+  // GET /api/admin/stats
+  app.get("/api/admin/stats", async (req: Request, res: Response) => {
+    console.log('[GET /api/admin/stats] Called');
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [usersRes, sessionsRes, questionsRes, subscriptionsRes] =
+        await Promise.all([
+          supabaseAdmin.from("profiles").select("id"),
+          supabaseAdmin
+            .from("sessions")
+            .select("id")
+            .gte("started_at", today.toISOString()),
+          supabaseAdmin.from("questions").select("id"),
+          supabaseAdmin
+            .from("subscriptions")
+            .select("amount")
+            .eq("status", "active")
+            .gte("expires_at", new Date().toISOString()),
+        ]);
+
+      const newUsersRes = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .gte(
+          "created_at",
+          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        );
+
+      const totalRevenue =
+        (subscriptionsRes.data?.reduce((sum, s: any) => sum + (s.amount || 0), 0) ||
+          0) / 100;
+
+      res.json({
+        status: "success",
+        data: {
+          total_users: usersRes.data?.length || 0,
+          sessions_today: sessionsRes.data?.length || 0,
+          total_revenue: Math.round(totalRevenue),
+          total_questions: questionsRes.data?.length || 0,
+          new_users_this_week: newUsersRes.data?.length || 0,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/stats] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/users
+  app.get("/api/admin/users", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const page = parseInt((req.query.page as string) || "1");
+      const limit = Math.min(parseInt((req.query.limit as string) || "20"), 100);
+      const search = (req.query.search as string) || "";
+
+      const { data: profiles, error: profilesError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, role, subscription_status, created_at, target_university_id");
+
+      if (profilesError) throw profilesError;
+
+      const { data: authUsers, error: authError } =
+        await supabaseAdmin.auth.admin.listUsers();
+
+      if (authError) throw authError;
+
+      const emailMap = new Map(
+        authUsers.users.map((u: any) => [u.id, u.email])
+      );
+
+      const merged = (profiles || []).map((profile: any) => ({
+        id: profile.id,
+        full_name: profile.full_name,
+        email: emailMap.get(profile.id) || "N/A",
+        role: profile.role || "user",
+        subscription_status: profile.subscription_status,
+        target_university_id: profile.target_university_id,
+        created_at: profile.created_at,
+      }));
+
+      let filtered = merged;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = merged.filter(
+          (u: any) =>
+            u.full_name?.toLowerCase().includes(searchLower) ||
+            u.email?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      filtered.sort((a: any, b: any) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      const start = (page - 1) * limit;
+      const end = start + limit;
+      const paginatedData = filtered.slice(start, end);
+
+      res.json({
+        status: "success",
+        data: paginatedData,
+        pagination: {
+          page,
+          limit,
+          total: filtered.length,
+          total_pages: Math.ceil(filtered.length / limit),
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // PATCH /api/admin/users/:id
+  app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+      const { role, subscription_status } = req.body;
+
+      const updateData: any = {};
+      if (role) updateData.role = role;
+      if (subscription_status) updateData.subscription_status = subscription_status;
+
+      const { data } = await supabaseAdmin
+        .from("profiles")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      res.json({
+        status: "success",
+        data,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users/:id] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/admin/upload/docx
+  app.post(
+    "/api/admin/upload/docx",
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      console.log('[admin/upload/docx] Handler called');
+
+      const userId = await checkAdminAuth(req, res, supabaseAdmin);
+      if (!userId) {
+        console.log('[admin/upload/docx] Auth failed');
+        return;
+      }
+
+      console.log('[admin/upload/docx] Auth passed, userId:', userId);
+
+      try {
+        if (!req.file) {
+          console.log('[admin/upload/docx] No file provided');
+          res.status(400).json({
+            status: "error",
+            message: "No file provided",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        console.log('[admin/upload/docx] File received, size:', req.file.size);
+
+        const { subject_id, university_id } = req.body;
+        if (!subject_id || !university_id) {
+          console.log('[admin/upload/docx] Missing subject_id or university_id');
+          res.status(400).json({
+            status: "error",
+            message: "Missing subject_id or university_id",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        console.log('[admin/upload/docx] Calling parseRomanSeriesDocument with buffer size:', req.file.buffer.length);
+        const parseResult = await parseRomanSeriesDocument(req.file.buffer);
+        console.log('[admin/upload/docx] Parse complete:', {
+          total_parsed: parseResult.total_parsed,
+          total_matched: parseResult.total_matched,
+          total_unmatched: parseResult.total_unmatched,
+        });
+
+        const uploadToken = crypto.randomUUID();
+        const ttl = 10 * 60 * 1000;
+        uploadCache.set(uploadToken, {
+          parsed: {
+            questions: parseResult.questions,
+            subject_id,
+            university_id,
+          },
+          expiresAt: Date.now() + ttl,
+        });
+
+        res.json({
+          status: "success",
+          data: {
+            preview: parseResult.questions.slice(0, 5),
+            all_questions: parseResult.questions,
+            topics: parseResult.topics,
+            total_parsed: parseResult.total_parsed,
+            total_matched: parseResult.total_matched,
+            total_unmatched: parseResult.total_unmatched,
+            errors: parseResult.errors,
+            upload_token: uploadToken,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("[admin/upload/docx] Error:", error);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to parse document",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  );
+
+  // POST /api/admin/upload/confirm
+  app.post("/api/admin/upload/confirm", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { upload_token, subject_id, university_id } = req.body;
+
+      if (!upload_token) {
+        res.status(400).json({
+          status: "error",
+          message: "Missing upload_token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const cached = uploadCache.get(upload_token);
+      if (!cached || cached.expiresAt < Date.now()) {
+        res.status(400).json({
+          status: "error",
+          message: "Upload token expired or invalid",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { questions } = cached.parsed;
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < questions.length; i += 20) {
+        const batch = questions.slice(i, i + 20);
+
+        for (const question of batch) {
+          try {
+            const hasCorrectAnswer = question.options.some((o: any) => o.is_correct);
+            if (!hasCorrectAnswer) {
+              skipped++;
+              continue;
+            }
+
+            const { data: questionData, error: qError } = await supabaseAdmin
+              .from("questions")
+              .insert({
+                subject_id,
+                university_id,
+                body: question.body,
+                explanation: question.explanation,
+              })
+              .select()
+              .single();
+
+            if (qError) throw qError;
+
+            const optionRows = question.options.map((o: any) => ({
+              id: crypto.randomUUID(),
+              question_id: questionData.id,
+              label: o.label,
+              body: o.body,
+              is_correct: o.is_correct,
+            }));
+
+            const { error: oError } = await supabaseAdmin
+              .from("options")
+              .insert(optionRows);
+
+            if (oError) throw oError;
+
+            created++;
+          } catch (error) {
+            skipped++;
+            errors.push(
+              `Failed to save question: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            );
+          }
+        }
+      }
+
+      uploadCache.delete(upload_token);
+
+      res.json({
+        status: "success",
+        data: {
+          created,
+          skipped,
+          errors,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/upload/confirm] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/admin/upload/manual
+  app.post("/api/admin/upload/manual", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { subject_id, university_id, body, explanation, options } = req.body;
+
+      if (!subject_id || !university_id || !body || !options) {
+        res.status(400).json({
+          status: "error",
+          message: "Missing required fields",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const correctCount = options.filter((o: any) => o.is_correct).length;
+      if (correctCount !== 1) {
+        res.status(400).json({
+          status: "error",
+          message: "Exactly one option must be marked as correct",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: questionData, error: qError } = await supabaseAdmin
+        .from("questions")
+        .insert({
+          subject_id,
+          university_id,
+          body,
+          explanation: explanation || null,
+        })
+        .select()
+        .single();
+
+      if (qError) throw qError;
+
+      const optionRows = options.map((o: any) => ({
+        id: crypto.randomUUID(),
+        question_id: questionData.id,
+        label: o.label,
+        body: o.body,
+        is_correct: o.is_correct,
+      }));
+
+      const { error: oError } = await supabaseAdmin
+        .from("options")
+        .insert(optionRows);
+
+      if (oError) throw oError;
+
+      res.status(201).json({
+        status: "success",
+        data: {
+          id: questionData.id,
+          ...questionData,
+          options: optionRows,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/upload/manual] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+}
