@@ -59,6 +59,12 @@ export default function AdminLayout({
             Questions
           </Link>
           <Link
+            href="/admin/review-answers"
+            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium"
+          >
+            Review Answers
+          </Link>
+          <Link
             href="/dashboard"
             className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium mt-6 pt-6 border-t border-navy-light"
           >

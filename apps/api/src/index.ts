@@ -11,6 +11,7 @@ import { registerAuthRoutes } from "./routes/auth.routes";
 import { registerDataRoutes } from "./routes/data.routes";
 import { registerSessionsRoutes } from "./routes/sessions.routes";
 import { registerAdminRoutes } from "./routes/admin.routes";
+import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
 
@@ -66,8 +67,8 @@ app.use(cors({
 }));
 
 // Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -136,6 +137,8 @@ registerAdminRoutes(app, {
   upload,
   uploadCache,
 });
+
+registerUploadRoutes(app, { supabaseAdmin });
 
 registerPaymentsRoutes(app, {
   supabaseAdmin,

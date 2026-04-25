@@ -491,4 +491,181 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     }
   });
+
+  // PATCH /api/admin/questions/:id/answer
+  app.patch("/api/admin/questions/:id/answer", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+      const { answer_letter } = req.body;
+
+      if (!answer_letter || !["A", "B", "C", "D", "E"].includes(answer_letter)) {
+        res.status(400).json({
+          status: "error",
+          message: "Invalid answer_letter. Must be A, B, C, D, or E",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Update question answer
+      const { error: updateError } = await supabaseAdmin
+        .from("questions")
+        .update({ answer_letter })
+        .eq("id", id);
+
+      if (updateError) {
+        res.status(400).json({
+          status: "error",
+          message: updateError.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get all options for this question
+      const { data: options, error: fetchError } = await supabaseAdmin
+        .from("options")
+        .select("id, label")
+        .eq("question_id", id);
+
+      if (fetchError || !options) {
+        res.status(400).json({
+          status: "error",
+          message: "Failed to fetch options",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Update is_correct for all options
+      const updates = options.map((opt) => ({
+        id: opt.id,
+        is_correct: opt.label === answer_letter,
+      }));
+
+      for (const update of updates) {
+        await supabaseAdmin
+          .from("options")
+          .update({ is_correct: update.is_correct })
+          .eq("id", update.id);
+      }
+
+      res.json({
+        status: "success",
+        data: { question_id: id, answer_letter },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/questions/:id/answer] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/questions/unanswered
+  app.get("/api/admin/questions/unanswered", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("questions")
+        .select(`
+          id,
+          number,
+          body,
+          answer_letter,
+          topic_id,
+          topics(name, subject_id),
+          subjects:topics(subjects(id, name)),
+          options(id, label, body, is_correct)
+        `)
+        .is("answer_letter", null)
+        .order("topics.subjects.name", { ascending: true })
+        .order("topics.name", { ascending: true })
+        .order("number", { ascending: true });
+
+      if (error) {
+        res.status(400).json({
+          status: "error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: data || [],
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/questions/unanswered] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/questions - retrieve questions with filtering and pagination
+  app.get("/api/admin/questions", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const page = parseInt((req.query.page as string) || "1");
+      const limit = Math.min(parseInt((req.query.limit as string) || "20"), 100);
+      const subjectId = req.query.subjectId as string;
+      const universityId = req.query.universityId as string;
+      const year = req.query.year as string;
+
+      let query = supabaseAdmin
+        .from("questions")
+        .select("*, topics(name), subjects(name), universities(name), options(id, label, body, is_correct)", { count: "exact" });
+
+      if (subjectId) {
+        query = query.eq("subject_id", subjectId);
+      }
+      if (universityId) {
+        query = query.eq("university_id", universityId);
+      }
+      if (year) {
+        query = query.eq("year", parseInt(year));
+      }
+
+      const start = (page - 1) * limit;
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(start, start + limit - 1);
+
+      if (error) throw error;
+
+      res.json({
+        status: "success",
+        data: data || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          total_pages: Math.ceil((count || 0) / limit),
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/questions] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 }

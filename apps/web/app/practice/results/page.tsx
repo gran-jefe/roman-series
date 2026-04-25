@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import type { SessionResult, UserStats } from "types";
+import { CardSkeleton } from "@/components/skeletons";
 
 interface SessionMeta {
   subject: any;
@@ -94,8 +95,18 @@ export default function PracticeResultsPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading results...</div>
+      <div className="min-h-screen bg-gray-50">
+        <nav className="bg-navy text-white shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-forest rounded-full" />
+              <h1 className="text-xl font-bold">Roman Series</h1>
+            </div>
+          </div>
+        </nav>
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <CardSkeleton />
+        </main>
       </div>
     );
   }

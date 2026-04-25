@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import type { Topic, Subject, University, SessionHistoryItem } from "types";
 import toast from "react-hot-toast";
+import { CardSkeleton } from "@/components/skeletons";
 
 const subjectColours: Record<string, string> = {
   Biology: "#1A7A4A",
@@ -88,20 +89,12 @@ export default function TopicsPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    );
-  }
-
   const subjectColour = subject ? subjectColours[subject.name] || "#7B68EE" : "#7B68EE";
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div style={{ backgroundColor: subjectColour }} className="text-white py-6 shadow-lg">
+      <div style={{ backgroundColor: loading ? "#7B68EE" : subjectColour }} className="text-white py-6 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
           <div>
             <button
@@ -110,13 +103,18 @@ export default function TopicsPage() {
             >
               ← Back
             </button>
-            <h1 className="text-2xl font-bold">
-              {subject?.name} — {university?.short_code}
-            </h1>
+            {loading ? (
+              <div className="h-8 w-48 bg-gray-300 rounded animate-pulse" />
+            ) : (
+              <h1 className="text-2xl font-bold">
+                {subject?.name} — {university?.short_code}
+              </h1>
+            )}
           </div>
           <button
             onClick={handlePracticeAll}
-            className="px-6 py-2 bg-white text-gray-900 rounded-lg font-medium hover:shadow-lg transition"
+            disabled={loading}
+            className="px-6 py-2 bg-white text-gray-900 rounded-lg font-medium hover:shadow-lg transition disabled:opacity-50"
           >
             Practice All Topics
           </button>
@@ -124,7 +122,14 @@ export default function TopicsPage() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-12">
-        {topics.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-2 gap-6">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        ) : topics.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <p className="text-gray-600">No questions uploaded yet for this subject</p>
           </div>

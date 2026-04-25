@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { StatCardSkeleton } from "@/components/skeletons";
 
 interface AdminStats {
   total_users: number;
@@ -30,15 +31,11 @@ export default function AdminPage() {
     fetchStats();
   }, []);
 
-  if (loading) {
-    return <div className="text-gray-600">Loading...</div>;
-  }
-
-  if (!stats) {
+  if (!stats && !loading) {
     return <div className="text-red-600">Failed to load statistics</div>;
   }
 
-  const metricCards = [
+  const metricCards = stats ? [
     {
       label: "Total Users",
       value: stats.total_users,
@@ -64,7 +61,7 @@ export default function AdminPage() {
       value: stats.new_users_this_week,
       color: "orange",
     },
-  ];
+  ] : [];
 
   const colorClasses = {
     blue: "bg-blue-50 border-blue-200 text-blue-700",
@@ -79,15 +76,25 @@ export default function AdminPage() {
       <h1 className="text-3xl font-bold text-navy mb-8">Admin Overview</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {metricCards.map((card) => (
-          <div
-            key={card.label}
-            className={`border-l-4 rounded-lg p-6 ${colorClasses[card.color as keyof typeof colorClasses]}`}
-          >
-            <p className="text-sm font-medium opacity-90 mb-2">{card.label}</p>
-            <p className="text-3xl font-bold">{card.value}</p>
-          </div>
-        ))}
+        {loading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          metricCards.map((card) => (
+            <div
+              key={card.label}
+              className={`border-l-4 rounded-lg p-6 ${colorClasses[card.color as keyof typeof colorClasses]}`}
+            >
+              <p className="text-sm font-medium opacity-90 mb-2">{card.label}</p>
+              <p className="text-3xl font-bold">{card.value}</p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

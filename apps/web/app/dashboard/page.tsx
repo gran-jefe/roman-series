@@ -4,11 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { StatCardSkeleton, UniversitySkeleton, SubjectSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import type { University, Subject, SessionHistoryItem, UserStats } from "types";
 import toast from "react-hot-toast";
 
 interface Subscription {
   subscription_status: string;
+}
+
+interface SubjectWithCounts extends Subject {
+  topic_count?: number;
+  question_count?: number;
 }
 
 const subjectColours: Record<string, string> = {
@@ -26,13 +32,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const { profile, logout } = useAuth();
   const [universities, setUniversities] = useState<University[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<SubjectWithCounts[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -107,11 +114,18 @@ export default function DashboardPage() {
       element?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
 
-    // Fetch subjects for this university
+    // Fetch subjects for this university (includes topic_count and question_count)
+    setSubjectsLoading(true);
     api
       .get(`/api/subjects?universityId=${university.id}`)
-      .then(res => setSubjects(res.data.data || []))
-      .catch(() => toast.error("Failed to load subjects"));
+      .then(res => {
+        setSubjects(res.data.data || []);
+        setSubjectsLoading(false);
+      })
+      .catch(() => {
+        toast.error("Failed to load subjects");
+        setSubjectsLoading(false);
+      });
   };
 
   const handleSelectSubject = (subject: Subject) => {
@@ -165,68 +179,85 @@ export default function DashboardPage() {
           </h2>
 
           {/* Stats Cards */}
-          {stats && (
-            <div className="grid grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow p-6">
-                <p className="text-sm text-gray-600 mb-1">Total Sessions</p>
-                <p className="text-2xl font-bold text-forest">{stats.total_sessions}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <p className="text-sm text-gray-600 mb-1">Average Score</p>
-                <p className="text-2xl font-bold text-forest">
-                  {stats.avg_score_by_subject.length > 0
-                    ? Math.round(
-                        stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
-                          stats.avg_score_by_subject.length
-                      )
-                    : 0}
-                  %
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <p className="text-sm text-gray-600 mb-1">Best Score</p>
-                <p className="text-2xl font-bold text-forest">{stats.best_score_percentage}%</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <p className="text-sm text-gray-600 mb-1">Questions Answered</p>
-                <p className="text-2xl font-bold text-forest">{stats.total_questions_answered}</p>
-              </div>
-            </div>
-          )}
+          <div className="grid grid-cols-4 gap-4">
+            {stats ? (
+              <>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <p className="text-sm text-gray-600 mb-1">Total Sessions</p>
+                  <p className="text-2xl font-bold text-forest">{stats.total_sessions}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <p className="text-sm text-gray-600 mb-1">Average Score</p>
+                  <p className="text-2xl font-bold text-forest">
+                    {stats.avg_score_by_subject.length > 0
+                      ? Math.round(
+                          stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
+                            stats.avg_score_by_subject.length
+                        )
+                      : 0}
+                    %
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <p className="text-sm text-gray-600 mb-1">Best Score</p>
+                  <p className="text-2xl font-bold text-forest">{stats.best_score_percentage}%</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <p className="text-sm text-gray-600 mb-1">Questions Answered</p>
+                  <p className="text-2xl font-bold text-forest">{stats.total_questions_answered}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Universities Section */}
         <div className="mb-12">
           <h3 className="text-xl font-bold text-navy mb-6">Select University</h3>
           <div className="grid grid-cols-3 gap-6">
-            {universities.map(uni => (
-              <div
-                key={uni.id}
-                onClick={() => handleSelectUniversity(uni)}
-                className={`rounded-lg p-6 cursor-pointer transition-all ${
-                  uni.is_available
-                    ? "bg-white shadow hover:shadow-lg border-2 border-forest"
-                    : "bg-gray-200 opacity-50 cursor-not-allowed"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-navy mb-2">{uni.name}</h4>
-                    <p className="text-sm text-gray-600">{uni.short_code}</p>
-                  </div>
-                  {!uni.is_available && (
-                    <div className="text-right">
-                      <p className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold mb-2">
-                        Coming Soon
-                      </p>
-                      <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
-                      </svg>
+            {universities.length > 0 ? (
+              universities.map(uni => (
+                <div
+                  key={uni.id}
+                  onClick={() => handleSelectUniversity(uni)}
+                  className={`rounded-lg p-6 cursor-pointer transition-all ${
+                    uni.is_available
+                      ? "bg-white shadow hover:shadow-lg border-2 border-forest"
+                      : "bg-gray-200 opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-navy mb-2">{uni.name}</h4>
+                      <p className="text-sm text-gray-600">{uni.short_code}</p>
                     </div>
-                  )}
+                    {!uni.is_available && (
+                      <div className="text-right">
+                        <p className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold mb-2">
+                          Coming Soon
+                        </p>
+                        <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <>
+                <UniversitySkeleton />
+                <UniversitySkeleton />
+                <UniversitySkeleton />
+              </>
+            )}
           </div>
         </div>
 
@@ -237,26 +268,57 @@ export default function DashboardPage() {
               Select Subject — {selectedUniversity.short_code}
             </h3>
             <div className="grid grid-cols-4 gap-4">
-              {subjects.map(subject => (
-                <div
-                  key={subject.id}
-                  onClick={() => handleSelectSubject(subject)}
-                  className="rounded-lg p-6 text-white cursor-pointer shadow hover:shadow-lg transition-all"
-                  style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
-                >
-                  <h4 className="font-bold mb-2">{subject.name}</h4>
-                  <div className="text-sm opacity-90">
-                    <p>Topics: N/A</p>
-                    <p>Questions: N/A</p>
+              {subjectsLoading ? (
+                <>
+                  <SubjectSkeleton />
+                  <SubjectSkeleton />
+                  <SubjectSkeleton />
+                  <SubjectSkeleton />
+                </>
+              ) : (
+                subjects.map(subject => (
+                  <div
+                    key={subject.id}
+                    onClick={() => handleSelectSubject(subject)}
+                    className="rounded-lg p-6 text-white cursor-pointer shadow hover:shadow-lg transition-all"
+                    style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
+                  >
+                    <h4 className="font-bold mb-2">{subject.name}</h4>
+                    <div className="text-sm opacity-90">
+                      <p>Topics: {subject.topic_count ?? "—"}</p>
+                      <p>Questions: {subject.question_count ?? "—"}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
 
         {/* Recent Sessions */}
-        {sessions.length > 0 && (
+        {loading ? (
+          <div className="mt-12">
+            <h3 className="text-xl font-bold text-navy mb-6">Recent Practice Sessions</h3>
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Subject</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Topic</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">University</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Score</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SessionRowSkeleton />
+                  <SessionRowSkeleton />
+                  <SessionRowSkeleton />
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : sessions.length > 0 && (
           <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import type { Subject, University } from "types";
 import toast from "react-hot-toast";
+import { TableRowSkeleton } from "@/components/skeletons";
 
 interface Question {
   id: string;
@@ -16,11 +17,6 @@ interface Question {
   universities: { name: string };
 }
 
-interface ParsedQuestion {
-  body: string;
-  options: Array<{ label: string; body: string; is_correct: boolean }>;
-  explanation: string | null;
-}
 
 interface PaginationData {
   page: number;
@@ -57,11 +53,21 @@ export default function AdminQuestionsPage() {
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState<UploadStep>("configure");
-  const [parseResult, setParseResult] = useState<any>(null);
-  const [uploadToken, setUploadToken] = useState("");
-  const [successResult, setSuccessResult] = useState<any>(null);
-  const [showAllQuestions, setShowAllQuestions] = useState(false);
+  const [parseResult, setParseResult] = useState<{
+    subject: string;
+    university: string;
+    total_topics: number;
+    total_questions: number;
+    total_skipped: number;
+    data: Record<string, unknown>;
+  } | null>(null);
+  const [successResult, setSuccessResult] = useState<{
+    total_questions: number;
+    total_topics: number;
+    total_skipped: number;
+  } | null>(null);
   const [manualQuestionOpen, setManualQuestionOpen] = useState(false);
   const [manualForm, setManualForm] = useState({
     body: "",
@@ -141,66 +147,102 @@ export default function AdminQuestionsPage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.name.endsWith(".docx")) {
+    if (file && file.name.endsWith(".json")) {
       setSelectedFile(file);
     } else {
-      toast.error("Please select a .docx file");
+      toast.error("Please select a .json file");
     }
   };
 
   const handleParseDocument = async () => {
-    if (!selectedFile || !uploadSubject || !uploadUniversity) {
-      toast.error("Please select a file and fill in all required fields");
+    if (!selectedFile) {
+      toast.error("Please select a JSON file");
       return;
     }
 
     setUploadLoading(true);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("subject_id", uploadSubject);
-      formData.append("university_id", uploadUniversity);
+      setUploadProgress(25);
+      const text = await selectedFile.text();
+      setUploadProgress(50);
+      const jsonData = JSON.parse(text);
 
-      const res = await api.post("/api/admin/upload/docx", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Validate structure
+      if (!jsonData.subject || !jsonData.university || !jsonData.topics) {
+        toast.error("Invalid JSON structure. Required fields: subject, university, topics");
+        setUploadLoading(false);
+        return;
+      }
+
+      setUploadProgress(75);
+      // Count stats
+      let totalQuestions = 0;
+      let totalSkipped = 0;
+
+      jsonData.topics.forEach((topic: any) => {
+        topic.questions.forEach((q: any) => {
+          if (q.answer === null) {
+            totalSkipped++;
+          } else {
+            totalQuestions++;
+          }
+        });
       });
 
-      setParseResult(res.data.data);
-      setUploadToken(res.data.data.upload_token);
+      setParseResult({
+        subject: jsonData.subject,
+        university: jsonData.university,
+        total_topics: jsonData.topics.length,
+        total_questions: totalQuestions,
+        total_skipped: totalSkipped,
+        data: jsonData,
+      });
+      setUploadProgress(100);
       setUploadStep("preview");
     } catch (error) {
-      console.error("Failed to parse document:", error);
-      toast.error("Failed to parse document");
+      console.error("Failed to parse JSON:", error);
+      toast.error("Invalid JSON file");
     } finally {
       setUploadLoading(false);
+      setUploadProgress(0);
     }
   };
 
   const handleConfirmUpload = async () => {
-    if (!uploadToken) return;
+    if (!parseResult?.data) return;
 
     setUploadLoading(true);
+    setUploadProgress(0);
     try {
-      const res = await api.post("/api/admin/upload/confirm", {
-        upload_token: uploadToken,
-        subject_id: uploadSubject,
-        university_id: uploadUniversity,
+      const res = await api.post("/api/admin/upload-json", parseResult.data, {
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          );
+          setUploadProgress(percentCompleted);
+        },
       });
 
-      setSuccessResult(res.data.data);
+      setSuccessResult({
+        total_questions: res.data.data.total_questions,
+        total_topics: res.data.data.total_topics,
+        total_skipped: res.data.data.total_skipped,
+      });
+      setUploadProgress(100);
       setUploadStep("success");
-    } catch (error) {
-      console.error("Failed to confirm upload:", error);
-      toast.error("Failed to upload questions");
+    } catch (error: any) {
+      console.error("Failed to upload:", error);
+      toast.error(error.response?.data?.message || "Failed to upload questions");
     } finally {
       setUploadLoading(false);
+      setUploadProgress(0);
     }
   };
 
   const handleResetUpload = () => {
     setUploadStep("configure");
     setParseResult(null);
-    setUploadToken("");
     setSelectedFile(null);
     setUploadSubject("");
     setUploadUniversity("");
@@ -372,14 +414,13 @@ export default function AdminQuestionsPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-6 py-8 text-center text-gray-600"
-                      >
-                        Loading...
-                      </td>
-                    </tr>
+                    <>
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                      <TableRowSkeleton />
+                    </>
                   ) : questions.length === 0 ? (
                     <tr>
                       <td
@@ -477,77 +518,34 @@ export default function AdminQuestionsPage() {
             {uploadStep === "configure" && (
               <div className="bg-white rounded-lg shadow p-8">
                 <h2 className="text-2xl font-bold text-navy mb-2">
-                  Upload Roman Series Word Document
+                  Upload Questions from JSON
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Parse and import questions from DOCX files automatically
+                  Import questions with topics and options from a JSON file
                 </p>
 
                 {/* Instructions */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
                   <p className="text-sm text-blue-900 font-semibold mb-2">
-                    Document format:
+                    JSON format:
                   </p>
                   <p className="text-sm text-blue-900 mb-3">
-                    Documents should have questions in the first half and a{" "}
-                    <strong>SOLUTIONS</strong> section in the second half.
-                    Questions are automatically matched to their answers.
+                    File should contain subject, university code (e.g. &quot;UI&quot;), and topics with questions. Questions without an answer will be skipped.
                   </p>
                 </div>
 
                 {/* Form */}
                 <div className="space-y-6">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-navy mb-2">
-                        Subject *
-                      </label>
-                      <select
-                        value={uploadSubject}
-                        onChange={(e) => setUploadSubject(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
-                      >
-                        <option value="">Select Subject</option>
-                        {subjects.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-navy mb-2">
-                        University *
-                      </label>
-                      <select
-                        value={uploadUniversity}
-                        onChange={(e) => setUploadUniversity(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
-                      >
-                        <option value="">Select University</option>
-                        {universities.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
                   {/* File Upload */}
                   <div>
                     <label className="block text-sm font-semibold text-navy mb-3">
-                      Select File (.docx)
+                      Select JSON File
                     </label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
                       <input
                         type="file"
-                        accept=".docx"
+                        accept=".json"
                         onChange={handleFileSelect}
-                        disabled={
-                          !uploadSubject || !uploadUniversity || !uploadYear
-                        }
                         className="hidden"
                         id="file-upload"
                       />
@@ -569,16 +567,10 @@ export default function AdminQuestionsPage() {
 
                   <button
                     onClick={handleParseDocument}
-                    disabled={
-                      !selectedFile ||
-                      uploadLoading ||
-                      !uploadSubject ||
-                      !uploadUniversity ||
-                      !uploadYear
-                    }
+                    disabled={!selectedFile || uploadLoading}
                     className="w-full px-6 py-3 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
                   >
-                    {uploadLoading ? "Parsing document..." : "Parse Document"}
+                    {uploadLoading ? `Uploading... ${uploadProgress}%` : "Parse JSON"}
                   </button>
                 </div>
               </div>
@@ -588,184 +580,44 @@ export default function AdminQuestionsPage() {
             {uploadStep === "preview" && parseResult && (
               <div className="bg-white rounded-lg shadow p-8">
                 <h2 className="text-2xl font-bold text-navy mb-8">
-                  Preview Parsed Questions
+                  Preview Upload
                 </h2>
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-sm text-green-900 mb-1">
-                      Questions Found
-                    </p>
-                    <p className="text-2xl font-bold text-green-900">
-                      ✓ {parseResult.total_parsed}
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 mb-1">Subject</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      {parseResult.subject}
                     </p>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-900 mb-1">
-                      Answers Matched
-                    </p>
-                    <p className="text-2xl font-bold text-blue-900">
-                      ✓ {parseResult.total_matched}
+                    <p className="text-sm text-blue-900 mb-1">University</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      {parseResult.university}
                     </p>
                   </div>
-                  <div
-                    className={`${parseResult.total_unmatched > 0 ? "bg-amber-50 border border-amber-200" : "bg-gray-50 border border-gray-200"} rounded-lg p-4`}
-                  >
-                    <p
-                      className={`text-sm ${parseResult.total_unmatched > 0 ? "text-amber-900" : "text-gray-900"} mb-1`}
-                    >
-                      Unmatched
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-900 mb-1">Topics</p>
+                    <p className="text-2xl font-bold text-green-900">
+                      {parseResult.total_topics}
                     </p>
-                    <p
-                      className={`text-2xl font-bold ${parseResult.total_unmatched > 0 ? "text-amber-900" : "text-gray-900"}`}
-                    >
-                      ⚠ {parseResult.total_unmatched}
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-900 mb-1">Questions</p>
+                    <p className="text-2xl font-bold text-green-900">
+                      ✓ {parseResult.total_questions}
                     </p>
                   </div>
                 </div>
 
-                {/* Errors */}
-                {parseResult.errors.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
-                    <p className="font-semibold text-amber-900 mb-2">
-                      Issues found:
-                    </p>
-                    <ul className="space-y-1 text-sm text-amber-900">
-                      {parseResult.errors
-                        .slice(0, 5)
-                        .map((e: string, i: number) => (
-                          <li key={i}>• {e}</li>
-                        ))}
-                      {parseResult.errors.length > 5 && (
-                        <li>• ... and {parseResult.errors.length - 5} more</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Preview Table */}
-                <div className="mb-8">
-                  <h3 className="font-semibold text-navy mb-4">
-                    First 5 Questions
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-8">
-                            Q#
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900">
-                            Question
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-12">
-                            A
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-12">
-                            B
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-12">
-                            C
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-12">
-                            D
-                          </th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-900 w-16">
-                            Answer
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parseResult.preview.map(
-                          (q: ParsedQuestion, idx: number) => (
-                            <tr key={idx} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-3 text-gray-900 font-medium">
-                                {idx + 1}
-                              </td>
-                              <td className="px-4 py-3 text-gray-900 max-w-xs truncate">
-                                {q.body.substring(0, 60)}...
-                              </td>
-                              {q.options.map((opt) => (
-                                <td
-                                  key={opt.label}
-                                  className="px-4 py-3 text-center"
-                                >
-                                  <span className="text-xs text-gray-600">
-                                    {opt.label}
-                                  </span>
-                                </td>
-                              ))}
-                              <td className="px-4 py-3">
-                                <span
-                                  className={`px-2 py-1 rounded text-white text-xs font-semibold ${
-                                    q.options.find((o) => o.is_correct)?.label
-                                      ? "bg-forest"
-                                      : "bg-gray-400"
-                                  }`}
-                                >
-                                  {q.options.find((o) => o.is_correct)?.label ||
-                                    "—"}
-                                </span>
-                              </td>
-                            </tr>
-                          ),
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Show All */}
-                {parseResult.total_parsed > 5 && (
-                  <button
-                    onClick={() => setShowAllQuestions(!showAllQuestions)}
-                    className="text-forest font-medium mb-6 hover:underline"
-                  >
-                    {showAllQuestions ? "Hide" : "Show"} all{" "}
-                    {parseResult.total_parsed} questions
-                  </button>
-                )}
-
-                {showAllQuestions && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-8 max-h-96 overflow-y-auto">
-                    {(parseResult.all_questions || parseResult.preview).map(
-                      (q: ParsedQuestion, idx: number) => (
-                        <div
-                          key={idx}
-                          className="bg-white rounded p-3 mb-2 border border-gray-200"
-                        >
-                          <p className="text-sm font-semibold text-navy">
-                            {idx + 1}. {q.body.substring(0, 80)}
-                          </p>
-                          <div className="text-xs text-gray-600 mt-1 space-y-0.5">
-                            {q.options.map((opt) => (
-                              <p
-                                key={opt.label}
-                                className={
-                                  opt.is_correct
-                                    ? "text-forest font-semibold"
-                                    : ""
-                                }
-                              >
-                                {opt.label}. {opt.body.substring(0, 50)}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                )}
-
-                {/* Warning */}
-                {parseResult.total_unmatched > 0 && (
+                {/* Warning for skipped questions */}
+                {parseResult.total_skipped > 0 && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
                     <p className="text-sm text-amber-900">
                       ⚠{" "}
                       <strong>
-                        {parseResult.total_unmatched} questions have no matched
-                        answer
+                        {parseResult.total_skipped} questions have no answer
                       </strong>{" "}
                       and will be skipped during upload.
                     </p>
@@ -780,8 +632,8 @@ export default function AdminQuestionsPage() {
                     className="flex-1 px-6 py-3 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
                   >
                     {uploadLoading
-                      ? "Uploading..."
-                      : `✓ Confirm & Upload ${parseResult.total_matched} Questions`}
+                      ? `Uploading... ${uploadProgress}%`
+                      : `✓ Confirm & Upload ${parseResult.total_questions} Questions`}
                   </button>
                   <button
                     onClick={handleResetUpload}
@@ -798,12 +650,11 @@ export default function AdminQuestionsPage() {
               <div className="bg-white rounded-lg shadow p-8">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8 text-center">
                   <p className="text-lg font-semibold text-green-900">
-                    ✓ {successResult.created} questions uploaded successfully
+                    ✓ {successResult.total_questions} questions uploaded across {successResult.total_topics} topics
                   </p>
-                  {successResult.skipped > 0 && (
+                  {successResult.total_skipped > 0 && (
                     <p className="text-sm text-green-800 mt-2">
-                      {successResult.skipped} questions were skipped (no matched
-                      answer)
+                      {successResult.total_skipped} questions were skipped (no answer provided)
                     </p>
                   )}
                 </div>

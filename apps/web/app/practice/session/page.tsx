@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import type { StudentQuestion, Subject, University } from "types";
+import { QuestionSkeleton } from "@/components/skeletons";
 
 export default function PracticeSessionPage() {
   const router = useRouter();
@@ -181,8 +182,15 @@ export default function PracticeSessionPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading practice session...</div>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="h-16 bg-navy" />
+        <div className="mt-16 flex-1 flex">
+          <main className="flex-1 pb-32 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 py-8">
+              <QuestionSkeleton />
+            </div>
+          </main>
+        </div>
       </div>
     );
   }

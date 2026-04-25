@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import type { Subject, University } from "types";
+import { TableRowSkeleton } from "@/components/skeletons";
 
 interface LeaderboardEntry {
   rank: number;
@@ -68,14 +69,6 @@ export default function LeaderboardPage() {
 
     fetchData();
   }, [loading, user, selectedSubject, selectedUniversity]);
-
-  if (loading || pageLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
 
   const getRankBadge = (rank: number): string => {
     if (rank === 1) return "🥇";
@@ -148,7 +141,36 @@ export default function LeaderboardPage() {
 
         {/* Leaderboard */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          {leaderboard.length > 0 ? (
+          {pageLoading ? (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-navy">
+                    Rank
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-navy">
+                    User
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-navy">
+                    University
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-navy">
+                    Avg Score
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-navy">
+                    Sessions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+              </tbody>
+            </table>
+          ) : leaderboard.length > 0 ? (
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-gray-50">

@@ -129,7 +129,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           user_id: user.id,
           subject_id,
           university_id,
-          topic_id: topic_id || null,
           total_questions: questions.length,
           score: 0,
           completed: false,
@@ -139,9 +138,11 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         .single();
 
       if (sessionError || !session) {
+        console.error("[sessions/start] Failed to create session:", sessionError);
         res.status(500).json({
           status: "error",
           message: "Failed to create session",
+          details: sessionError?.message || "Unknown error",
           timestamp: new Date().toISOString(),
         });
         return;

@@ -48,6 +48,8 @@ export function registerDataRoutes(app: Express, deps: DataDeps) {
   // GET /api/subjects
   app.get("/api/subjects", async (req: Request, res: Response) => {
     try {
+      const universityId = req.query.universityId as string | undefined;
+
       const { data, error } = await supabaseAdmin
         .from("subjects")
         .select("*")
@@ -62,9 +64,49 @@ export function registerDataRoutes(app: Express, deps: DataDeps) {
         return;
       }
 
+      // Fetch topic and question counts for each subject
+      const subjectsWithCounts = await Promise.all(
+        (data || []).map(async (subject: any) => {
+          try {
+            // Count topics
+            let topicQuery = supabaseAdmin
+              .from("topics")
+              .select("id", { count: "exact", head: true })
+              .eq("subject_id", subject.id);
+
+            if (universityId) {
+              topicQuery = topicQuery.eq("university_id", universityId);
+            }
+
+            // Count questions
+            let questionQuery = supabaseAdmin
+              .from("questions")
+              .select("id", { count: "exact", head: true })
+              .eq("subject_id", subject.id);
+
+            if (universityId) {
+              questionQuery = questionQuery.eq("university_id", universityId);
+            }
+
+            const [topicsRes, questionsRes] = await Promise.all([
+              topicQuery,
+              questionQuery,
+            ]);
+
+            return {
+              ...subject,
+              topic_count: topicsRes.count || 0,
+              question_count: questionsRes.count || 0,
+            };
+          } catch {
+            return { ...subject, topic_count: 0, question_count: 0 };
+          }
+        })
+      );
+
       res.json({
         status: "success",
-        data: data || [],
+        data: subjectsWithCounts,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

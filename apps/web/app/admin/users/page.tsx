@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { TableRowSkeleton } from "@/components/skeletons";
 
 interface User {
   id: string;
@@ -69,10 +70,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (loading) {
-    return <div className="text-gray-600">Loading users...</div>;
-  }
-
   return (
     <div>
       <h1 className="text-3xl font-bold text-navy mb-8">Users</h1>
@@ -106,28 +103,38 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                  {user.full_name}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {user.email}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                      user.subscription_status
-                    )}`}
-                  >
-                    {user.subscription_status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
+            {loading ? (
+              <>
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+                <TableRowSkeleton />
+              </>
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="border-b hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    {user.full_name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {user.email}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                        user.subscription_status
+                      )}`}
+                    >
+                      {user.subscription_status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

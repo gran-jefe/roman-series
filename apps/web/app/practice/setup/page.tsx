@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import type { Subject, University, Topic } from "types";
+import { CardSkeleton } from "@/components/skeletons";
 
 const subjectColours: Record<string, string> = {
   Biology: "#1A7A4A",
@@ -151,14 +152,6 @@ export default function PracticeSetupPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
   const isFreeUser = profile?.subscription_status === "free";
   const subjectColour = subject ? subjectColours[subject.name] || "#7B68EE" : "#7B68EE";
 
@@ -177,6 +170,9 @@ export default function PracticeSetupPage() {
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
+        {loading || pageLoading ? (
+          <CardSkeleton />
+        ) : (
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-navy mb-2">
             Set Up Your Practice Session
@@ -292,6 +288,7 @@ export default function PracticeSetupPage() {
             </p>
           </div>
         </div>
+        )}
       </main>
     </div>
   );
