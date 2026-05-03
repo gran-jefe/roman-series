@@ -178,7 +178,7 @@ export default function MockSessionPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Question Navigation */}
-        <div className="w-32 bg-white border-r border-gray-300 overflow-y-auto p-4">
+        <div className="w-48 bg-white border-r border-gray-300 overflow-y-auto p-4">
           <div className="mb-4">
             <p className="text-sm font-bold text-navy mb-2">Progress</p>
             <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -192,35 +192,37 @@ export default function MockSessionPage() {
             </p>
           </div>
 
-          {/* Subject sections */}
-          {subjects.map((subject, idx) => (
-            <div key={subject} className="mb-4">
-              <p className="text-xs font-semibold text-navy mb-2">{subject}</p>
-              <div className="grid grid-cols-5 gap-1">
-                {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
-                  const qNumber = idx * questionsPerSubject + qIdx;
-                  const isAnswered = answers[qNumber].selected_option_id !== null;
-                  const isCurrent = currentQuestion === qNumber;
+          {/* Subject sections in 2x2 grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {subjects.map((subject, idx) => (
+              <div key={subject} className="bg-gray-50 p-2 rounded border border-gray-200">
+                <p className="text-xs font-semibold text-navy mb-2 text-center">{subject}</p>
+                <div className="grid grid-cols-5 gap-0.5">
+                  {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
+                    const qNumber = idx * questionsPerSubject + qIdx;
+                    const isAnswered = answers[qNumber].selected_option_id !== null;
+                    const isCurrent = currentQuestion === qNumber;
 
-                  return (
-                    <button
-                      key={qNumber}
-                      onClick={() => setCurrentQuestion(qNumber)}
-                      className={`w-6 h-6 text-xs font-bold rounded transition-all ${
-                        isCurrent
-                          ? "bg-navy text-white ring-2 ring-forest"
-                          : isAnswered
-                          ? "bg-forest text-white"
-                          : "bg-gray-300 text-gray-600"
-                      }`}
-                    >
-                      {qIdx + 1}
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={qNumber}
+                        onClick={() => setCurrentQuestion(qNumber)}
+                        className={`w-5 h-5 text-xs font-bold rounded transition-all ${
+                          isCurrent
+                            ? "bg-navy text-white ring-1 ring-forest"
+                            : isAnswered
+                            ? "bg-forest text-white"
+                            : "bg-gray-300 text-gray-600"
+                        }`}
+                      >
+                        {qIdx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Main Question Area */}
