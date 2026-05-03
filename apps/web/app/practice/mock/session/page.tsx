@@ -178,7 +178,7 @@ export default function MockSessionPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Question Navigation */}
-        <div className="w-72 bg-white border-r border-gray-300 overflow-y-auto p-4">
+        <div className="w-96 bg-white border-r border-gray-300 overflow-y-auto p-4">
           <div className="mb-4">
             <p className="text-sm font-bold text-navy mb-2">Progress</p>
             <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
