@@ -193,11 +193,11 @@ export default function MockSessionPage() {
           </div>
 
           {/* Subject sections in 2x2 grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {subjects.map((subject, idx) => (
-              <div key={subject} className="bg-gray-50 p-2 rounded border border-gray-200">
-                <p className="text-xs font-semibold text-navy mb-2 text-center">{subject}</p>
-                <div className="grid grid-cols-5 gap-0.5">
+              <div key={subject} className="bg-gray-50 p-3 rounded border border-gray-200">
+                <p className="text-sm font-semibold text-navy mb-3 text-center">{subject}</p>
+                <div className="grid grid-cols-5 gap-1">
                   {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
                     const qNumber = idx * questionsPerSubject + qIdx;
                     const isAnswered = answers[qNumber].selected_option_id !== null;
@@ -207,12 +207,12 @@ export default function MockSessionPage() {
                       <button
                         key={qNumber}
                         onClick={() => setCurrentQuestion(qNumber)}
-                        className={`w-5 h-5 text-xs font-bold rounded transition-all ${
+                        className={`w-7 h-7 text-sm font-bold rounded transition-all flex items-center justify-center ${
                           isCurrent
-                            ? "bg-navy text-white ring-1 ring-forest"
+                            ? "bg-navy text-white ring-2 ring-forest"
                             : isAnswered
                             ? "bg-forest text-white"
-                            : "bg-gray-300 text-gray-600"
+                            : "bg-gray-300 text-gray-700 hover:bg-gray-400"
                         }`}
                       >
                         {qIdx + 1}
