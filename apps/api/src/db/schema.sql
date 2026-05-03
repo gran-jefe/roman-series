@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS options (
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
-  target_university_id UUID REFERENCES universities(id) ON DELETE SET NULL,
+  target_university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+  target_course TEXT NOT NULL,
   role TEXT DEFAULT 'student' CHECK (role IN ('student', 'admin')),
   subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'active', 'expired')),
   subscription_expires_at TIMESTAMPTZ,

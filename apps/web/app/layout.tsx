@@ -41,7 +41,7 @@ export default function RootLayout({
         <Toaster
           position="top-right"
           toastOptions={{
-            success: { style: { background: "#1A7A4A", color: "#fff" } },
+            success: { style: { background: "#8B2252", color: "#fff" } },
             error: { style: { background: "#C4522A", color: "#fff" } },
           }}
         />

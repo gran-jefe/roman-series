@@ -197,7 +197,7 @@ export default function LeaderboardPage() {
                     key={entry.user_id}
                     className={`border-b transition-colors ${
                       isCurrentUser(entry.user_id)
-                        ? "bg-green-50 hover:bg-green-100"
+                        ? "bg-blush hover:bg-rose/20"
                         : "hover:bg-gray-50"
                     }`}
                   >

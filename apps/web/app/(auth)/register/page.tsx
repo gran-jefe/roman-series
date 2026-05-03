@@ -17,6 +17,7 @@ export default function RegisterPage() {
     password: "",
     confirm_password: "",
     target_university_id: "",
+    target_course: "",
   });
 
   // Fetch universities on mount
@@ -51,6 +52,16 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!formData.target_university_id) {
+      setError("Please select a university");
+      return;
+    }
+
+    if (!formData.target_course) {
+      setError("Please enter your course of study");
+      return;
+    }
+
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
@@ -68,7 +79,8 @@ export default function RegisterPage() {
         full_name: formData.full_name,
         email: formData.email,
         password: formData.password,
-        target_university_id: formData.target_university_id || null,
+        target_university_id: formData.target_university_id,
+        target_course: formData.target_course,
       });
 
       router.push(
@@ -167,15 +179,16 @@ export default function RegisterPage() {
           {universities.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-navy mb-1">
-                Target University
+                Target University *
               </label>
               <select
                 name="target_university_id"
                 value={formData.target_university_id}
                 onChange={handleChange}
+                required
                 className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
               >
-                <option value="">Select a university (optional)</option>
+                <option value="">Select a university</option>
                 {universities.map((uni) => (
                   <option key={uni.id} value={uni.id}>
                     {uni.name}
@@ -184,6 +197,21 @@ export default function RegisterPage() {
               </select>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-navy mb-1">
+              Course of Study *
+            </label>
+            <input
+              type="text"
+              name="target_course"
+              value={formData.target_course}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+              placeholder="e.g., Medicine, Law, Engineering"
+            />
+          </div>
 
           <button
             type="submit"

@@ -31,7 +31,7 @@ export default function AdminLayout({
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-navy text-white shadow-lg">
-        <div className="p-6 border-b border-navy-light">
+        <div className="p-6 border-b border-rose/30">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-forest rounded-full" />
             <span className="font-bold text-lg">Roman Series</span>
@@ -42,31 +42,31 @@ export default function AdminLayout({
         <nav className="p-6 space-y-2">
           <Link
             href="/admin"
-            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
           >
             Overview
           </Link>
           <Link
             href="/admin/users"
-            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
           >
             Users
           </Link>
           <Link
             href="/admin/questions"
-            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
           >
             Questions
           </Link>
           <Link
             href="/admin/review-answers"
-            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
           >
             Review Answers
           </Link>
           <Link
             href="/dashboard"
-            className="block px-4 py-3 rounded-lg hover:bg-navy-light transition-colors text-sm font-medium mt-6 pt-6 border-t border-navy-light"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium mt-6 pt-6 border-t border-rose/30"
           >
             Back to Dashboard
           </Link>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { StatCardSkeleton, UniversitySkeleton, SubjectSkeleton, SessionRowSkeleton } from "@/components/skeletons";
+import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import type { University, Subject, SessionHistoryItem, UserStats } from "types";
 import toast from "react-hot-toast";
 
@@ -23,15 +23,13 @@ const subjectColours: Record<string, string> = {
   Physics: "#7B4F1A",
   Government: "#1E3A5F",
   Literature: "#C4522A",
-  "Use of English": "#2166B2",
-  "C.R.S.": "#D97B20",
-  "I.R.S.": "#B0287A",
+  CRS: "#D97B20",
+  IRS: "#B0287A",
 };
 
 export default function DashboardPage() {
   const router = useRouter();
   const { profile, logout } = useAuth();
-  const [universities, setUniversities] = useState<University[]>([]);
   const [subjects, setSubjects] = useState<SubjectWithCounts[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -39,7 +37,6 @@ export default function DashboardPage() {
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userName, setUserName] = useState<string>("");
-  const [subjectsLoading, setSubjectsLoading] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -48,9 +45,11 @@ export default function DashboardPage() {
       const token = localStorage.getItem("access_token");
       console.log("[Dashboard] Token in storage:", token ? `${token.slice(0, 20)}...` : "MISSING");
       try {
-        // Get user name
+        // Get user profile
+        let userProfile = profile;
         try {
           const meRes = await api.get("/api/auth/me");
+          userProfile = meRes.data.data.profile;
           setUserName(meRes.data.data.profile.full_name);
         } catch {
           // Use profile from context if available
@@ -59,13 +58,36 @@ export default function DashboardPage() {
           }
         }
 
-        // Get universities
-        const uniRes = await api.get("/api/universities");
-        setUniversities(uniRes.data.data || []);
+        // Guard: redirect to onboarding if no subject combination
+        if (!userProfile?.subject_combination?.length) {
+          router.push("/onboarding");
+          return;
+        }
 
-        // Get subjects
-        const subjectsRes = await api.get("/api/subjects?universityId=" + (uniRes.data.data?.[0]?.id || ""));
-        setSubjects(subjectsRes.data.data || []);
+        // Get user's target university
+        if (userProfile?.target_university_id) {
+          // Fetch all universities to find the user's selected one
+          const uniRes = await api.get("/api/universities");
+          const allUniversities = uniRes.data.data || [];
+          const userUni = allUniversities.find(
+            (uni: University) => uni.id === userProfile.target_university_id
+          );
+
+          if (userUni) {
+            setSelectedUniversity(userUni);
+
+            // Get subjects for user's university
+            const subjectsRes = await api.get(
+              `/api/subjects?universityId=${userProfile.target_university_id}`
+            );
+            const allSubjects = subjectsRes.data.data || [];
+            // Filter to only show user's selected subjects
+            const userSubjects = allSubjects.filter((s: Subject) =>
+              userProfile.subject_combination?.includes(s.id)
+            );
+            setSubjects(userSubjects);
+          }
+        }
 
         // Get user stats
         try {
@@ -102,31 +124,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, []);
-
-  const handleSelectUniversity = (university: University) => {
-    if (!university.is_available) return;
-    setSelectedUniversity(university);
-
-    // Scroll to subjects section
-    setTimeout(() => {
-      const element = document.getElementById("subjects-section");
-      element?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-
-    // Fetch subjects for this university (includes topic_count and question_count)
-    setSubjectsLoading(true);
-    api
-      .get(`/api/subjects?universityId=${university.id}`)
-      .then(res => {
-        setSubjects(res.data.data || []);
-        setSubjectsLoading(false);
-      })
-      .catch(() => {
-        toast.error("Failed to load subjects");
-        setSubjectsLoading(false);
-      });
-  };
+  }, [profile]);
 
   const handleSelectSubject = (subject: Subject) => {
     if (!selectedUniversity) return;
@@ -218,48 +216,80 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Universities Section */}
-        <div className="mb-12">
-          <h3 className="text-xl font-bold text-navy mb-6">Select University</h3>
-          <div className="grid grid-cols-3 gap-6">
-            {universities.length > 0 ? (
-              universities.map(uni => (
-                <div
-                  key={uni.id}
-                  onClick={() => handleSelectUniversity(uni)}
-                  className={`rounded-lg p-6 cursor-pointer transition-all ${
-                    uni.is_available
-                      ? "bg-white shadow hover:shadow-lg border-2 border-forest"
-                      : "bg-gray-200 opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-navy mb-2">{uni.name}</h4>
-                      <p className="text-sm text-gray-600">{uni.short_code}</p>
-                    </div>
-                    {!uni.is_available && (
-                      <div className="text-right">
-                        <p className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold mb-2">
-                          Coming Soon
-                        </p>
-                        <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm0 2a3 3 0 013 3v2H7V7a3 3 0 013-3z" />
-                        </svg>
-                      </div>
-                    )}
+        {/* University & Course Section */}
+        {selectedUniversity && (
+          <div className="mb-12 bg-blush rounded-lg shadow-lg p-8 border-2 border-forest">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-navy mb-4">Your Target University</h3>
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="text-sm text-rose mb-2">University</p>
+                    <p className="text-2xl font-bold text-forest mb-1">{selectedUniversity.name}</p>
+                    <p className="text-sm text-gray-500">{selectedUniversity.short_code}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-rose mb-2">Course of Study</p>
+                    <p className="text-2xl font-bold text-forest">{profile?.target_course}</p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <>
-                <UniversitySkeleton />
-                <UniversitySkeleton />
-                <UniversitySkeleton />
-              </>
-            )}
+              </div>
+              <div className="text-right">
+                <svg
+                  className="w-12 h-12 text-forest mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Mock Exam Section */}
+        {selectedUniversity && (
+          <div className="mb-12">
+            <h3 className="text-xl font-bold text-navy mb-6">Mock UTME Exam</h3>
+            <div className="bg-white rounded-lg shadow-lg p-8 border-l-4 border-forest hover:shadow-xl transition-shadow">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="text-2xl font-bold text-navy mb-2">Full Mock Exam</h4>
+                  <p className="text-gray-600 mb-4">Take a complete UTME-style mock exam with 4 subjects and 100 questions</p>
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Subjects</p>
+                      <p className="text-2xl font-bold text-forest">4</p>
+                      <p className="text-xs text-gray-500">Biology, Chemistry, Physics, Government</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Questions</p>
+                      <p className="text-2xl font-bold text-forest">100</p>
+                      <p className="text-xs text-gray-500">25 per subject</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Duration</p>
+                      <p className="text-2xl font-bold text-forest">90 min</p>
+                      <p className="text-xs text-gray-500">Standard UTME time</p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push("/practice/mock/session")}
+                  className="bg-forest text-white px-8 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-opacity whitespace-nowrap"
+                >
+                  Start Mock Exam
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Subjects Section */}
         {selectedUniversity && (
@@ -268,29 +298,17 @@ export default function DashboardPage() {
               Select Subject — {selectedUniversity.short_code}
             </h3>
             <div className="grid grid-cols-4 gap-4">
-              {subjectsLoading ? (
-                <>
-                  <SubjectSkeleton />
-                  <SubjectSkeleton />
-                  <SubjectSkeleton />
-                  <SubjectSkeleton />
-                </>
-              ) : (
-                subjects.map(subject => (
-                  <div
-                    key={subject.id}
-                    onClick={() => handleSelectSubject(subject)}
-                    className="rounded-lg p-6 text-white cursor-pointer shadow hover:shadow-lg transition-all"
-                    style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
-                  >
-                    <h4 className="font-bold mb-2">{subject.name}</h4>
-                    <div className="text-sm opacity-90">
-                      <p>Topics: {subject.topic_count ?? "—"}</p>
-                      <p>Questions: {subject.question_count ?? "—"}</p>
-                    </div>
-                  </div>
-                ))
-              )}
+              {subjects.map(subject => (
+                <div
+                  key={subject.id}
+                  onClick={() => handleSelectSubject(subject)}
+                  className="rounded-lg p-6 text-white cursor-pointer shadow hover:shadow-lg transition-all"
+                  style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
+                >
+                  <h4 className="font-bold mb-2">{subject.name}</h4>
+                 
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -358,7 +376,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-3 text-sm">
                         <span
                           className={`font-semibold ${
-                            session.percentage >= 50 ? "text-green-600" : "text-red-600"
+                            session.percentage >= 50 ? "text-forest" : "text-red-600"
                           }`}
                         >
                           {session.percentage}%

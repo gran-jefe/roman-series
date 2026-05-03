@@ -1,0 +1,6 @@
+# Supabase Local Configuration
+# Minimal config for Supabase CLI 2.95.4
+
+[db]
+  port = 54322
+  major_version = 17

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LandingPage() {
+  const { user } = useAuth();
   const SUBJECTS = [
     { name: "Biology", color: "bg-biology" },
     { name: "Government", color: "bg-government" },
@@ -88,7 +92,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-blush">
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -97,15 +101,26 @@ export default function LandingPage() {
             <h1 className="text-xl font-bold">Roman Series</h1>
           </Link>
           <div className="flex gap-4">
-            <Link href="/login" className="text-sm hover:text-gray-300 transition-colors">
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm bg-forest px-4 py-2 rounded-lg hover:bg-opacity-90 transition-opacity"
-            >
-              Get Started
-            </Link>
+            {!user ? (
+              <>
+                <Link href="/login" className="text-sm hover:text-gray-300 transition-colors">
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-sm bg-forest px-4 py-2 rounded-lg hover:bg-opacity-90 transition-opacity"
+                >
+                  Get Started
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="text-sm bg-forest px-4 py-2 rounded-lg hover:bg-opacity-90 transition-opacity"
+              >
+                Dashboard
+              </Link>
+            )}
           </div>
         </div>
       </nav>
@@ -122,10 +137,10 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col md:flex-row gap-4 justify-center mb-12">
             <Link
-              href="/register"
+              href={user ? "/dashboard" : "/register"}
               className="bg-forest text-white px-8 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-opacity"
             >
-              Start Free
+              {user ? "Go to Dashboard" : "Start Free"}
             </Link>
             <Link
               href="#pricing"
@@ -154,7 +169,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="bg-white py-20 px-4">
+      <section className="bg-blush py-20 px-4">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-navy text-center mb-12">How It Works</h2>
           <div className="grid md:grid-cols-3 gap-8">
@@ -176,14 +191,14 @@ export default function LandingPage() {
       </section>
 
       {/* Subjects */}
-      <section className="bg-gray-50 py-20 px-4">
+      <section className="bg-blush py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-navy text-center mb-12">All the Subjects You Need</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {SUBJECTS.map((subject) => (
               <Link
                 key={subject.name}
-                href="/register"
+                href={user ? "/dashboard" : "/register"}
                 className={`${subject.color} text-white p-6 rounded-lg text-center font-medium hover:shadow-lg transition-shadow cursor-pointer`}
               >
                 {subject.name}
@@ -194,7 +209,7 @@ export default function LandingPage() {
       </section>
 
       {/* Universities */}
-      <section className="bg-white py-20 px-4">
+      <section className="bg-blush py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-navy text-center mb-12">
             Questions from Top Nigerian Universities
@@ -203,7 +218,7 @@ export default function LandingPage() {
             {UNIVERSITIES.map((uni) => (
               <div
                 key={uni.code}
-                className="bg-navy text-white px-4 py-2 rounded-full text-sm font-medium"
+                className="bg-blush text-navy px-4 py-2 rounded-full text-sm font-medium border border-rose"
                 title={uni.name}
               >
                 {uni.code}
@@ -214,12 +229,12 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-gray-50 py-20 px-4">
+      <section className="bg-blush py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-navy text-center mb-12">What Students Say</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {TESTIMONIALS.map((testimonial, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-lg p-8">
+              <div key={idx} className="bg-white rounded-lg shadow-lg p-8 border-t-4 border-rose">
                 <p className="text-gray-600 mb-4 italic">"{testimonial.text}"</p>
                 <div className="border-t pt-4">
                   <p className="font-bold text-navy">{testimonial.author}</p>
@@ -256,14 +271,14 @@ export default function LandingPage() {
                     <span className="text-gray-600 ml-2">/ {plan.duration}</span>
                   </div>
                   <Link
-                    href="/register"
+                    href={user ? "/dashboard" : "/register"}
                     className={`block w-full py-3 px-4 rounded-lg font-medium text-center transition-opacity mb-8 ${
                       plan.highlighted
                         ? "bg-forest text-white hover:bg-opacity-90"
                         : "border-2 border-forest text-forest hover:bg-forest hover:text-white"
                     }`}
                   >
-                    Get Started
+                    {user ? "Go to Dashboard" : "Get Started"}
                   </Link>
                   <div className="space-y-3">
                     {plan.features.map((feature, idx) => (
@@ -285,8 +300,8 @@ export default function LandingPage() {
               Free users get <strong>10 practice questions</strong> to try out Roman Series before
               upgrading. Perfect for testing our features!
             </p>
-            <Link href="/register" className="text-forest font-medium hover:underline">
-              Try Free →
+            <Link href={user ? "/dashboard" : "/register"} className="text-forest font-medium hover:underline">
+              {user ? "Go to Dashboard" : "Try Free"} →
             </Link>
           </div>
         </div>

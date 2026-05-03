@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
+  --background: #f9f0f4;
   --foreground: #171717;
-  --navy: #0d1b2a;
-  --forest: #1a7a4a;
+  --navy: #1a0811;
+  --forest: #8b2252;
   --ember: #c4522a;
-  --deep-blue: #1e3a5f;
+  --deep-blue: #2a0e1b;
+  --rose: #c45c87;
+  --blush: #f9f0f4;
   --biology: #1a7a4a;
   --government: #1e3a5f;
   --chemistry: #8b2252;

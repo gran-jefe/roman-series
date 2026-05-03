@@ -571,4 +571,206 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       });
     }
   });
+
+  // POST /api/sessions/mock/start - Start a mock UTME exam (4 subjects, 25 questions each, 90 minutes)
+  app.post("/api/sessions/mock/start", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile) {
+        res.status(401).json({
+          status: "error",
+          message: "Profile not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!profile.target_university_id) {
+        res.status(400).json({
+          status: "error",
+          message: "University not selected in profile",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!profile.subject_combination || profile.subject_combination.length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "Subject combination not selected",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get the user's selected subjects
+      const { data: subjects, error: subjectsError } = await supabaseAdmin
+        .from("subjects")
+        .select("id, name, colour_token")
+        .in("id", profile.subject_combination);
+
+      if (subjectsError || !subjects || subjects.length === 0) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to load mock exam subjects",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Fetch 25 questions per subject (100 total)
+      let allQuestions: any[] = [];
+      const questionsPerSubject = 25;
+
+      for (const subject of subjects) {
+        const { data: questionIds, error: idError } = await supabaseAdmin
+          .from("questions")
+          .select("id")
+          .eq("subject_id", subject.id)
+          .eq("university_id", profile.target_university_id)
+          .limit(100); // Get more than needed to have options for shuffling
+
+        if (idError || !questionIds?.length) {
+          res.status(404).json({
+            status: "error",
+            message: `No questions found for subject: ${subject.name}`,
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        // Shuffle and select 25 questions
+        const shuffled = shuffleArray(questionIds);
+        const selectedIds = shuffled.slice(0, questionsPerSubject).map((q: any) => q.id);
+
+        const { data: questions, error: qError } = await supabaseAdmin
+          .from("questions")
+          .select("*, options(*)")
+          .in("id", selectedIds);
+
+        if (qError || !questions) {
+          res.status(500).json({
+            status: "error",
+            message: "Failed to fetch questions",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        // Add subject info to each question
+        allQuestions = allQuestions.concat(
+          questions.map((q: any) => ({
+            ...q,
+            subject_name: subject.name,
+            subject_colour_token: subject.colour_token,
+          }))
+        );
+      }
+
+      // Create session record
+      const { data: session, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          subject_id: null, // Multiple subjects
+          university_id: profile.target_university_id,
+          total_questions: allQuestions.length,
+          score: 0,
+          completed: false,
+          is_mock: true,
+          started_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (sessionError || !session) {
+        console.error("[sessions/mock/start] Failed to create session:", sessionError);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to create mock session",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get university info
+      const { data: university } = await supabaseAdmin
+        .from("universities")
+        .select("*")
+        .eq("id", profile.target_university_id)
+        .single();
+
+      // Shuffle options for each question
+      const questionsWithShuffledOptions = allQuestions.map((q: any) => ({
+        id: q.id,
+        subject_id: q.subject_id,
+        university_id: q.university_id,
+        topic_id: q.topic_id,
+        topic_name: q.topic_name,
+        subject_name: q.subject_name,
+        subject_colour_token: q.subject_colour_token,
+        body: q.body,
+        options: q.options ? shuffleArray(q.options).map((o: any) => ({
+          id: o.id,
+          question_id: o.question_id,
+          label: o.label,
+          body: o.body,
+        })) : [],
+      }));
+
+      res.status(201).json({
+        status: "success",
+        data: {
+          session_id: session.id,
+          questions: questionsWithShuffledOptions,
+          subjects: subjects,
+          university: university,
+          total_questions: allQuestions.length,
+          time_limit_minutes: 90,
+          questions_per_subject: questionsPerSubject,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[sessions/mock/start] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 }

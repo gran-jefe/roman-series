@@ -30,7 +30,8 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   full_name: z.string().min(1, "Full name is required").max(100),
-  target_university_id: z.string().optional(),
+  target_university_id: z.string().uuid("Invalid university ID"),
+  target_course: z.string().min(1, "Course of study is required").max(100),
 });
 
 const loginSchema = z.object({

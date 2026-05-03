@@ -82,7 +82,9 @@ export interface Option {
 export interface Profile {
   id: string;
   full_name?: string;
-  target_university_id?: string;
+  target_university_id: string;
+  target_course: string;
+  subject_combination: string[] | null;
   role: "student" | "admin";
   subscription_status: "free" | "active" | "expired";
   subscription_expires_at?: string;

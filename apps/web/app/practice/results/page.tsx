@@ -332,7 +332,7 @@ export default function PracticeResultsPage() {
                             <div
                               className={`p-3 rounded-lg text-sm ${
                                 answer.is_correct
-                                  ? "bg-green-100 text-forest"
+                                  ? "bg-blush text-forest"
                                   : "bg-red-100 text-ember"
                               }`}
                             >
@@ -356,7 +356,7 @@ export default function PracticeResultsPage() {
                             <p className="text-sm font-semibold text-navy mb-2">
                               Correct Answer:
                             </p>
-                            <div className="p-3 rounded-lg text-sm bg-green-100 text-forest">
+                            <div className="p-3 rounded-lg text-sm bg-blush text-forest">
                               {correctOption?.label}. {correctOption?.body}
                             </div>
                           </div>

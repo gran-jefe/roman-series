@@ -13,9 +13,8 @@ const subjectColours: Record<string, string> = {
   Physics: "#7B4F1A",
   Government: "#1E3A5F",
   Literature: "#C4522A",
-  "Use of English": "#2166B2",
-  "C.R.S.": "#D97B20",
-  "I.R.S.": "#B0287A",
+  CRS: "#D97B20",
+  IRS: "#B0287A",
 };
 
 export default function PracticeSetupPage() {

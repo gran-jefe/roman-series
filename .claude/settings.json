@@ -49,11 +49,17 @@
       "Bash(pkill -f \"ts-node\")",
       "Bash(pkill -f \"next dev\")",
       "Bash(lsof -ti:3000,4000,5000)",
-      "Bash(pkill -f \"turbo dev\")"
+      "Bash(pkill -f \"turbo dev\")",
+      "Bash(brew install *)",
+      "Bash(supabase --version)",
+      "Bash(supabase link *)",
+      "Bash(supabase db *)",
+      "Bash(curl -s http://localhost:3000/practice/mock/session)"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",
-      "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/src/routes"
+      "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/src/routes",
+      "/Users/granjefe/.claude/plans"
     ]
   }
 }

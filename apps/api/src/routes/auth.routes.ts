@@ -27,7 +27,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      const { full_name, email, password, target_university_id } = validation.data;
+      const { full_name, email, password, target_university_id, target_course } = validation.data;
 
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -47,7 +47,8 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       const { error: profileError } = await supabaseAdmin.from("profiles").insert({
         id: authData.user.id,
         full_name,
-        target_university_id: target_university_id || null,
+        target_university_id,
+        target_course,
         role: "student",
         subscription_status: "free",
       });
@@ -296,6 +297,99 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       });
     } catch (error) {
       console.error("[auth/forgot-password] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  app.patch("/api/profiles/subject-combination", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { subject_combination } = req.body;
+
+      if (!subject_combination || !Array.isArray(subject_combination)) {
+        res.status(400).json({
+          status: "error",
+          message: "subject_combination must be an array",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (subject_combination.length !== 4) {
+        res.status(400).json({
+          status: "error",
+          message: "You must select exactly 4 subjects",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Validate all are UUIDs and exist in subjects table
+      const { data: subjects, error: subjectsError } = await supabaseAdmin
+        .from("subjects")
+        .select("id")
+        .in("id", subject_combination);
+
+      if (subjectsError || !subjects || subjects.length !== 4) {
+        res.status(400).json({
+          status: "error",
+          message: "Invalid subjects selected",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Update profile
+      const { data: profile, error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ subject_combination })
+        .eq("id", user.id)
+        .select("*")
+        .single();
+
+      if (updateError || !profile) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to update subject combination",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: { profile },
+        message: "Subject combination updated successfully",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[profiles/subject-combination] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

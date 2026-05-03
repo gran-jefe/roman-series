@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token invalid, clear everything
         clearAuth();
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("[AuthContext] Failed to restore session:", error);
       // Only clear credentials on 401 (token actually invalid)
@@ -173,8 +174,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const meResponse = await api.get("/api/auth/me");
 
     if (meResponse.data.status === "success") {
+      const userProfile = meResponse.data.data.profile;
       setUser(meResponse.data.data.user);
-      setProfile(meResponse.data.data.profile);
+      setProfile(userProfile);
+
+      // Redirect based on subject combination status
+      if (!userProfile?.subject_combination?.length) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     }
   };
 
