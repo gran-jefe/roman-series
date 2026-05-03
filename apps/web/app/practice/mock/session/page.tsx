@@ -154,16 +154,16 @@ export default function MockSessionPage() {
   return (
     <div className="min-h-screen bg-blush flex flex-col">
       {/* Top Navigation Bar */}
-      <div className="bg-navy text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Roman Series - Mock UTME</h1>
-            <p className="text-sm text-gray-300">
-              {currentSubject} • Question {questionInSubject}/25
+      <div className="bg-navy text-white shadow-lg sticky top-0 z-40">
+        <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm md:text-xl font-bold truncate">Mock UTME</h1>
+            <p className="text-xs md:text-sm text-gray-300 truncate">
+              {currentSubject} • Q{questionInSubject}/25
             </p>
           </div>
           <div
-            className={`text-2xl font-bold px-4 py-2 rounded-lg ${
+            className={`text-base md:text-2xl font-bold px-2 md:px-4 py-1 md:py-2 rounded-lg whitespace-nowrap flex-shrink-0 ${
               isCritical
                 ? "bg-red-600 text-white"
                 : isTimeWarning
@@ -267,30 +267,34 @@ export default function MockSessionPage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="bg-white border-t border-gray-300 shadow-lg p-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      {/* Bottom Navigation - Fixed/Sticky */}
+      <div className="fixed md:relative bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-lg p-2 md:p-4 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestion === 0}
-            className="px-6 py-2 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors"
+            className="px-3 md:px-6 py-1.5 md:py-2 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs md:text-base"
           >
-            Previous
+            Prev
           </button>
 
-          <div className="flex gap-4">
+          <div className="text-xs md:text-sm text-gray-600 font-medium">
+            {currentQuestion + 1} / {questions.length}
+          </div>
+
+          <div className="flex gap-2">
             {currentQuestion === questions.length - 1 ? (
               <button
                 onClick={handleSubmitSession}
                 disabled={isSubmitting}
-                className="px-8 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity"
+                className="px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
               >
-                {isSubmitting ? "Submitting..." : "Submit Exam"}
+                {isSubmitting ? "..." : "Submit"}
               </button>
             ) : (
               <button
                 onClick={handleNextQuestion}
-                className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity"
+                className="px-3 md:px-6 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity text-xs md:text-base"
               >
                 Next
               </button>
@@ -298,6 +302,9 @@ export default function MockSessionPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile spacing for fixed bottom nav */}
+      <div className="h-16 md:h-0" />
     </div>
   );
 }
