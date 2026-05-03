@@ -55,7 +55,8 @@
       "Bash(supabase link *)",
       "Bash(supabase db *)",
       "Bash(curl -s http://localhost:3000/practice/mock/session)",
-      "Bash(curl -s http://localhost:3000/api/subjects)"
+      "Bash(curl -s http://localhost:3000/api/subjects)",
+      "Bash(pkill -f \"next dev\\\\|ts-node\\\\|node.*index.ts\")"
     ],
     "additionalDirectories": [
       "/Users/granjefe/GRAN_JEFE_PROJECTS/roman-series/apps/*",

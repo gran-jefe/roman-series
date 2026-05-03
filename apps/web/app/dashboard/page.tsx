@@ -262,12 +262,12 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Subjects</p>
-                      <p className="text-2xl font-bold text-forest">4</p>
-                      <p className="text-xs text-gray-500">Biology, Chemistry, Physics, Government</p>
+                      <p className="text-2xl font-bold text-forest">{subjects.length}</p>
+                      <p className="text-xs text-gray-500">{subjects.map(s => s.name).join(", ")}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Questions</p>
-                      <p className="text-2xl font-bold text-forest">100</p>
+                      <p className="text-2xl font-bold text-forest">{subjects.length * 25}</p>
                       <p className="text-xs text-gray-500">25 per subject</p>
                     </div>
                     <div>
