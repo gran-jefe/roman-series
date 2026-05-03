@@ -285,15 +285,7 @@ export default function MockSessionPage() {
           </div>
 
           <div className="flex gap-2">
-            {currentQuestion === questions.length - 1 ? (
-              <button
-                onClick={handleSubmitSession}
-                disabled={isSubmitting}
-                className="px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
-              >
-                {isSubmitting ? "..." : "Submit"}
-              </button>
-            ) : (
+            {currentQuestion < questions.length - 1 && (
               <button
                 onClick={handleNextQuestion}
                 className="px-3 md:px-6 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity text-xs md:text-base"
@@ -301,6 +293,13 @@ export default function MockSessionPage() {
                 Next
               </button>
             )}
+            <button
+              onClick={handleSubmitSession}
+              disabled={isSubmitting}
+              className="px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
+            >
+              {isSubmitting ? "..." : "Submit"}
+            </button>
           </div>
         </div>
       </div>
