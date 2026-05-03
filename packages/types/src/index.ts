@@ -320,6 +320,16 @@ export interface StudentQuestion {
 }
 
 /**
+ * Error bank question with metadata about wrong attempts
+ */
+export interface ErrorBankQuestion extends StudentQuestion {
+  times_wrong: number;
+  last_seen_at: string;
+  subject_name: string;
+  subject_colour_token: string;
+}
+
+/**
  * Response from POST /api/sessions/start
  */
 export interface StartSessionResponse {

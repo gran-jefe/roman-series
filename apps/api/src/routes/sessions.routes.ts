@@ -55,6 +55,24 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
+      // Check trial user 3-session limit
+      if (profile.subscription_status === "free") {
+        const { data: completedSessions, error: sessionCountError } = await supabaseAdmin
+          .from("sessions")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("completed", true);
+
+        if (!sessionCountError && completedSessions && completedSessions.length >= 3) {
+          res.status(402).json({
+            status: "error",
+            message: "Trial limit reached. You've used all 3 free sessions. Upgrade to Pro to continue practicing.",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+      }
+
       let {
         subject_id,
         university_id,
@@ -104,7 +122,30 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      const shuffled = shuffleArray(questionIds);
+      // Question deduplication: prefer unseen questions from last 5 sessions
+      const { data: recentSessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("subject_id", subject_id)
+        .eq("university_id", university_id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const recentSessionIds = recentSessions?.map((s: any) => s.id) ?? [];
+      let seenIds = new Set<string>();
+      if (recentSessionIds.length > 0) {
+        const { data: recentAnswers } = await supabaseAdmin
+          .from("session_answers")
+          .select("question_id")
+          .in("session_id", recentSessionIds);
+        recentAnswers?.forEach((a: any) => seenIds.add(a.question_id));
+      }
+
+      const unseenIds = questionIds.filter((q: any) => !seenIds.has(q.id));
+      const poolToShuffle = unseenIds.length >= (questionLimit || 1) ? unseenIds : questionIds;
+
+      const shuffled = shuffleArray(poolToShuffle);
       const selectedIds = questionLimit === 0
         ? shuffled.map((q: any) => q.id)
         : shuffled.slice(0, questionLimit).map((q: any) => q.id);
@@ -303,6 +344,76 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       });
     } catch (error) {
       console.error("[sessions/history] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/sessions/:id
+  app.get("/api/sessions/:id", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const { data: session, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (sessionError || !session) {
+        res.status(404).json({
+          status: "error",
+          message: "Session not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // If session is completed, fetch the answers with question details
+      let sessionWithAnswers = session;
+      if (session.completed) {
+        const { data: answers } = await supabaseAdmin
+          .from("session_answers")
+          .select("*, questions(*)")
+          .eq("session_id", id);
+        sessionWithAnswers = { ...session, session_answers: answers || [] };
+      }
+
+      res.json({
+        status: "success",
+        data: sessionWithAnswers,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[sessions/:id] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",
@@ -618,6 +729,16 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
+      // Mock exams are locked for trial users
+      if (profile.subscription_status === "free") {
+        res.status(402).json({
+          status: "error",
+          message: "Mock exams are only available for Pro subscribers. Upgrade to access full mock UTME exams.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       if (!profile.target_university_id) {
         res.status(400).json({
           status: "error",
@@ -672,8 +793,31 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           return;
         }
 
+        // Question deduplication: prefer unseen questions from last 5 mock sessions
+        const { data: recentMockSessions } = await supabaseAdmin
+          .from("sessions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_mock", true)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        const recentMockSessionIds = recentMockSessions?.map((s: any) => s.id) ?? [];
+        let seenMockIds = new Set<string>();
+        if (recentMockSessionIds.length > 0) {
+          const { data: recentMockAnswers } = await supabaseAdmin
+            .from("session_answers")
+            .select("question_id")
+            .in("session_id", recentMockSessionIds)
+            .eq("question_id", subject.id); // Filter by current subject
+          recentMockAnswers?.forEach((a: any) => seenMockIds.add(a.question_id));
+        }
+
+        const unseenMockIds = questionIds.filter((q: any) => !seenMockIds.has(q.id));
+        const mockPoolToShuffle = unseenMockIds.length >= questionsPerSubject ? unseenMockIds : questionIds;
+
         // Shuffle and select 25 questions
-        const shuffled = shuffleArray(questionIds);
+        const shuffled = shuffleArray(mockPoolToShuffle);
         const selectedIds = shuffled.slice(0, questionsPerSubject).map((q: any) => q.id);
 
         const { data: questions, error: qError } = await supabaseAdmin
@@ -766,6 +910,316 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       });
     } catch (error) {
       console.error("[sessions/mock/start] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/sessions/wrong-questions - Get all questions user got wrong
+  app.get("/api/sessions/wrong-questions", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get wrong question IDs with counts and latest seen date
+      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
+        .from("session_answers")
+        .select("question_id, sessions!inner(created_at)")
+        .eq("sessions.user_id", user.id)
+        .eq("is_correct", false)
+        .order("question_id");
+
+      if (wrongError || !wrongAnswers) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch wrong answers",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Deduplicate and collect metadata
+      const questionMap = new Map<
+        string,
+        { times_wrong: number; last_seen_at: string }
+      >();
+      wrongAnswers.forEach((answer: any) => {
+        const existing = questionMap.get(answer.question_id);
+        const newData = {
+          times_wrong: (existing?.times_wrong ?? 0) + 1,
+          last_seen_at: answer.sessions.created_at,
+        };
+        // Keep the latest date
+        if (!existing || answer.sessions.created_at > existing.last_seen_at) {
+          questionMap.set(answer.question_id, newData);
+        }
+      });
+
+      const uniqueQuestionIds = Array.from(questionMap.keys());
+
+      if (uniqueQuestionIds.length === 0) {
+        res.json({
+          status: "success",
+          data: { questions: [], total: 0 },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Fetch full question data with subject info
+      const { data: questions, error: qError } = await supabaseAdmin
+        .from("questions")
+        .select("*, options(*), subjects!inner(name, colour_token)")
+        .in("id", uniqueQuestionIds);
+
+      if (qError || !questions) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch question details",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Build response with metadata, strip is_correct from options
+      const errorBankQuestions = questions.map((q: any) => {
+        const metadata = questionMap.get(q.id);
+        return {
+          id: q.id,
+          subject_id: q.subject_id,
+          university_id: q.university_id,
+          topic_id: q.topic_id,
+          body: q.body,
+          times_wrong: metadata?.times_wrong ?? 1,
+          last_seen_at: metadata?.last_seen_at ?? new Date().toISOString(),
+          subject_name: q.subjects?.name ?? "Unknown",
+          subject_colour_token: q.subjects?.colour_token ?? "#666666",
+          options: q.options.map((o: any) => ({
+            id: o.id,
+            question_id: o.question_id,
+            label: o.label,
+            body: o.body,
+          })),
+        };
+      });
+
+      res.json({
+        status: "success",
+        data: { questions: errorBankQuestions, total: errorBankQuestions.length },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[sessions/wrong-questions] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/sessions/error-bank/start - Start a practice session with wrong questions
+  app.post("/api/sessions/error-bank/start", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { question_ids } = req.body;
+
+      if (!Array.isArray(question_ids) || question_ids.length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "question_ids must be a non-empty array",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (question_ids.length > 50) {
+        res.status(400).json({
+          status: "error",
+          message: "Cannot retry more than 50 questions at once",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get user's sessions to verify wrong answers belong to them
+      const { data: userSessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", user.id);
+
+      const userSessionIds = userSessions?.map((s: any) => s.id) ?? [];
+
+      if (userSessionIds.length === 0) {
+        res.status(403).json({
+          status: "error",
+          message: "You have no sessions",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get wrong answers from user's sessions
+      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
+        .from("session_answers")
+        .select("question_id")
+        .in("session_id", userSessionIds)
+        .eq("is_correct", false);
+
+      if (wrongError) {
+        console.error("[error-bank/start] Wrong answers query error:", wrongError);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to verify wrong answers",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!wrongAnswers || wrongAnswers.length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "You have no wrong answers yet",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const validIds = wrongAnswers.map((a: any) => a.question_id);
+      const allValid = question_ids.every((id: string) => validIds.includes(id));
+
+      if (!allValid) {
+        res.status(403).json({
+          status: "error",
+          message: "One or more questions are not in your error bank",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Fetch full question data
+      const { data: questions, error: qError } = await supabaseAdmin
+        .from("questions")
+        .select("*, options(*)")
+        .in("id", question_ids);
+
+      if (qError || !questions) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch questions",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Create session for error bank
+      const { data: session, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          total_questions: questions.length,
+          completed: false,
+          started_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (sessionError) {
+        console.error("[error-bank/start] Session creation error:", sessionError);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to create session",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!session) {
+        console.error("[error-bank/start] No session returned from insert");
+        res.status(500).json({
+          status: "error",
+          message: "Failed to create session",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Shuffle and strip sensitive data
+      const shuffledQuestions = shuffleArray(questions);
+      const questionsForClient = shuffledQuestions.map((q: any) => ({
+        id: q.id,
+        subject_id: q.subject_id,
+        university_id: q.university_id,
+        topic_id: q.topic_id,
+        body: q.body,
+        options: q.options.map((o: any) => ({
+          id: o.id,
+          question_id: o.question_id,
+          label: o.label,
+          body: o.body,
+        })),
+      }));
+
+      res.json({
+        status: "success",
+        data: {
+          session_id: session.id,
+          questions: questionsForClient,
+          total_questions: questions.length,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[sessions/error-bank/start] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

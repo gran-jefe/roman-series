@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +27,7 @@ interface Question {
 
 export default function MockSessionPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
   const [sessionData, setSessionData] = useState<StartSessionResponse | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -36,11 +36,19 @@ export default function MockSessionPage() {
   const [timeRemaining, setTimeRemaining] = useState<number>(90 * 60); // 90 minutes in seconds
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const hasSubmittedRef = useRef(false);
 
-  // Initialize mock session
+  // Check subscription and initialize mock session
   useEffect(() => {
     const startMockSession = async () => {
       try {
+        // Guard: check if user is subscribed
+        if (profile?.subscription_status === "free") {
+          toast.error("Mock exams are only available for Pro subscribers");
+          router.push("/pricing");
+          return;
+        }
+
         const response = await api.post("/api/sessions/mock/start", {});
         setSessionData(response.data.data);
         setQuestions(response.data.data.questions);
@@ -55,30 +63,37 @@ export default function MockSessionPage() {
         setPageLoading(false);
       } catch (error) {
         console.error("Failed to start mock session:", error);
-        toast.error("Failed to start mock exam");
-        router.push("/dashboard");
+        if ((error as any)?.response?.status === 402) {
+          toast.error("Mock exams are only available for Pro subscribers");
+          router.push("/pricing");
+        } else {
+          toast.error("Failed to start mock exam");
+          router.push("/dashboard");
+        }
       }
     };
 
     if (!loading && user) {
       startMockSession();
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, profile]);
 
   // Timer countdown
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          handleSubmitSession();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (timeRemaining <= 0 && !hasSubmittedRef.current && sessionId) {
+      hasSubmittedRef.current = true;
+      handleSubmitSession();
+    }
+  }, [timeRemaining, sessionId]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -110,20 +125,20 @@ export default function MockSessionPage() {
     setIsSubmitting(true);
 
     try {
-      // Submit all answers
-      const submitPromises = answers.map((answer) =>
-        api.post("/api/sessions/submit-answer", {
-          session_id: sessionId,
-          ...answer,
-        })
-      );
+      const timeTaken = (90 * 60) - timeRemaining;
 
-      await Promise.all(submitPromises);
-
-      // Complete the session
-      await api.post(`/api/sessions/${sessionId}/submit`, {
-        time_taken_seconds: (90 * 60) - timeRemaining,
+      const res = await api.post(`/api/sessions/${sessionId}/submit`, {
+        answers,
+        time_taken_seconds: Math.max(timeTaken, 0),
       });
+
+      // Store results in sessionStorage so results page can access them
+      if (res.data.data) {
+        sessionStorage.setItem(
+          `session_results_${sessionId}`,
+          JSON.stringify(res.data.data)
+        );
+      }
 
       router.push(`/practice/results?sessionId=${sessionId}`);
     } catch (error) {
@@ -271,24 +286,20 @@ export default function MockSessionPage() {
 
       {/* Bottom Navigation - Fixed/Sticky */}
       <div className="fixed md:relative bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-lg p-2 md:p-4 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestion === 0}
-            className="px-3 md:px-6 py-1.5 md:py-2 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs md:text-base"
+            className="hidden md:block px-3 md:px-6 py-1.5 md:py-2 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs md:text-base"
           >
             Prev
           </button>
 
-          <div className="text-xs md:text-sm text-gray-600 font-medium">
-            {currentQuestion + 1} / {questions.length}
-          </div>
-
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full md:w-auto md:order-3">
             {currentQuestion < questions.length - 1 && (
               <button
                 onClick={handleNextQuestion}
-                className="px-3 md:px-6 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity text-xs md:text-base"
+                className="flex-1 md:flex-none px-3 md:px-6 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity text-xs md:text-base"
               >
                 Next
               </button>
@@ -296,10 +307,14 @@ export default function MockSessionPage() {
             <button
               onClick={handleSubmitSession}
               disabled={isSubmitting}
-              className="px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
+              className="flex-1 md:flex-none px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
             >
               {isSubmitting ? "..." : "Submit"}
             </button>
+          </div>
+
+          <div className="text-xs md:text-sm text-gray-600 font-medium w-full text-center md:w-auto md:order-2">
+            {currentQuestion + 1} / {questions.length}
           </div>
         </div>
       </div>

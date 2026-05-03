@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import { PageLoader } from "@/components/PageLoader";
-import type { University, Subject, SessionHistoryItem, UserStats } from "types";
+import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion } from "types";
 import toast from "react-hot-toast";
 
 interface Subscription {
@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [errorBank, setErrorBank] = useState<ErrorBankQuestion[]>([]);
 
   // Fetch initial data
   useEffect(() => {
@@ -113,6 +114,14 @@ export default function DashboardPage() {
         } catch {
           // Subscription endpoint error - continue without it
         }
+
+        // Get error bank questions (optional)
+        try {
+          const errorRes = await api.get("/api/sessions/wrong-questions");
+          setErrorBank(errorRes.data.data?.questions || []);
+        } catch {
+          // Error bank endpoint error - continue without it
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
         if (error instanceof Error) {
@@ -141,7 +150,7 @@ export default function DashboardPage() {
   const subscriptionBadge =
     subscription?.subscription_status === "active"
       ? { label: "Pro", colour: "bg-green-100 text-green-800" }
-      : { label: `Free (${10 - (sessions.length % 10)}/10)`, colour: "bg-amber-100 text-amber-800" };
+      : { label: `Free (${3 - (sessions.length % 3)}/3)`, colour: "bg-amber-100 text-amber-800" };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -254,11 +263,21 @@ export default function DashboardPage() {
         {selectedUniversity && (
           <div className="mb-12">
             <h3 className="text-xl font-bold text-navy mb-6">Mock UTME Exam</h3>
-            <div className="bg-white rounded-lg shadow-lg p-8 border-l-4 border-forest hover:shadow-xl transition-shadow">
+            <div className={`rounded-lg shadow-lg p-8 border-l-4 transition-all ${
+              subscription?.subscription_status === "free"
+                ? "bg-gray-100 border-gray-400 opacity-60"
+                : "bg-white border-forest hover:shadow-xl"
+            }`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h4 className="text-2xl font-bold text-navy mb-2">Full Mock Exam</h4>
                   <p className="text-gray-600 mb-4">Take a complete UTME-style mock exam with 4 subjects and 100 questions</p>
+                  {subscription?.subscription_status === "free" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
+                      <p className="text-sm font-semibold text-amber-900">🔒 Unlock with Pro Plan</p>
+                      <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock UTME exams.</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Subjects</p>
@@ -278,10 +297,21 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => router.push("/practice/mock/session")}
-                  className="bg-forest text-white px-8 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-opacity whitespace-nowrap"
+                  onClick={() => {
+                    if (subscription?.subscription_status === "free") {
+                      router.push("/pricing");
+                    } else {
+                      router.push("/practice/mock/session");
+                    }
+                  }}
+                  disabled={subscription?.subscription_status === "free"}
+                  className={`px-8 py-3 rounded-lg font-medium whitespace-nowrap transition-opacity ${
+                    subscription?.subscription_status === "free"
+                      ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
+                      : "bg-forest text-white hover:bg-opacity-90"
+                  }`}
                 >
-                  Start Mock Exam
+                  {subscription?.subscription_status === "free" ? "Upgrade to Unlock" : "Start Mock Exam"}
                 </button>
               </div>
             </div>
@@ -387,6 +417,27 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Error Bank Entry Card */}
+        {errorBank.length > 0 && (
+          <div className="mt-12">
+            <button
+              onClick={() => router.push("/error-bank")}
+              className="w-full bg-gradient-to-br from-ember to-red-700 rounded-lg shadow-lg p-8 text-white hover:shadow-xl transition-shadow text-left"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-red-100 mb-2">Error Bank</p>
+                  <h4 className="text-4xl font-bold mb-2">{errorBank.length}</h4>
+                  <p className="text-red-50">Questions to review</p>
+                </div>
+                <svg className="w-16 h-16 text-red-200 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </button>
           </div>
         )}
       </main>
