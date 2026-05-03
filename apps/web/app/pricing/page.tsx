@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 
 export default function PricingPage() {
@@ -35,11 +36,7 @@ export default function PricingPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   const plans = [

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
+import { PageLoader } from "@/components/PageLoader";
 import type { University, Subject, SessionHistoryItem, UserStats } from "types";
 import toast from "react-hot-toast";
 
@@ -134,11 +135,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    );
+    return <PageLoader message="Loading dashboard..." />;
   }
 
   const subscriptionBadge =

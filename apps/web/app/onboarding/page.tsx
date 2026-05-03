@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
 import type { Subject } from "types";
 
@@ -92,14 +93,7 @@ export default function OnboardingPage() {
   };
 
   if (pageLoading || loading) {
-    return (
-      <div className="min-h-screen bg-blush flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-forest"></div>
-          <p className="text-gray-600 mt-4">Loading...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

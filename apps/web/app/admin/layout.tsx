@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { PageLoader } from "@/components/PageLoader";
 
 export default function AdminLayout({
   children,
@@ -20,11 +21,7 @@ export default function AdminLayout({
   }, [user, profile, loading, router]);
 
   if (loading || !user || profile?.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
