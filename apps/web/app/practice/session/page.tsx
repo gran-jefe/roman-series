@@ -274,19 +274,31 @@ export default function PracticeSessionPage() {
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="flex gap-4">
+            {/* Navigation Buttons */}
+            <div className="flex gap-2 md:gap-4">
+              {/* Left Arrow (Mobile) */}
               <button
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                title="Previous question"
               >
-                Previous
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+                className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                ← Previous
               </button>
 
               <button
                 onClick={handleToggleFlag}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-colors ${
                   isFlagged
                     ? "bg-crs text-white"
                     : "border border-gray-300 text-navy hover:bg-gray-50"
@@ -298,10 +310,55 @@ export default function PracticeSessionPage() {
               <button
                 onClick={handleNext}
                 disabled={currentIndex === questions.length - 1}
-                className="px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Next
+                Next →
               </button>
+
+              {/* Right Arrow (Mobile) */}
+              <button
+                onClick={handleNext}
+                disabled={currentIndex === questions.length - 1}
+                className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                title="Next question"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Question Palette (Mobile - Below Question) */}
+            <div className="md:hidden mt-6 bg-white rounded-lg shadow-lg p-4">
+              <p className="text-sm font-semibold text-gray-600 mb-3">Questions {currentIndex + 1} of {questions.length}</p>
+              <div className="grid grid-cols-6 gap-2">
+                {questions.map((q, idx) => {
+                  const isCurrentQuestion = idx === currentIndex;
+                  const isQuestionAnswered =
+                    answers.has(q.id) && answers.get(q.id) !== null;
+                  const isQuestionFlagged = flagged.has(q.id);
+
+                  let bgColor = "bg-white border border-gray-300";
+                  if (isQuestionAnswered && !isQuestionFlagged) {
+                    bgColor = "bg-forest text-white";
+                  } else if (isQuestionFlagged) {
+                    bgColor = "bg-crs text-white";
+                  }
+
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => handleGoToQuestion(idx)}
+                      className={`w-10 h-10 rounded text-xs font-bold text-gray-400 flex items-center justify-center transition-all ${bgColor} ${
+                        isCurrentQuestion ? "ring-2 ring-navy" : ""
+                      }`}
+                      title={`Question ${idx + 1}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </main>
