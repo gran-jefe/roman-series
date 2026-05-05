@@ -14,6 +14,7 @@ import { registerAdminRoutes } from "./routes/admin.routes";
 import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
+import { registerAnalyticsRoutes } from "./routes/analytics.routes";
 
 dotenv.config();
 
@@ -148,6 +149,8 @@ registerPaymentsRoutes(app, {
 });
 
 registerLeaderboardRoutes(app, { supabaseAdmin });
+
+registerAnalyticsRoutes(app, { supabaseAdmin });
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)

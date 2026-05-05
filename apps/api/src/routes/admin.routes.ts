@@ -668,4 +668,167 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     }
   });
+
+  // GET /api/admin/cutoff-marks - List cutoff marks with filters
+  app.get("/api/admin/cutoff-marks", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const universityId = req.query.universityId as string;
+      const course = req.query.course as string;
+      const year = req.query.year as string;
+
+      let query = supabaseAdmin.from("cutoff_marks").select("*");
+
+      if (universityId) {
+        query = query.eq("university_id", universityId);
+      }
+      if (course) {
+        query = query.eq("course", course);
+      }
+      if (year) {
+        query = query.eq("year", parseInt(year));
+      }
+
+      const { data, error } = await query.order("year", { ascending: false });
+
+      if (error) {
+        res.status(400).json({
+          status: "error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: data || [],
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/cutoff-marks] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/admin/cutoff-marks - Create a new cutoff mark
+  app.post("/api/admin/cutoff-marks", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const {
+        university_id,
+        course,
+        year,
+        utme_cutoff,
+        utme_weight,
+        putme_weight,
+        combined_cutoff,
+        notes,
+      } = req.body;
+
+      // Validate required fields
+      if (!university_id || !course || !year || utme_cutoff === undefined || combined_cutoff === undefined) {
+        res.status(400).json({
+          status: "error",
+          message: "Missing required fields: university_id, course, year, utme_cutoff, combined_cutoff",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Validate numeric values
+      if (typeof utme_cutoff !== "number" || typeof combined_cutoff !== "number") {
+        res.status(400).json({
+          status: "error",
+          message: "utme_cutoff and combined_cutoff must be numbers",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Insert into database
+      const { data: cutoffMark, error: insertError } = await supabaseAdmin
+        .from("cutoff_marks")
+        .insert({
+          university_id,
+          course,
+          year,
+          utme_cutoff,
+          utme_weight: utme_weight || 60,
+          putme_weight: putme_weight || 40,
+          combined_cutoff,
+          notes: notes || null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        res.status(400).json({
+          status: "error",
+          message: insertError.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(201).json({
+        status: "success",
+        data: cutoffMark,
+        message: "Cutoff mark created successfully",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/cutoff-marks POST] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/cutoff-marks/:id - Delete a cutoff mark
+  app.delete("/api/admin/cutoff-marks/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("cutoff_marks")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) {
+        res.status(400).json({
+          status: "error",
+          message: deleteError.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        message: "Cutoff mark deleted successfully",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/cutoff-marks DELETE] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 }

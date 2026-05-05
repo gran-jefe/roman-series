@@ -14,6 +14,7 @@ export default function ErrorBankPage() {
   const { user, loading } = useAuth();
   const [questions, setQuestions] = useState<ErrorBankQuestion[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,6 +76,27 @@ export default function ErrorBankPage() {
     bySubject.get(q.subject_name)!.push(q);
   });
 
+  // Get unique subjects with their color
+  const subjects = Array.from(bySubject.entries()).map(([name, qs]) => ({
+    name,
+    count: qs.length,
+    colour_token: qs[0]?.subject_colour_token || "#666",
+  }));
+
+  // Filter questions based on selected subject
+  const displayedQuestions = selectedSubject
+    ? questions.filter(q => q.subject_name === selectedSubject)
+    : questions;
+
+  // Filter by subject for display
+  const displayBySubject = new Map<string, ErrorBankQuestion[]>();
+  displayedQuestions.forEach(q => {
+    if (!displayBySubject.has(q.subject_name)) {
+      displayBySubject.set(q.subject_name, []);
+    }
+    displayBySubject.get(q.subject_name)!.push(q);
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
@@ -92,26 +114,68 @@ export default function ErrorBankPage() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-12">
-        <div className="mb-12">
+        <div className="mb-8">
           <h1 className="text-4xl font-bold text-navy mb-2">Error Bank</h1>
           <p className="text-gray-600">
-            {questions.length} question{questions.length !== 1 ? 's' : ''} to review
+            {displayedQuestions.length} of {questions.length} question{questions.length !== 1 ? 's' : ''} to review
           </p>
+        </div>
+
+        {/* Subject Filter Buttons */}
+        <div className="mb-8 flex flex-wrap gap-3">
+          <button
+            onClick={() => setSelectedSubject(null)}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              selectedSubject === null
+                ? "bg-forest text-white shadow-md"
+                : "bg-white text-navy border-2 border-gray-300 hover:border-forest"
+            }`}
+          >
+            All Subjects ({questions.length})
+          </button>
+          {subjects.map(subject => (
+            <button
+              key={subject.name}
+              onClick={() => setSelectedSubject(subject.name)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                selectedSubject === subject.name
+                  ? "text-white shadow-md"
+                  : "border-2 text-gray-700 hover:border-opacity-100"
+              }`}
+              style={{
+                backgroundColor:
+                  selectedSubject === subject.name
+                    ? subject.colour_token
+                    : "white",
+                borderColor:
+                  selectedSubject === subject.name
+                    ? subject.colour_token
+                    : subject.colour_token + "40",
+              }}
+            >
+              {subject.name} ({subject.count})
+            </button>
+          ))}
         </div>
 
         {/* Retry All Button */}
         <button
           onClick={() => {
-            router.push(`/practice/error-bank?questions=${questions.map(q => q.id).join(',')}`);
+            router.push(`/practice/error-bank?questions=${displayedQuestions.map(q => q.id).join(',')}`);
           }}
           className="w-full mb-8 px-6 py-4 bg-forest text-white rounded-lg font-semibold hover:bg-opacity-90 transition-opacity text-lg"
         >
-          Practice All ({questions.length} questions)
+          Practice {selectedSubject ? selectedSubject : "All"} ({displayedQuestions.length} question{displayedQuestions.length !== 1 ? 's' : ''})
         </button>
 
         {/* By Subject Sections */}
+        {displayBySubject.size === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <p className="text-gray-500 text-lg">No questions in {selectedSubject}</p>
+          </div>
+        ) : (
         <div className="space-y-8">
-          {Array.from(bySubject.entries()).map(([subjectName, subjectQuestions]) => (
+          {Array.from(displayBySubject.entries()).map(([subjectName, subjectQuestions]) => (
             <div key={subjectName}>
               <div className="flex items-center gap-3 mb-4">
                 <div
@@ -180,6 +244,7 @@ export default function ErrorBankPage() {
             </div>
           ))}
         </div>
+        )}
       </main>
     </div>
   );

@@ -293,4 +293,53 @@ export function registerDataRoutes(app: Express, deps: DataDeps) {
       });
     }
   });
+
+  // GET /api/cutoff-marks - Student-facing public endpoint
+  app.get("/api/cutoff-marks", async (req: Request, res: Response) => {
+    try {
+      const { universityId, course } = req.query;
+
+      if (!universityId) {
+        res.status(400).json({
+          status: "error",
+          message: "Missing required query parameter: universityId",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      let query = supabaseAdmin
+        .from("cutoff_marks")
+        .select("*")
+        .eq("university_id", universityId as string);
+
+      if (course) {
+        query = query.eq("course", course as string);
+      }
+
+      const { data, error } = await query.order("year", { ascending: false });
+
+      if (error) {
+        res.status(400).json({
+          status: "error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: data || [],
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[cutoff-marks] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 }

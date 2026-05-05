@@ -85,6 +85,7 @@ export interface Profile {
   target_university_id: string;
   target_course: string;
   subject_combination: string[] | null;
+  utme_score?: number | null;
   role: "student" | "admin";
   subscription_status: "free" | "active" | "expired";
   subscription_expires_at?: string;
@@ -370,4 +371,102 @@ export interface SessionResult {
   total: number;
   percentage: number;
   answers: AnswerReview[];
+}
+
+// ============================================================================
+// ANALYTICS TYPES
+// ============================================================================
+
+/**
+ * Topic-level performance analytics
+ */
+export interface TopicPerformance {
+  topic_id: string;
+  topic_name: string;
+  subject_name: string;
+  subject_colour_token: string;
+  total_answered: number;
+  correct: number;
+  avg_percentage: number;
+  sessions_count: number;
+}
+
+/**
+ * Response from GET /api/analytics/overview
+ */
+export interface AnalyticsOverview {
+  total_sessions: number;
+  total_questions_answered: number;
+  best_score_percentage: number;
+  avg_score_overall: number;
+  current_streak_days: number;
+  longest_streak_days: number;
+  total_time_practiced_seconds: number;
+  avg_time_per_question_seconds: number;
+  avg_score_by_subject: Array<{
+    subject_id: string;
+    subject_name: string;
+    avg_percentage: number;
+    sessions_count: number;
+  }>;
+}
+
+/**
+ * Peer ranking item in leaderboard
+ */
+export interface PeerRankingItem {
+  rank: number;
+  name_initial: string;
+  avg_score: number;
+  is_me: boolean;
+  sessions_count: number;
+}
+
+/**
+ * Response from GET /api/analytics/peers
+ */
+export interface PeerRanking {
+  rank: number;
+  total_peers: number;
+  my_avg: number;
+  peers: PeerRankingItem[];
+}
+
+/**
+ * Cutoff mark for a course at a university
+ */
+export interface CutoffMark {
+  id: string;
+  university_id: string;
+  course: string;
+  year: number;
+  utme_cutoff: number;
+  putme_weight: number;
+  utme_weight: number;
+  combined_cutoff: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Response from GET /api/analytics/prediction
+ * Shows student's UTME qualification status and predicted Post-UTME target
+ */
+export interface PredictionResult {
+  utme_score: number | null;
+  cutoff: {
+    course: string;
+    year: number;
+    utme_cutoff: number;
+    combined_cutoff: number;
+    utme_weight: number;
+    putme_weight: number;
+  } | null;
+  utme_qualifies: boolean;
+  utme_contribution: number;
+  current_practice_avg: number;
+  predicted_total: number;
+  required_putme_score: number;
+  status: "on_track" | "at_risk" | "no_data";
 }

@@ -474,4 +474,187 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       });
     }
   });
+
+  app.patch("/api/profiles/utme-score", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { utme_score } = req.body;
+
+      if (utme_score === undefined) {
+        res.status(400).json({
+          status: "error",
+          message: "Missing required field: utme_score",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (typeof utme_score !== "number" || utme_score < 0 || utme_score > 400) {
+        res.status(400).json({
+          status: "error",
+          message: "UTME score must be a number between 0 and 400",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile, error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ utme_score })
+        .eq("id", user.id)
+        .select("*")
+        .single();
+
+      if (updateError || !profile) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to update UTME score",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: { profile },
+        message: "UTME score updated successfully",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[profiles/utme-score] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  app.patch("/api/profiles/me", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { full_name, target_course, utme_score } = req.body;
+
+      const updateData: any = {};
+
+      if (full_name !== undefined) {
+        if (typeof full_name !== "string" || full_name.trim().length === 0) {
+          res.status(400).json({
+            status: "error",
+            message: "Full name must be a non-empty string",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+        updateData.full_name = full_name;
+      }
+
+      if (target_course !== undefined) {
+        if (typeof target_course !== "string" || target_course.trim().length === 0) {
+          res.status(400).json({
+            status: "error",
+            message: "Target course must be a non-empty string",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+        updateData.target_course = target_course;
+      }
+
+      if (utme_score !== undefined) {
+        if (typeof utme_score !== "number" || utme_score < 0 || utme_score > 400) {
+          res.status(400).json({
+            status: "error",
+            message: "UTME score must be a number between 0 and 400",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+        updateData.utme_score = utme_score;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "No fields to update",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile, error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update(updateData)
+        .eq("id", user.id)
+        .select("*")
+        .single();
+
+      if (updateError || !profile) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to update profile",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: { profile },
+        message: "Profile updated successfully",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[profiles/me] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 }

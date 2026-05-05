@@ -352,6 +352,195 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
     }
   });
 
+  // GET /api/sessions/wrong-questions - Get all questions user got wrong (must be before :id route)
+  app.get("/api/sessions/wrong-questions", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      console.log("[wrong-questions] Fetching for user:", user.id);
+
+      // Get user's sessions first
+      const { data: userSessions, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (sessionError) {
+        console.error("[wrong-questions] Session fetch error:", sessionError);
+      }
+
+      console.log("[wrong-questions] User sessions:", userSessions?.length || 0);
+
+      if (sessionError || !userSessions) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch sessions",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const userSessionIds = userSessions.map((s: any) => s.id);
+
+      if (userSessionIds.length === 0) {
+        console.log("[wrong-questions] No sessions found");
+        res.json({
+          status: "success",
+          data: { questions: [], total: 0 },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      console.log("[wrong-questions] Fetching wrong answers from", userSessionIds.length, "sessions");
+
+      // Get wrong question IDs with counts and latest seen date
+      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
+        .from("session_answers")
+        .select("question_id, sessions(created_at)")
+        .in("session_id", userSessionIds)
+        .eq("is_correct", false)
+        .order("question_id");
+
+      if (wrongError) {
+        console.error("[wrong-questions] Wrong answers fetch error:", wrongError);
+      }
+
+      console.log("[wrong-questions] Wrong answers found:", wrongAnswers?.length || 0);
+
+      if (wrongError || !wrongAnswers) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch wrong answers",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Deduplicate and collect metadata
+      const questionMap = new Map<
+        string,
+        { times_wrong: number; last_seen_at: string }
+      >();
+      wrongAnswers.forEach((answer: any) => {
+        const existing = questionMap.get(answer.question_id);
+        const sessionData = answer.sessions || {};
+        const createdAt = sessionData.created_at || new Date().toISOString();
+        const newData = {
+          times_wrong: (existing?.times_wrong ?? 0) + 1,
+          last_seen_at: createdAt,
+        };
+        // Keep the latest date
+        if (!existing || createdAt > existing.last_seen_at) {
+          questionMap.set(answer.question_id, newData);
+        }
+      });
+
+      const uniqueQuestionIds = Array.from(questionMap.keys());
+      console.log("[wrong-questions] Unique wrong question IDs:", uniqueQuestionIds.length);
+
+      if (uniqueQuestionIds.length === 0) {
+        console.log("[wrong-questions] No wrong answers, returning empty");
+        res.json({
+          status: "success",
+          data: { questions: [], total: 0 },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Fetch full question data with subject info
+      const { data: questions, error: qError } = await supabaseAdmin
+        .from("questions")
+        .select("id, subject_id, university_id, topic_id, body, options(*)")
+        .in("id", uniqueQuestionIds);
+
+      if (qError) {
+        console.error("[wrong-questions] Questions fetch error:", qError);
+      }
+
+      console.log("[wrong-questions] Questions fetched:", questions?.length || 0);
+
+      if (qError || !questions) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch question details",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Fetch subject info for each question
+      const subjectIds = [...new Set(questions.map((q: any) => q.subject_id))];
+      const { data: subjects } = await supabaseAdmin
+        .from("subjects")
+        .select("id, name, colour_token")
+        .in("id", subjectIds);
+
+      const subjectMap = new Map((subjects || []).map((s: any) => [s.id, s]));
+
+      // Build response with metadata, strip is_correct from options
+      const errorBankQuestions = questions.map((q: any) => {
+        const metadata = questionMap.get(q.id);
+        const subjectInfo = subjectMap.get(q.subject_id);
+        return {
+          id: q.id,
+          subject_id: q.subject_id,
+          university_id: q.university_id,
+          topic_id: q.topic_id,
+          body: q.body,
+          times_wrong: metadata?.times_wrong ?? 1,
+          last_seen_at: metadata?.last_seen_at ?? new Date().toISOString(),
+          subject_name: subjectInfo?.name ?? "Unknown",
+          subject_colour_token: subjectInfo?.colour_token ?? "#666666",
+          options: q.options.map((o: any) => ({
+            id: o.id,
+            question_id: o.question_id,
+            label: o.label,
+            body: o.body,
+          })),
+        };
+      });
+
+      console.log("[wrong-questions] Returning", errorBankQuestions.length, "error bank questions");
+      res.json({
+        status: "success",
+        data: { questions: errorBankQuestions, total: errorBankQuestions.length },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[wrong-questions] Unexpected error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // GET /api/sessions/:id
   app.get("/api/sessions/:id", async (req: Request, res: Response) => {
     try {
@@ -918,131 +1107,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
     }
   });
 
-  // GET /api/sessions/wrong-questions - Get all questions user got wrong
-  app.get("/api/sessions/wrong-questions", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Get wrong question IDs with counts and latest seen date
-      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
-        .from("session_answers")
-        .select("question_id, sessions!inner(created_at)")
-        .eq("sessions.user_id", user.id)
-        .eq("is_correct", false)
-        .order("question_id");
-
-      if (wrongError || !wrongAnswers) {
-        res.status(500).json({
-          status: "error",
-          message: "Failed to fetch wrong answers",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Deduplicate and collect metadata
-      const questionMap = new Map<
-        string,
-        { times_wrong: number; last_seen_at: string }
-      >();
-      wrongAnswers.forEach((answer: any) => {
-        const existing = questionMap.get(answer.question_id);
-        const newData = {
-          times_wrong: (existing?.times_wrong ?? 0) + 1,
-          last_seen_at: answer.sessions.created_at,
-        };
-        // Keep the latest date
-        if (!existing || answer.sessions.created_at > existing.last_seen_at) {
-          questionMap.set(answer.question_id, newData);
-        }
-      });
-
-      const uniqueQuestionIds = Array.from(questionMap.keys());
-
-      if (uniqueQuestionIds.length === 0) {
-        res.json({
-          status: "success",
-          data: { questions: [], total: 0 },
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Fetch full question data with subject info
-      const { data: questions, error: qError } = await supabaseAdmin
-        .from("questions")
-        .select("*, options(*), subjects!inner(name, colour_token)")
-        .in("id", uniqueQuestionIds);
-
-      if (qError || !questions) {
-        res.status(500).json({
-          status: "error",
-          message: "Failed to fetch question details",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Build response with metadata, strip is_correct from options
-      const errorBankQuestions = questions.map((q: any) => {
-        const metadata = questionMap.get(q.id);
-        return {
-          id: q.id,
-          subject_id: q.subject_id,
-          university_id: q.university_id,
-          topic_id: q.topic_id,
-          body: q.body,
-          times_wrong: metadata?.times_wrong ?? 1,
-          last_seen_at: metadata?.last_seen_at ?? new Date().toISOString(),
-          subject_name: q.subjects?.name ?? "Unknown",
-          subject_colour_token: q.subjects?.colour_token ?? "#666666",
-          options: q.options.map((o: any) => ({
-            id: o.id,
-            question_id: o.question_id,
-            label: o.label,
-            body: o.body,
-          })),
-        };
-      });
-
-      res.json({
-        status: "success",
-        data: { questions: errorBankQuestions, total: errorBankQuestions.length },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[sessions/wrong-questions] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-
   // POST /api/sessions/error-bank/start - Start a practice session with wrong questions
   app.post("/api/sessions/error-bank/start", async (req: Request, res: Response) => {
     try {
@@ -1082,10 +1146,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      if (question_ids.length > 50) {
+      if (question_ids.length > 500) {
         res.status(400).json({
           status: "error",
-          message: "Cannot retry more than 50 questions at once",
+          message: "Cannot retry more than 500 questions at once",
           timestamp: new Date().toISOString(),
         });
         return;
