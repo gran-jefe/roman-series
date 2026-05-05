@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
-import type { Subject } from "types";
+import type { Subject, University } from "types";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [universityName, setUniversityName] = useState<string>("");
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -31,6 +32,22 @@ export default function ProfilePage() {
       setFullName(profile.full_name || "");
       setTargetCourse(profile.target_course || "");
       setUtmeScore(profile.utme_score?.toString() || "");
+
+      // Fetch university name
+      const fetchUniversity = async () => {
+        try {
+          const res = await api.get("/api/universities");
+          const universities = res.data.data || [];
+          const university = universities.find((u: University) => u.id === profile.target_university_id);
+          if (university) {
+            setUniversityName(university.name);
+          }
+        } catch (error) {
+          console.error("Failed to fetch university:", error);
+        }
+      };
+
+      fetchUniversity();
     }
   }, [profile]);
 
@@ -155,7 +172,7 @@ export default function ProfilePage() {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-2">Target University</p>
               <p className="text-lg text-navy font-semibold">
-                {profile.target_university?.name || "Not set"}
+                {universityName || "Not set"}
               </p>
             </div>
             <div>

@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
-import type { Subject, CutoffMark } from "types";
+import type { Subject, CutoffMark, University } from "types";
 
 const subjectColours: Record<string, string> = {
   Biology: "#1A7A4A",
@@ -29,6 +29,7 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [cutoffMark, setCutoffMark] = useState<CutoffMark | null>(null);
+  const [universityName, setUniversityName] = useState<string>("");
 
   // Guard: redirect if already has subject combination
   useEffect(() => {
@@ -88,9 +89,22 @@ export default function OnboardingPage() {
 
       toast.success("Subject combination saved!");
 
-      // Fetch cutoff mark for step 2
+      // Fetch university name and cutoff mark for step 2
       if (profile?.target_university_id && profile?.target_course) {
         try {
+          // Fetch university name
+          const uniRes = await api.get("/api/universities");
+          const universities = uniRes.data.data || [];
+          const university = universities.find((u: University) => u.id === profile.target_university_id);
+          if (university) {
+            setUniversityName(university.name);
+          }
+        } catch (error) {
+          console.error("Failed to fetch university:", error);
+        }
+
+        try {
+          // Fetch cutoff mark
           const res = await api.get("/api/cutoff-marks", {
             params: {
               universityId: profile.target_university_id,
@@ -264,7 +278,7 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Target University</p>
-                  <p className="text-lg font-semibold text-navy">{profile?.target_university?.name}</p>
+                  <p className="text-lg font-semibold text-navy">{universityName || profile?.target_university_id}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Course of Study</p>
