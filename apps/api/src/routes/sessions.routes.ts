@@ -872,7 +872,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
     }
   });
 
-  // POST /api/sessions/mock/start - Start a mock UTME exam (4 subjects, 25 questions each, 90 minutes)
+  // POST /api/sessions/mock/start - Start a mock PUTME exam (4 subjects, 25 questions each, 90 minutes)
   app.post("/api/sessions/mock/start", async (req: Request, res: Response) => {
     try {
       const authHeader = req.headers.authorization;
@@ -922,7 +922,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       if (profile.subscription_status === "free") {
         res.status(402).json({
           status: "error",
-          message: "Mock exams are only available for Pro subscribers. Upgrade to access full mock UTME exams.",
+          message: "Mock exams are only available for Pro subscribers. Upgrade to access full mock PUTME exams.",
           timestamp: new Date().toISOString(),
         });
         return;

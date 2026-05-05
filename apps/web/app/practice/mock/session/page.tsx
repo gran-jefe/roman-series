@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
-import type { StartSessionResponse, SubmitAnswerRequest } from "types";
+import type { StartSessionResponse } from "types";
 
 interface Answer {
   question_id: string;
@@ -63,6 +63,7 @@ export default function MockSessionPage() {
         setPageLoading(false);
       } catch (error) {
         console.error("Failed to start mock session:", error);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((error as any)?.response?.status === 402) {
           toast.error("Mock exams are only available for Pro subscribers");
           router.push("/pricing");
@@ -172,7 +173,7 @@ export default function MockSessionPage() {
       <div className="bg-navy text-white shadow-lg sticky top-0 z-40">
         <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm md:text-xl font-bold truncate">Mock UTME</h1>
+            <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
             <p className="text-xs md:text-sm text-gray-300 truncate">
               {currentSubject} • Q{questionInSubject}/25
             </p>

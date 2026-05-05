@@ -297,7 +297,7 @@ export default function DashboardPage() {
             {/* Mock Exam Section */}
             {selectedUniversity && (
               <div>
-                <h3 className="text-xl font-bold text-navy mb-4">Mock UTME Exam</h3>
+                <h3 className="text-xl font-bold text-navy mb-4">Mock PUTME Exam</h3>
                 <div className={`rounded-lg shadow-md p-8 border-t-4 transition-all ${
                   subscription?.subscription_status === "free"
                     ? "bg-gray-50 border-gray-300"
@@ -310,7 +310,7 @@ export default function DashboardPage() {
                       {subscription?.subscription_status === "free" && (
                         <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-amber-900">🔒 Unlock with Pro Plan</p>
-                          <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock UTME exams.</p>
+                          <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock PUTME exams.</p>
                         </div>
                       )}
                       <div className="grid grid-cols-3 gap-6 mb-6">
