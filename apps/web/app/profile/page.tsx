@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { PageLoader } from "@/components/PageLoader";
-import { Navbar } from "@/components/Navbar";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
@@ -79,7 +78,24 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-blush">
-      <Navbar />
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 bg-navy text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
+              RS
+            </div>
+            <h1 className="text-lg font-bold">Roman Series</h1>
+          </div>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </nav>
+
       <div className="max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
