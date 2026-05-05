@@ -6,12 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
+import type { Subject } from "types";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, loading, refreshProfile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -32,6 +34,21 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const res = await api.get("/api/subjects");
+        setSubjects(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to fetch subjects:", error);
+      }
+    };
+
+    if (!loading && user) {
+      fetchSubjects();
+    }
+  }, [user, loading]);
+
   const handleSave = async () => {
     if (!fullName.trim()) {
       toast.error("Full name is required");
@@ -40,15 +57,16 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      await api.patch("/api/profiles/me", {
+      const response = await api.patch("/api/profiles/me", {
         full_name: fullName,
         target_course: targetCourse,
         utme_score: utmeScore ? parseInt(utmeScore) : null,
       });
 
-      toast.success("Profile updated successfully!");
-      await refreshProfile();
-      setIsEditing(false);
+      if (response.status === 200 || response.data?.status === "success") {
+        toast.success("Profile updated successfully!");
+        setIsEditing(false);
+      }
     } catch (error) {
       console.error("Failed to update profile:", error);
       toast.error("Failed to update profile");
@@ -183,16 +201,19 @@ export default function ProfilePage() {
             <div className="mb-8">
               <p className="text-sm font-medium text-gray-500 mb-4">Subjects</p>
               <div className="flex flex-wrap gap-3">
-                {/* Note: We'd need subject names from API to display properly */}
-                {profile.subject_combination.map((subjectId) => (
-                  <div
-                    key={subjectId}
-                    className="px-4 py-2 rounded-full text-white text-sm font-medium"
-                    style={{ backgroundColor: "#7B68EE" }}
-                  >
-                    Subject
-                  </div>
-                ))}
+                {profile.subject_combination.map((subjectId) => {
+                  const subject = subjects.find(s => s.id === subjectId);
+                  const subjectName = subject?.name || "Unknown";
+                  return (
+                    <div
+                      key={subjectId}
+                      className="px-4 py-2 rounded-full text-white text-sm font-medium"
+                      style={{ backgroundColor: subjectColours[subjectName] || "#7B68EE" }}
+                    >
+                      {subjectName}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
