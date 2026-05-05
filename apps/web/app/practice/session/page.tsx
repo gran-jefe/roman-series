@@ -328,9 +328,9 @@ export default function PracticeSessionPage() {
               </button>
             </div>
 
-            {/* Question Palette (Mobile - Horizontal Scrollable) */}
-            <div className="md:hidden mt-6 bg-white rounded-lg shadow-lg p-3 overflow-x-auto">
-              <div className="flex gap-2 min-w-min">
+            {/* Question Palette (Mobile - Wrapped) */}
+            <div className="md:hidden mt-6 bg-white rounded-lg shadow-lg p-3">
+              <div className="flex flex-wrap gap-2">
                 {questions.map((q, idx) => {
                   const isCurrentQuestion = idx === currentIndex;
                   const isQuestionAnswered =
@@ -348,7 +348,7 @@ export default function PracticeSessionPage() {
                     <button
                       key={q.id}
                       onClick={() => handleGoToQuestion(idx)}
-                      className={`w-10 h-10 rounded text-xs font-bold text-gray-400 flex-shrink-0 flex items-center justify-center transition-all ${bgColor} ${
+                      className={`w-10 h-10 rounded text-xs font-bold text-gray-400 flex items-center justify-center transition-all ${bgColor} ${
                         isCurrentQuestion ? "ring-2 ring-navy" : ""
                       }`}
                       title={`Question ${idx + 1}`}
