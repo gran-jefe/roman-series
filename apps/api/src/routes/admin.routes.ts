@@ -760,6 +760,11 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
+          // Set default values for prediction calculations
+          utme_cutoff: 200,
+          utme_weight: 60,
+          putme_weight: 40,
+          combined_cutoff: 200,
         }));
 
         console.log(`[admin/cutoff-marks/upload-json] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
@@ -856,6 +861,11 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
+          // Set default values for prediction calculations
+          utme_cutoff: 200,
+          utme_weight: 60,
+          putme_weight: 40,
+          combined_cutoff: 200,
         }));
 
         console.log(`[admin/cutoff-marks/bulk] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
