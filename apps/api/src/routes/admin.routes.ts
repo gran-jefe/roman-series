@@ -719,11 +719,23 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       }
 
       // Delete existing records for this university and year
-      await supabaseAdmin
+      const { error: deleteError } = await supabaseAdmin
         .from("cutoff_marks")
         .delete()
         .eq("university_id", university_id)
         .eq("year", year);
+
+      if (deleteError) {
+        console.error("[admin/cutoff-marks/upload-json] Delete error:", deleteError);
+        res.status(400).json({
+          status: "error",
+          message: `Failed to delete existing records: ${deleteError.message}`,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      console.log(`[admin/cutoff-marks/upload-json] Deleted existing records for university_id=${university_id}, year=${year}`);
 
       // Batch insert in groups of 50
       let totalInserted = 0;
@@ -787,11 +799,23 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       }
 
       // Delete existing records for this university and year
-      await supabaseAdmin
+      const { error: deleteError } = await supabaseAdmin
         .from("cutoff_marks")
         .delete()
         .eq("university_id", university_id)
         .eq("year", year);
+
+      if (deleteError) {
+        console.error("[admin/cutoff-marks/bulk] Delete error:", deleteError);
+        res.status(400).json({
+          status: "error",
+          message: `Failed to delete existing records: ${deleteError.message}`,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      console.log(`[admin/cutoff-marks/bulk] Deleted existing records for university_id=${university_id}, year=${year}`);
 
       // Batch insert in groups of 50
       let totalInserted = 0;
