@@ -223,6 +223,32 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
+            {/* Minimum Requirements */}
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">UTME Minimum (200)</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-lg font-bold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
+                    {prediction.utme_score}
+                  </p>
+                  <span className={`text-sm font-semibold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
+                    {prediction.utme_qualifies ? "✓" : "✗"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">PUTME Minimum (50%)</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-lg font-bold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
+                    {prediction.current_practice_avg}%
+                  </p>
+                  <span className={`text-sm font-semibold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
+                    {prediction.putme_qualifies ? "✓" : "✗"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Prediction Bar */}
             <div className="bg-gray-50 rounded-lg p-6">
               <p className="text-sm font-semibold text-gray-700 mb-3">Predicted Score</p>
@@ -249,7 +275,25 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Advice */}
-            {prediction.current_practice_avg < prediction.required_putme_score && (
+            {!prediction.utme_qualifies && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-900 mb-1">⚠ UTME Score Below Minimum</p>
+                <p className="text-sm text-red-800">
+                  Your UTME score ({prediction.utme_score}) is below the required minimum of 200. You will not be eligible for admission regardless of your Post-UTME performance.
+                </p>
+              </div>
+            )}
+
+            {!prediction.putme_qualifies && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-900 mb-1">⚠ PUTME Score Below Minimum</p>
+                <p className="text-sm text-red-800">
+                  Your current practice score ({prediction.current_practice_avg}%) is below the required minimum of 50%. You must score at least 50% on the Post-UTME exam to be eligible for admission.
+                </p>
+              </div>
+            )}
+
+            {prediction.utme_qualifies && prediction.putme_qualifies && prediction.current_practice_avg < prediction.required_putme_score && (
               <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm font-semibold text-amber-900 mb-1">📌 Recommendation</p>
                 <p className="text-sm text-amber-800">
