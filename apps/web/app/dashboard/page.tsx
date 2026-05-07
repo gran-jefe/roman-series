@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [errorBank, setErrorBank] = useState<ErrorBankQuestion[]>([]);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [targetCourse, setTargetCourse] = useState<string>("");
 
   // Fetch initial data
   useEffect(() => {
@@ -56,10 +57,14 @@ export default function DashboardPage() {
           const meRes = await api.get("/api/auth/me");
           userProfile = meRes.data.data.profile;
           setUserName(meRes.data.data.profile.full_name);
+          setTargetCourse(meRes.data.data.profile.target_course || "");
         } catch {
           // Use profile from context if available
           if (profile?.full_name) {
             setUserName(profile.full_name);
+          }
+          if (profile?.target_course) {
+            setTargetCourse(profile.target_course);
           }
         }
 
@@ -208,6 +213,7 @@ export default function DashboardPage() {
           {selectedUniversity && (
             <p className="text-gray-300 text-sm">
               Preparing for <span className="font-semibold text-white">{selectedUniversity.name}</span>
+              {targetCourse && <span className="text-gray-400"> • {targetCourse}</span>}
             </p>
           )}
         </div>
