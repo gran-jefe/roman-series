@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
@@ -10,11 +10,39 @@ interface ProfileCompletionModalProps {
 }
 
 export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalProps) {
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, profile } = useAuth();
   const [course, setCourse] = useState("");
   const [score, setScore] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [courses, setCourses] = useState<string[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+
+  // Fetch courses for the user's university on mount
+  useEffect(() => {
+    if (!profile?.target_university_id) return;
+
+    const fetchCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const res = await api.get("/api/cutoff-marks", {
+          params: { universityId: profile.target_university_id },
+        });
+        const courseSet = new Set(
+          res.data.data.map((r: Record<string, unknown>) => r.course as string)
+        );
+        const courseNames = Array.from(courseSet).sort() as string[];
+        setCourses(courseNames);
+      } catch (error) {
+        console.error("Failed to fetch courses:", error);
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [profile?.target_university_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,15 +117,30 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
             <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
               Course of Study
             </label>
-            <input
-              id="course"
-              type="text"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              placeholder="e.g., Medicine, Engineering, Law"
-              className="w-full px-4 py-2 border border-gray-300 text-gray-900 placeholder-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
-              disabled={saving}
-            />
+            {coursesLoading ? (
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-600 bg-gray-50">
+                Loading courses...
+              </div>
+            ) : courses.length > 0 ? (
+              <select
+                id="course"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                disabled={saving}
+              >
+                <option value="">Select a course</option>
+                {courses.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-600 bg-gray-50">
+                No courses found for your university
+              </div>
+            )}
           </div>
 
           <div>

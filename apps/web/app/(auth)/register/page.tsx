@@ -11,6 +11,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [universities, setUniversities] = useState<University[]>([]);
+  const [courses, setCourses] = useState<string[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -33,6 +35,37 @@ export default function RegisterPage() {
 
     fetchUniversities();
   }, []);
+
+  // Fetch courses when university changes
+  useEffect(() => {
+    if (!formData.target_university_id) {
+      setCourses([]);
+      setFormData((prev) => ({ ...prev, target_course: "" }));
+      return;
+    }
+
+    const fetchCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const response = await api.get("/api/cutoff-marks", {
+          params: { universityId: formData.target_university_id },
+        });
+        const courseSet = new Set(
+          response.data.data.map((r: Record<string, unknown>) => r.course as string)
+        );
+        const courseNames = Array.from(courseSet).sort() as string[];
+        setCourses(courseNames);
+        setFormData((prev) => ({ ...prev, target_course: "" }));
+      } catch {
+        console.log("Failed to fetch courses");
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [formData.target_university_id]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -58,7 +91,7 @@ export default function RegisterPage() {
     }
 
     if (!formData.target_course) {
-      setError("Please enter your course of study");
+      setError("Please select a course of study");
       return;
     }
 
@@ -202,15 +235,38 @@ export default function RegisterPage() {
             <label className="block text-sm font-medium text-navy mb-1">
               Course of Study *
             </label>
-            <input
-              type="text"
-              name="target_course"
-              value={formData.target_course}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
-              placeholder="e.g., Medicine, Law, Engineering"
-            />
+            {formData.target_university_id ? (
+              <>
+                {coursesLoading ? (
+                  <div className="w-full px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg">
+                    Loading courses...
+                  </div>
+                ) : courses.length > 0 ? (
+                  <select
+                    name="target_course"
+                    value={formData.target_course}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+                  >
+                    <option value="">Select a course</option>
+                    {courses.map((course) => (
+                      <option key={course} value={course}>
+                        {course}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full px-4 py-2 text-gray-600 bg-gray-50 border border-gray-300 rounded-lg">
+                    No courses found for this university
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="w-full px-4 py-2 text-gray-500 bg-gray-50 border border-gray-300 rounded-lg">
+                Select a university first
+              </div>
+            )}
           </div>
 
           <button
