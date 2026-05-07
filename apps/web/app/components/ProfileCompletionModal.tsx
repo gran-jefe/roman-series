@@ -57,6 +57,21 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+      <style>{`
+        input[type="text"],
+        input[type="number"] {
+          color: rgb(17, 24, 39) !important;
+        }
+        input[type="text"]::placeholder,
+        input[type="number"]::placeholder {
+          color: rgb(75, 85, 99) !important;
+        }
+        input[type="text"]:autofill,
+        input[type="number"]:autofill {
+          -webkit-autofill: none !important;
+          -webkit-text-fill-color: rgb(17, 24, 39) !important;
+        }
+      `}</style>
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
         <h2 className="text-2xl font-bold text-navy mb-2">Complete Your Profile</h2>
         <p className="text-gray-600 mb-6">
