@@ -15,6 +15,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [universityName, setUniversityName] = useState<string>("");
+  const [courses, setCourses] = useState<string[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -33,7 +35,7 @@ export default function ProfilePage() {
       setTargetCourse(profile.target_course || "");
       setUtmeScore(profile.utme_score?.toString() || "");
 
-      // Fetch university name
+      // Fetch university name and courses
       const fetchUniversity = async () => {
         try {
           const res = await api.get("/api/universities");
@@ -50,6 +52,35 @@ export default function ProfilePage() {
       fetchUniversity();
     }
   }, [profile]);
+
+  // Fetch courses when profile loads
+  useEffect(() => {
+    if (!profile?.target_university_id) {
+      setCourses([]);
+      return;
+    }
+
+    const fetchCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const res = await api.get("/api/cutoff-marks", {
+          params: { universityId: profile.target_university_id },
+        });
+        const courseSet = new Set(
+          res.data.data.map((r: Record<string, unknown>) => r.course as string)
+        );
+        const courseNames = Array.from(courseSet).sort() as string[];
+        setCourses(courseNames);
+      } catch (error) {
+        console.error("Failed to fetch courses:", error);
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [profile?.target_university_id]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -179,12 +210,28 @@ export default function ProfilePage() {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-2">Course of Study</p>
               {isEditing ? (
-                <input
-                  type="text"
-                  value={targetCourse}
-                  onChange={(e) => setTargetCourse(e.target.value)}
-                  className="text-lg border-b-2 border-forest outline-none w-full"
-                />
+                <>
+                  {coursesLoading ? (
+                    <div className="text-lg border-b-2 border-gray-300 pb-2">
+                      Loading courses...
+                    </div>
+                  ) : courses.length > 0 ? (
+                    <select
+                      value={targetCourse}
+                      onChange={(e) => setTargetCourse(e.target.value)}
+                      className="text-lg border-b-2 border-forest outline-none w-full"
+                    >
+                      <option value="">Select a course</option>
+                      {courses.map((course) => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="text-lg text-gray-500">No courses found for your university</div>
+                  )}
+                </>
               ) : (
                 <p className="text-lg text-navy font-semibold">{profile.target_course}</p>
               )}
