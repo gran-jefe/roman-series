@@ -718,16 +718,16 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         }
       }
 
-      // Deduplicate records by (faculty, course) to avoid constraint violations
-      const uniqueKey = new Map<string, any>();
+      // Deduplicate records by course only (constraint is on university_id, course, year)
+      const courseMap = new Map<string, any>();
       for (const record of cutoff_marks) {
-        const key = `${record.faculty}|${record.course}`;
-        if (!uniqueKey.has(key)) {
-          uniqueKey.set(key, record);
+        // Keep first occurrence of each course
+        if (!courseMap.has(record.course)) {
+          courseMap.set(record.course, record);
         }
       }
-      const deduplicatedRecords = Array.from(uniqueKey.values());
-      console.log(`[admin/cutoff-marks/upload-json] Deduplicating: ${cutoff_marks.length} records → ${deduplicatedRecords.length} unique records`);
+      const deduplicatedRecords = Array.from(courseMap.values());
+      console.log(`[admin/cutoff-marks/upload-json] Deduplicating by course: ${cutoff_marks.length} records → ${deduplicatedRecords.length} unique courses`);
 
       // Delete existing records for this university and year
       console.log(`[admin/cutoff-marks/upload-json] Deleting existing records: university_id=${university_id}, year=${year}`);
@@ -814,16 +814,16 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
-      // Deduplicate records by (faculty, course) to avoid constraint violations
-      const uniqueKey = new Map<string, any>();
+      // Deduplicate records by course only (constraint is on university_id, course, year)
+      const courseMap = new Map<string, any>();
       for (const record of records) {
-        const key = `${record.faculty}|${record.course}`;
-        if (!uniqueKey.has(key)) {
-          uniqueKey.set(key, record);
+        // Keep first occurrence of each course
+        if (!courseMap.has(record.course)) {
+          courseMap.set(record.course, record);
         }
       }
-      const deduplicatedRecords = Array.from(uniqueKey.values());
-      console.log(`[admin/cutoff-marks/bulk] Deduplicating: ${records.length} records → ${deduplicatedRecords.length} unique records`);
+      const deduplicatedRecords = Array.from(courseMap.values());
+      console.log(`[admin/cutoff-marks/bulk] Deduplicating by course: ${records.length} records → ${deduplicatedRecords.length} unique courses`);
 
       // Delete existing records for this university and year
       console.log(`[admin/cutoff-marks/bulk] Deleting existing records: university_id=${university_id}, year=${year}`);
