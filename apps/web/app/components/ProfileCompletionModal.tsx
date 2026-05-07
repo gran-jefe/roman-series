@@ -80,7 +80,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
               value={course}
               onChange={(e) => setCourse(e.target.value)}
               placeholder="e.g., Medicine, Engineering, Law"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 text-gray-900 placeholder-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
               disabled={saving}
             />
           </div>
@@ -98,7 +98,7 @@ export function ProfileCompletionModal({ onComplete }: ProfileCompletionModalPro
                 value={score}
                 onChange={(e) => setScore(e.target.value)}
                 placeholder="0"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-900 placeholder-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
                 disabled={saving}
               />
               <span className="text-gray-600 font-medium">/400</span>
