@@ -2,7 +2,6 @@ import { Express, Request, Response, NextFunction } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import multer from "multer";
 import crypto from "crypto";
-import * as pdfParse from "pdf-parse";
 import { parseRomanSeriesDocument } from "../lib/questionParser";
 
 interface AdminDeps {
@@ -60,85 +59,6 @@ async function checkAdminAuth(
   return user.id;
 }
 
-// Helper to parse cutoff marks PDF
-async function parseCutoffMarksPdf(
-  buffer: Buffer
-): Promise<Array<{ faculty: string; course: string; merit: number; catch: number; elds: number }>> {
-  const data = await (pdfParse as any)(buffer);
-  const text = data.text;
-
-  const faculties = new Set([
-    "Agriculture",
-    "Arts",
-    "College of Medicine",
-    "Economics & Mgt Science",
-    "Education",
-    "Environmental Design Management",
-    "Law",
-    "Pharmacy",
-    "Renewable Natural Resources",
-    "Science",
-    "Social Sciences",
-    "Technology",
-    "Veterinary Medicine",
-  ]);
-
-  const lines = text.split("\n").map((l: string) => l.trim());
-  const records: Array<{ faculty: string; course: string; merit: number; catch: number; elds: number }> = [];
-
-  let currentFaculty = "";
-  let pendingCourse = "";
-
-  for (const line of lines) {
-    if (!line) continue;
-
-    // Skip headers and metadata
-    if (
-      line.includes("Faculty Programme Merit") ||
-      line.includes("RELEASES CUT OFF") ||
-      line.includes("Thank you") ||
-      line.includes("G.O.") ||
-      line.includes("Registrar") ||
-      line === "Faculty" ||
-      line === "Programme"
-    ) {
-      continue;
-    }
-
-    // Check if line is a faculty name
-    if (faculties.has(line)) {
-      currentFaculty = line;
-      pendingCourse = "";
-      continue;
-    }
-
-    // Try to match: CourseName merit catch elds (three decimal numbers at end)
-    const match = line.match(/^(.+?)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)$/);
-    if (match && currentFaculty) {
-      const courseName = pendingCourse ? `${pendingCourse} ${match[1]}` : match[1];
-      const merit = parseFloat(match[2]);
-      const catchVal = parseFloat(match[3]);
-      const elds = parseFloat(match[4]);
-
-      // Validate numbers are reasonable (between 0 and 100)
-      if (!isNaN(merit) && !isNaN(catchVal) && !isNaN(elds)) {
-        records.push({
-          faculty: currentFaculty,
-          course: courseName.trim(),
-          merit,
-          catch: catchVal,
-          elds,
-        });
-        pendingCourse = "";
-      }
-    } else if (currentFaculty && !match) {
-      // This might be a multi-line course name, accumulate it
-      pendingCourse = pendingCourse ? `${pendingCourse} ${line}` : line;
-    }
-  }
-
-  return records;
-}
 
 export function registerAdminRoutes(app: Express, deps: AdminDeps) {
   const { supabaseAdmin, upload, uploadCache } = deps;
@@ -750,50 +670,103 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     }
   });
 
-  // POST /api/admin/cutoff-marks/parse-pdf - Parse PDF and return records
-  app.post(
-    "/api/admin/cutoff-marks/parse-pdf",
-    upload.single("file"),
-    async (req: Request, res: Response) => {
-      const userId = await checkAdminAuth(req, res, supabaseAdmin);
-      if (!userId) return;
+  // POST /api/admin/cutoff-marks/upload-json - Upload JSON cutoff marks
+  app.post("/api/admin/cutoff-marks/upload-json", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
 
-      try {
-        if (!req.file) {
-          res.status(400).json({
-            status: "error",
-            message: "No file uploaded",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
+    try {
+      const { university, year, cutoff_marks } = req.body;
 
-        const records = await parseCutoffMarksPdf(req.file.buffer);
-
-        if (records.length === 0) {
-          res.status(400).json({
-            status: "error",
-            message: "No records found in PDF. Check the file format.",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
-
-        res.json({
-          status: "success",
-          data: { records, count: records.length },
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error("[admin/cutoff-marks/parse-pdf] Error:", error);
-        res.status(500).json({
+      // Validate required fields
+      if (!university || !year || !Array.isArray(cutoff_marks) || cutoff_marks.length === 0) {
+        res.status(400).json({
           status: "error",
-          message: error instanceof Error ? error.message : "Failed to parse PDF",
+          message: "Invalid JSON structure. Required fields: university, year, cutoff_marks (array)",
           timestamp: new Date().toISOString(),
         });
+        return;
       }
+
+      // Resolve university ID from name
+      const { data: uniData, error: uniError } = await supabaseAdmin
+        .from("universities")
+        .select("id")
+        .ilike("name", university)
+        .single();
+
+      if (uniError || !uniData) {
+        res.status(400).json({
+          status: "error",
+          message: `University not found: ${university}`,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const university_id = uniData.id;
+
+      // Validate records
+      for (const record of cutoff_marks) {
+        if (!record.faculty || !record.course || record.merit === undefined || record.catch === undefined || record.elds === undefined) {
+          res.status(400).json({
+            status: "error",
+            message: "Invalid record. Required fields per record: faculty, course, merit, catch, elds",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+      }
+
+      // Delete existing records for this university and year
+      await supabaseAdmin
+        .from("cutoff_marks")
+        .delete()
+        .eq("university_id", university_id)
+        .eq("year", year);
+
+      // Batch insert in groups of 50
+      let totalInserted = 0;
+      for (let i = 0; i < cutoff_marks.length; i += 50) {
+        const batch = cutoff_marks.slice(i, i + 50).map((r: any) => ({
+          university_id,
+          year,
+          faculty: r.faculty,
+          course: r.course,
+          merit_cutoff: r.merit,
+          catch_cutoff: r.catch,
+          elds_cutoff: r.elds,
+        }));
+
+        const { data, error } = await supabaseAdmin.from("cutoff_marks").insert(batch).select();
+
+        if (error) {
+          res.status(400).json({
+            status: "error",
+            message: `Batch insert failed: ${error.message}`,
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        totalInserted += data?.length || 0;
+      }
+
+      res.json({
+        status: "success",
+        data: { inserted: totalInserted },
+        message: `Successfully inserted ${totalInserted} cutoff marks`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/cutoff-marks/upload-json] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
     }
-  );
+  });
 
   // POST /api/admin/cutoff-marks/bulk - Bulk insert cutoff marks
   app.post("/api/admin/cutoff-marks/bulk", async (req: Request, res: Response) => {

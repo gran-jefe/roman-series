@@ -85,33 +85,46 @@ export default function CutoffMarksPage() {
     }
   };
 
-  const handleParsePDF = async () => {
-    if (!file || !selectedUniversity) {
-      toast.error("Please select a university and file");
+  const handleParseJSON = async () => {
+    if (!file) {
+      toast.error("Please select a file");
       return;
     }
 
     setParsing(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await api.post("/api/admin/cutoff-marks/parse-pdf", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const text = await file.text();
+      const jsonData = JSON.parse(text);
 
-      if (res.data.status === "success") {
-        setParsedRecords(res.data.data.records || []);
-        setStep("preview");
-        toast.success(`Parsed ${res.data.data.count} records`);
-      } else {
-        toast.error(res.data.message || "Failed to parse PDF");
+      // Validate JSON structure
+      if (!jsonData.university || !jsonData.year || !Array.isArray(jsonData.cutoff_marks)) {
+        toast.error("Invalid JSON structure. Required fields: university, year, cutoff_marks (array)");
+        setParsing(false);
+        return;
       }
+
+      if (jsonData.cutoff_marks.length === 0) {
+        toast.error("No records found in JSON");
+        setParsing(false);
+        return;
+      }
+
+      // Auto-select university if it matches
+      const matchingUni = universities.find((u) => u.name === jsonData.university);
+      if (matchingUni) {
+        setSelectedUniversity(matchingUni.id);
+      }
+
+      // Auto-set year
+      setYear(jsonData.year);
+
+      // Set parsed records
+      setParsedRecords(jsonData.cutoff_marks);
+      setStep("preview");
+      toast.success(`Parsed ${jsonData.cutoff_marks.length} records`);
     } catch (error) {
-      console.error("Failed to parse PDF:", error);
-      toast.error("Failed to parse PDF. Please check the file format.");
+      console.error("Failed to parse JSON:", error);
+      toast.error(error instanceof SyntaxError ? "Invalid JSON file format" : "Failed to parse file");
     } finally {
       setParsing(false);
     }
@@ -127,12 +140,17 @@ export default function CutoffMarksPage() {
       return;
     }
 
+    if (!selectedUniversity) {
+      toast.error("Please select a university");
+      return;
+    }
+
     setSaving(true);
     try {
-      const res = await api.post("/api/admin/cutoff-marks/bulk", {
-        university_id: selectedUniversity,
+      const res = await api.post("/api/admin/cutoff-marks/upload-json", {
+        university: universities.find((u) => u.id === selectedUniversity)?.name,
         year,
-        records: parsedRecords,
+        cutoff_marks: parsedRecords,
       });
 
       if (res.data.status === "success") {
@@ -207,7 +225,10 @@ export default function CutoffMarksPage() {
       {/* Step: Upload */}
       {step === "upload" && (
         <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-          <h2 className="text-2xl font-bold text-navy">Step 1: Upload PDF</h2>
+          <h2 className="text-2xl font-bold text-navy">Step 1: Upload JSON File</h2>
+          <p className="text-gray-600 text-sm">
+            Upload a JSON file with cut-off marks. The file should contain university name, year, and course records.
+          </p>
 
           <div
             onDragOver={(e) => e.preventDefault()}
@@ -216,12 +237,12 @@ export default function CutoffMarksPage() {
           >
             <input
               type="file"
-              accept=".pdf"
+              accept=".json"
               onChange={handleFileSelect}
               className="hidden"
-              id="pdf-input"
+              id="json-input"
             />
-            <label htmlFor="pdf-input" className="cursor-pointer block">
+            <label htmlFor="json-input" className="cursor-pointer block">
               <svg
                 className="w-16 h-16 mx-auto mb-4 text-forest"
                 fill="none"
@@ -236,22 +257,22 @@ export default function CutoffMarksPage() {
                 />
               </svg>
               <p className="text-lg font-semibold text-navy mb-2">
-                {file ? file.name : "Drop PDF or click to upload"}
+                {file ? file.name : "Drop JSON or click to upload"}
               </p>
-              <p className="text-sm text-gray-600">Upload a cut-off marks PDF (University of Ibadan format)</p>
+              <p className="text-sm text-gray-600">Upload a .json file with cut-off marks data</p>
             </label>
           </div>
 
           <button
-            onClick={handleParsePDF}
-            disabled={!file || !selectedUniversity || parsing}
+            onClick={handleParseJSON}
+            disabled={!file || parsing}
             className={`w-full px-6 py-3 rounded-lg font-medium text-white transition-opacity ${
-              parsing || !file || !selectedUniversity
+              parsing || !file
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-forest hover:bg-opacity-90"
             }`}
           >
-            {parsing ? "Parsing..." : "Parse PDF"}
+            {parsing ? "Parsing..." : "Parse JSON"}
           </button>
         </div>
       )}
