@@ -718,8 +718,20 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         }
       }
 
+      // Deduplicate records by (faculty, course) to avoid constraint violations
+      const uniqueKey = new Map<string, any>();
+      for (const record of cutoff_marks) {
+        const key = `${record.faculty}|${record.course}`;
+        if (!uniqueKey.has(key)) {
+          uniqueKey.set(key, record);
+        }
+      }
+      const deduplicatedRecords = Array.from(uniqueKey.values());
+      console.log(`[admin/cutoff-marks/upload-json] Deduplicating: ${cutoff_marks.length} records → ${deduplicatedRecords.length} unique records`);
+
       // Delete existing records for this university and year
-      const { error: deleteError } = await supabaseAdmin
+      console.log(`[admin/cutoff-marks/upload-json] Deleting existing records: university_id=${university_id}, year=${year}`);
+      const { error: deleteError, count: deleteCount } = await supabaseAdmin
         .from("cutoff_marks")
         .delete()
         .eq("university_id", university_id)
@@ -735,12 +747,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
-      console.log(`[admin/cutoff-marks/upload-json] Deleted existing records for university_id=${university_id}, year=${year}`);
+      console.log(`[admin/cutoff-marks/upload-json] Delete completed, removed ${deleteCount} records`);
 
       // Batch insert in groups of 50
       let totalInserted = 0;
-      for (let i = 0; i < cutoff_marks.length; i += 50) {
-        const batch = cutoff_marks.slice(i, i + 50).map((r: any) => ({
+      for (let i = 0; i < deduplicatedRecords.length; i += 50) {
+        const batch = deduplicatedRecords.slice(i, i + 50).map((r: any) => ({
           university_id,
           year,
           faculty: r.faculty,
@@ -750,9 +762,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           elds_cutoff: r.elds,
         }));
 
+        console.log(`[admin/cutoff-marks/upload-json] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
+
         const { data, error } = await supabaseAdmin.from("cutoff_marks").insert(batch).select();
 
         if (error) {
+          console.error("[admin/cutoff-marks/upload-json] Batch insert error:", error, "Batch:", batch);
           res.status(400).json({
             status: "error",
             message: `Batch insert failed: ${error.message}`,
@@ -761,6 +776,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           return;
         }
 
+        console.log(`[admin/cutoff-marks/upload-json] Batch ${Math.floor(i/50) + 1} inserted successfully: ${data?.length || 0} records`);
         totalInserted += data?.length || 0;
       }
 
@@ -798,8 +814,20 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
+      // Deduplicate records by (faculty, course) to avoid constraint violations
+      const uniqueKey = new Map<string, any>();
+      for (const record of records) {
+        const key = `${record.faculty}|${record.course}`;
+        if (!uniqueKey.has(key)) {
+          uniqueKey.set(key, record);
+        }
+      }
+      const deduplicatedRecords = Array.from(uniqueKey.values());
+      console.log(`[admin/cutoff-marks/bulk] Deduplicating: ${records.length} records → ${deduplicatedRecords.length} unique records`);
+
       // Delete existing records for this university and year
-      const { error: deleteError } = await supabaseAdmin
+      console.log(`[admin/cutoff-marks/bulk] Deleting existing records: university_id=${university_id}, year=${year}`);
+      const { error: deleteError, count: deleteCount } = await supabaseAdmin
         .from("cutoff_marks")
         .delete()
         .eq("university_id", university_id)
@@ -815,12 +843,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
-      console.log(`[admin/cutoff-marks/bulk] Deleted existing records for university_id=${university_id}, year=${year}`);
+      console.log(`[admin/cutoff-marks/bulk] Delete completed, removed ${deleteCount} records`);
 
       // Batch insert in groups of 50
       let totalInserted = 0;
-      for (let i = 0; i < records.length; i += 50) {
-        const batch = records.slice(i, i + 50).map((r: any) => ({
+      for (let i = 0; i < deduplicatedRecords.length; i += 50) {
+        const batch = deduplicatedRecords.slice(i, i + 50).map((r: any) => ({
           university_id,
           year,
           faculty: r.faculty,
@@ -830,9 +858,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           elds_cutoff: r.elds,
         }));
 
+        console.log(`[admin/cutoff-marks/bulk] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
+
         const { data, error } = await supabaseAdmin.from("cutoff_marks").insert(batch).select();
 
         if (error) {
+          console.error("[admin/cutoff-marks/bulk] Batch insert error:", error, "Batch:", batch);
           res.status(400).json({
             status: "error",
             message: `Batch insert failed: ${error.message}`,
@@ -841,6 +872,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           return;
         }
 
+        console.log(`[admin/cutoff-marks/bulk] Batch ${Math.floor(i/50) + 1} inserted successfully: ${data?.length || 0} records`);
         totalInserted += data?.length || 0;
       }
 
