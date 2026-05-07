@@ -42,7 +42,8 @@ const loginSchema = z.object({
 
 const app: Express = express();
 const port = process.env.PORT || 4000;
-const webUrl = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
+// Use WEB_URL for backend, fallback to NEXT_PUBLIC_WEB_URL for backwards compatibility
+const webUrl = process.env.WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
 
 // Security middleware
 app.use(helmet());
