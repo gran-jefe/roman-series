@@ -764,7 +764,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           utme_cutoff: 200,
           utme_weight: 60,
           putme_weight: 40,
-          combined_cutoff: 200,
+          combined_cutoff: r.merit,
         }));
 
         console.log(`[admin/cutoff-marks/upload-json] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
@@ -865,7 +865,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           utme_cutoff: 200,
           utme_weight: 60,
           putme_weight: 40,
-          combined_cutoff: 200,
+          combined_cutoff: r.merit,
         }));
 
         console.log(`[admin/cutoff-marks/bulk] Inserting batch ${Math.floor(i/50) + 1}: ${batch.length} records`);
