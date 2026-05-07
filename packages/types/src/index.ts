@@ -434,19 +434,24 @@ export interface PeerRanking {
 
 /**
  * Cutoff mark for a course at a university
+ * Supports both Merit/Catch/ELDS format (new) and legacy UTME-based format
  */
 export interface CutoffMark {
   id: string;
   university_id: string;
+  faculty?: string;
   course: string;
   year: number;
-  utme_cutoff: number;
-  putme_weight: number;
-  utme_weight: number;
-  combined_cutoff: number;
+  merit_cutoff?: number;
+  catch_cutoff?: number;
+  elds_cutoff?: number;
+  utme_cutoff?: number;
+  putme_weight?: number;
+  utme_weight?: number;
+  combined_cutoff?: number;
   notes?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 /**

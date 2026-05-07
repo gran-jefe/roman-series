@@ -62,6 +62,12 @@ export default function AdminLayout({
             Review Answers
           </Link>
           <Link
+            href="/admin/cutoff-marks"
+            className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
+          >
+            Cut-off Marks
+          </Link>
+          <Link
             href="/dashboard"
             className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium mt-6 pt-6 border-t border-rose/30"
           >

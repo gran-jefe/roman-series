@@ -325,7 +325,7 @@ export default function AnalyticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredTopics.map((topic, idx) => (
+                        {filteredTopics.map((topic) => (
                           <tr key={topic.topic_id} className="border-b hover:bg-gray-50">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
@@ -452,7 +452,7 @@ export default function AnalyticsPage() {
               <div className="bg-white rounded-lg shadow-md border-t-4 p-6" style={{ borderTopColor: strongestTopic.subject_colour_token }}>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Strongest Topic</p>
                 <p className="text-xl font-bold text-navy mb-1">{strongestTopic.topic_name}</p>
-                <p className="text-sm font-semibold mb-3" style={{ color: strongestTopic.subject_colour_token }}>
+                <p className="text-sm font-semibold mb-3 text-gray-500" style={{ color: strongestTopic.subject_colour_token }}>
                   {strongestTopic.avg_percentage}% • {strongestTopic.subject_name}
                 </p>
                 <p className="text-xs text-gray-500">Keep this momentum! 🚀</p>

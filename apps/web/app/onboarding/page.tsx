@@ -330,7 +330,7 @@ export default function OnboardingPage() {
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex items-center">
                     <span className="text-sm text-gray-600 mr-2">Status:</span>
-                    {parseInt(utmeScore) >= cutoffMark.utme_cutoff ? (
+                    {cutoffMark.utme_cutoff && parseInt(utmeScore) >= cutoffMark.utme_cutoff ? (
                       <span className="text-sm font-medium text-green-600 flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path
