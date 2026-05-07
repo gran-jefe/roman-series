@@ -469,6 +469,7 @@ export interface PredictionResult {
     putme_weight: number;
   } | null;
   utme_qualifies: boolean;
+  putme_qualifies: boolean;
   utme_contribution: number;
   current_practice_avg: number;
   predicted_total: number;

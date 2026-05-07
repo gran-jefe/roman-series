@@ -578,6 +578,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
           utme_score: profile.utme_score || null,
           cutoff: null,
           utme_qualifies: false,
+          putme_qualifies: false,
           utme_contribution: 0,
           current_practice_avg: currentPracticeAvg,
           predicted_total: 0,
@@ -607,12 +608,22 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
           ? Math.ceil(((cutoff.combined_cutoff - utmeContribution) / cutoff.putme_weight) * 100)
           : 0;
 
+      // Admission requirements:
+      // 1. UTME score must be >= 200 (minimum cutoff)
+      // 2. PUTME score must be >= 50% (minimum percentage)
+      // 3. Combined score must meet cutoff
       const utmeQualifies = utmeScore >= cutoff.utme_cutoff;
+      const putmeMinimum = 50; // Minimum 50% required for PUTME
+      const putmeQualifies = currentPracticeAvg >= putmeMinimum;
       const predictedTotalRounded = Math.round(predictedTotal * 10) / 10;
 
       // Determine status
       let status: "on_track" | "at_risk" | "no_data" = "no_data";
-      if (predictedTotalRounded >= cutoff.combined_cutoff) {
+
+      // Must meet both UTME and PUTME minimums
+      if (!utmeQualifies || !putmeQualifies) {
+        status = "at_risk";
+      } else if (predictedTotalRounded >= cutoff.combined_cutoff) {
         status = "on_track";
       } else if (currentPracticeAvg >= requiredPutmeScore) {
         status = "on_track";
@@ -631,6 +642,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
           putme_weight: cutoff.putme_weight,
         },
         utme_qualifies: utmeQualifies,
+        putme_qualifies: putmeQualifies,
         utme_contribution: Math.round(utmeContribution * 10) / 10,
         current_practice_avg: currentPracticeAvg,
         predicted_total: predictedTotalRounded,
