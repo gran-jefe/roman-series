@@ -27,6 +27,7 @@ export default function PricingPage() {
       if (res.data.data?.authorization_url) {
         window.location.href = res.data.data.authorization_url;
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Failed to initiate payment"

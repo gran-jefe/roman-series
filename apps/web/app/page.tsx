@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function LandingPage() {
   const { user } = useAuth();
+
   const SUBJECTS = [
     { name: "Biology", color: "bg-biology" },
     { name: "Government", color: "bg-government" },
@@ -28,21 +29,47 @@ export default function LandingPage() {
     { code: "UNN", name: "University of Nigeria" },
   ];
 
+  const FEATURES = [
+    {
+      title: "Real Past Questions",
+      desc: "Practice with authentic past exam questions from top Nigerian universities",
+      icon: "📋"
+    },
+    {
+      title: "Timed Practice Sessions",
+      desc: "Build exam confidence with realistic time-bound practice tests",
+      icon: "⏱️"
+    },
+    {
+      title: "Performance Analytics",
+      desc: "Track your progress and identify weak areas with detailed analytics",
+      icon: "📊"
+    },
+    {
+      title: "Admission Prediction",
+      desc: "Get real-time predictions of your admission likelihood",
+      icon: "🎯"
+    },
+  ];
+
   const TESTIMONIALS = [
     {
       text: "I arrived at UI with little knowledge of how technical the Post-UTME could be. Roman Series changed everything.",
       author: "Shoge Q.",
       role: "Law, University of Ibadan",
+      initial: "S",
     },
     {
       text: "The timed practice sessions helped me manage exam pressure way better. My scores improved dramatically!",
       author: "Chioma O.",
       role: "Medicine, University of Lagos",
+      initial: "C",
     },
     {
       text: "Perfect for last-minute prep. The performance tracking showed exactly where I needed to focus.",
       author: "Adeyemi T.",
       role: "Engineering, FUTA",
+      initial: "A",
     },
   ];
 
@@ -51,11 +78,12 @@ export default function LandingPage() {
       name: "Per University Pack",
       price: "₦1,500",
       duration: "1 year",
-      description: "Access to one university's past questions",
+      description: "Perfect for focused preparation",
       features: [
         "One university only",
         "All subjects for that university",
         "Valid for 1 year",
+        "Basic analytics",
       ],
       highlighted: false,
     },
@@ -63,13 +91,14 @@ export default function LandingPage() {
       name: "Monthly Access",
       price: "₦2,000",
       duration: "30 days",
-      description: "Perfect for quick preparation",
+      description: "Most students choose this",
       features: [
         "All universities",
         "All subjects",
         "Valid for 30 days",
-        "Performance analytics",
-        "Leaderboard access",
+        "Full analytics",
+        "Admission prediction",
+        "Priority support",
       ],
       highlighted: true,
       badge: "Most Popular",
@@ -83,8 +112,10 @@ export default function LandingPage() {
         "All universities",
         "All subjects",
         "Valid for 90 days",
-        "Performance analytics",
-        "Leaderboard access",
+        "Full analytics",
+        "Admission prediction",
+        "Priority support",
+        "Early access to new features",
       ],
       highlighted: false,
       badge: "Best Value",
@@ -92,23 +123,25 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-blush">
+    <div className="min-h-screen bg-white">
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-forest rounded-full" />
+            <div className="w-10 h-10 bg-forest rounded-full flex items-center justify-center font-bold">
+              RS
+            </div>
             <h1 className="text-xl font-bold">Roman Series</h1>
           </Link>
           <div className="flex gap-4">
             {!user ? (
               <>
-                <Link href="/login" className="text-sm hover:text-gray-300 transition-colors">
+                <Link href="/login" className="text-sm hover:text-gray-300 transition-colors font-medium">
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  className="text-sm bg-forest px-4 py-2 rounded-lg hover:bg-opacity-90 transition-opacity"
+                  className="text-sm bg-forest text-white px-5 py-2 rounded-lg hover:bg-opacity-90 transition-opacity font-medium"
                 >
                   Get Started
                 </Link>
@@ -116,7 +149,7 @@ export default function LandingPage() {
             ) : (
               <Link
                 href="/dashboard"
-                className="text-sm bg-forest px-4 py-2 rounded-lg hover:bg-opacity-90 transition-opacity"
+                className="text-sm bg-forest text-white px-5 py-2 rounded-lg hover:bg-opacity-90 transition-opacity font-medium"
               >
                 Dashboard
               </Link>
@@ -126,80 +159,110 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-navy text-white py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Ace Your Post-UTME. Practice with Real Past Questions.
-          </h2>
-          <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
-            Join thousands of students preparing for UI, OAU, UNILAG, ABU, FUTA and more — with
-            timed practice, instant scoring, and performance tracking.
+      <section className="bg-gradient-to-br from-navy via-deep-blue to-navy text-white py-24 px-6">
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-block mb-6 px-4 py-2 bg-forest/20 rounded-full border border-forest/40">
+            <p className="text-sm font-semibold text-forest">✨ Trusted by thousands of students</p>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+            Master Post-UTME with Real Past Questions
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Practice with authentic questions from top Nigerian universities. Get timed practice sessions, performance analytics, and admission predictions.
           </p>
           <div className="flex flex-col md:flex-row gap-4 justify-center mb-12">
             <Link
               href={user ? "/dashboard" : "/register"}
-              className="bg-forest text-white px-8 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-opacity"
+              className="bg-forest text-white px-8 py-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all hover:shadow-lg"
             >
-              {user ? "Go to Dashboard" : "Start Free"}
+              {user ? "Go to Dashboard" : "Start Practicing Free"}
             </Link>
             <Link
               href="#pricing"
-              className="border-2 border-forest text-forest px-8 py-3 rounded-lg font-medium hover:bg-forest hover:text-white transition-colors"
+              className="border-2 border-forest text-forest bg-white px-8 py-4 rounded-lg font-semibold hover:bg-forest hover:text-white transition-all"
             >
-              View Pricing
+              See Pricing Plans
             </Link>
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-8 text-center">
+          <div className="grid grid-cols-3 gap-8 pt-12 border-t border-gray-700">
             <div>
-              <div className="text-3xl font-bold text-forest">75+</div>
-              <div className="text-gray-300 text-sm">Questions</div>
+              <div className="text-4xl font-bold text-forest mb-2">1000+</div>
+              <div className="text-gray-300 text-sm">Past Questions</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-forest">9</div>
-              <div className="text-gray-300 text-sm">Universities</div>
+              <div className="text-4xl font-bold text-forest mb-2">9</div>
+              <div className="text-gray-300 text-sm">Top Universities</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-forest">8</div>
+              <div className="text-4xl font-bold text-forest mb-2">8</div>
               <div className="text-gray-300 text-sm">Subjects</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="bg-blush py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-navy text-center mb-12">How It Works</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { icon: "1", title: "Create Your Account", desc: "Free to get started" },
-              { icon: "2", title: "Pick Your University", desc: "Select your target university and subject" },
-              { icon: "3", title: "Start Practicing", desc: "Timed past questions with instant scoring" },
-            ].map((step, idx) => (
-              <div key={idx} className="text-center">
-                <div className="w-16 h-16 bg-forest text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                  {step.icon}
-                </div>
-                <h3 className="text-xl font-bold text-navy mb-2">{step.title}</h3>
-                <p className="text-gray-600">{step.desc}</p>
+      {/* Features Section */}
+      <section className="bg-white py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-navy mb-4">Powerful Features for Success</h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">Everything you need to ace your Post-UTME exam</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {FEATURES.map((feature, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-xl p-8 border border-gray-200 hover:border-forest hover:shadow-lg transition-all">
+                <div className="text-4xl mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-bold text-navy mb-3">{feature.title}</h3>
+                <p className="text-gray-600">{feature.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Subjects */}
-      <section className="bg-blush py-20 px-4">
+      {/* How It Works */}
+      <section className="bg-gray-50 py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-bold text-navy text-center mb-16">Three Simple Steps</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { icon: "1", title: "Create Account", desc: "Sign up and select your target university" },
+              { icon: "2", title: "Choose Subjects", desc: "Pick the subjects you need to practice" },
+              { icon: "3", title: "Start Practicing", desc: "Take timed exams and track your progress" },
+            ].map((step, idx) => (
+              <div key={idx} className="relative">
+                <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
+                  <div className="w-14 h-14 bg-forest text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
+                    {step.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-navy mb-3">{step.title}</h3>
+                  <p className="text-gray-600">{step.desc}</p>
+                </div>
+                {idx < 2 && (
+                  <div className="hidden md:block absolute top-1/3 -right-4 text-forest text-3xl">→</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Subjects Section */}
+      <section className="bg-white py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-navy text-center mb-12">All the Subjects You Need</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-navy mb-4">Master All Subjects</h2>
+            <p className="text-gray-600 text-lg">Comprehensive coverage of all Post-UTME subjects</p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {SUBJECTS.map((subject) => (
               <Link
                 key={subject.name}
                 href={user ? "/dashboard" : "/register"}
-                className={`${subject.color} text-white p-6 rounded-lg text-center font-medium hover:shadow-lg transition-shadow cursor-pointer`}
+                className={`${subject.color} text-white p-8 rounded-xl text-center font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105`}
               >
                 {subject.name}
               </Link>
@@ -208,17 +271,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Universities */}
-      <section className="bg-blush py-20 px-4">
+      {/* Universities Section */}
+      <section className="bg-gray-50 py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-navy text-center mb-12">
-            Questions from Top Nigerian Universities
-          </h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-navy mb-4">Top Nigerian Universities</h2>
+            <p className="text-gray-600 text-lg">Practice with questions from universities you're applying to</p>
+          </div>
           <div className="flex flex-wrap justify-center gap-3">
             {UNIVERSITIES.map((uni) => (
               <div
                 key={uni.code}
-                className="bg-blush text-navy px-4 py-2 rounded-full text-sm font-medium border border-rose"
+                className="bg-white text-navy px-6 py-3 rounded-full text-sm font-semibold border-2 border-forest hover:bg-forest hover:text-white transition-all"
                 title={uni.name}
               >
                 {uni.code}
@@ -229,17 +293,25 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-blush py-20 px-4">
+      <section className="bg-white py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-navy text-center mb-12">What Students Say</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-navy mb-4">Success Stories</h2>
+            <p className="text-gray-600 text-lg">See what our students have achieved</p>
+          </div>
           <div className="grid md:grid-cols-3 gap-8">
             {TESTIMONIALS.map((testimonial, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-lg p-8 border-t-4 border-rose">
-                <p className="text-gray-600 mb-4 italic">"{testimonial.text}"</p>
-                <div className="border-t pt-4">
-                  <p className="font-bold text-navy">{testimonial.author}</p>
-                  <p className="text-sm text-gray-600">{testimonial.role}</p>
+              <div key={idx} className="bg-white rounded-xl shadow-md border-l-4 border-forest p-8 hover:shadow-lg transition-all">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-forest text-white rounded-full flex items-center justify-center font-bold text-lg">
+                    {testimonial.initial}
+                  </div>
+                  <div>
+                    <p className="font-bold text-navy">{testimonial.author}</p>
+                    <p className="text-sm text-gray-600">{testimonial.role}</p>
+                  </div>
                 </div>
+                <p className="text-gray-700 italic">"{testimonial.text}"</p>
               </div>
             ))}
           </div>
@@ -247,34 +319,39 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="bg-white py-20 px-4">
+      <section id="pricing" className="bg-gray-50 py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-navy text-center mb-12">Simple, Affordable Pricing</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-navy mb-4">Simple, Transparent Pricing</h2>
+            <p className="text-gray-600 text-lg">Choose the plan that fits your prep timeline</p>
+          </div>
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
-                className={`rounded-lg shadow-lg overflow-hidden transition-transform transform hover:scale-105 ${
-                  plan.highlighted ? "ring-2 ring-forest scale-105 bg-white" : "bg-white"
+                className={`rounded-xl overflow-hidden transition-all ${
+                  plan.highlighted
+                    ? "ring-2 ring-forest shadow-2xl transform md:scale-105 bg-white"
+                    : "bg-white shadow-md hover:shadow-lg"
                 }`}
               >
                 {plan.badge && (
-                  <div className="bg-forest text-white text-center py-2 text-sm font-semibold">
-                    {plan.badge}
+                  <div className="bg-forest text-white text-center py-3 text-sm font-bold uppercase tracking-wide">
+                    ⭐ {plan.badge}
                   </div>
                 )}
                 <div className="p-8">
                   <h3 className="text-2xl font-bold text-navy mb-2">{plan.name}</h3>
                   <p className="text-gray-600 text-sm mb-6">{plan.description}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold text-forest">{plan.price}</span>
+                  <div className="mb-8">
+                    <span className="text-5xl font-bold text-forest">{plan.price}</span>
                     <span className="text-gray-600 ml-2">/ {plan.duration}</span>
                   </div>
                   <Link
                     href={user ? "/dashboard" : "/register"}
-                    className={`block w-full py-3 px-4 rounded-lg font-medium text-center transition-opacity mb-8 ${
+                    className={`block w-full py-3 px-4 rounded-lg font-bold text-center transition-all mb-8 ${
                       plan.highlighted
-                        ? "bg-forest text-white hover:bg-opacity-90"
+                        ? "bg-forest text-white hover:bg-opacity-90 hover:shadow-lg"
                         : "border-2 border-forest text-forest hover:bg-forest hover:text-white"
                     }`}
                   >
@@ -282,8 +359,8 @@ export default function LandingPage() {
                   </Link>
                   <div className="space-y-3">
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="text-forest font-bold">✓</span>
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="text-forest font-bold flex-shrink-0">✓</span>
                         <span className="text-sm text-gray-700">{feature}</span>
                       </div>
                     ))}
@@ -293,37 +370,58 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Free Tier Note */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
-            <h3 className="text-lg font-bold text-navy mb-2">Starting Your Journey?</h3>
-            <p className="text-gray-600 mb-4">
-              Free users get <strong>10 practice questions</strong> to try out Roman Series before
-              upgrading. Perfect for testing our features!
+          {/* Free Trial */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-10 text-center max-w-2xl mx-auto">
+            <h3 className="text-2xl font-bold text-navy mb-2">Not Sure Yet?</h3>
+            <p className="text-gray-700 mb-2">
+              Start with our <strong>free tier</strong> and practice 10 questions to see how Roman Series works.
             </p>
-            <Link href={user ? "/dashboard" : "/register"} className="text-forest font-medium hover:underline">
-              {user ? "Go to Dashboard" : "Try Free"} →
+            <p className="text-sm text-gray-600 mb-6">
+              No credit card required. Upgrade anytime.
+            </p>
+            <Link
+              href={user ? "/dashboard" : "/register"}
+              className="inline-block text-forest font-bold hover:underline"
+            >
+              Try for Free →
             </Link>
           </div>
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="bg-navy text-white py-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold mb-4">Ready to Ace Your Post-UTME?</h2>
+          <p className="text-xl text-gray-300 mb-8">Join thousands of students already improving their scores</p>
+          <Link
+            href={user ? "/dashboard" : "/register"}
+            className="inline-block bg-forest text-white px-8 py-4 rounded-lg font-bold hover:bg-opacity-90 transition-all hover:shadow-lg"
+          >
+            Get Started Now
+          </Link>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="bg-navy text-white py-12 px-4">
+      <footer className="bg-navy text-white py-16 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
+          <div className="grid md:grid-cols-2 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-forest rounded-full" />
+                <div className="w-10 h-10 bg-forest rounded-full flex items-center justify-center font-bold">
+                  RS
+                </div>
                 <h4 className="text-xl font-bold">Roman Series</h4>
               </div>
-              <p className="text-gray-400 text-sm">
-                Practice Post-UTME past questions with timed practice and performance tracking.
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Master Post-UTME past questions with timed practice, instant scoring, and detailed performance analytics to predict your admission likelihood.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-8">
               <div>
-                <p className="font-bold mb-2">Product</p>
-                <ul className="space-y-1 text-sm text-gray-400">
+                <p className="font-bold mb-4 text-forest">Product</p>
+                <ul className="space-y-2 text-sm text-gray-400">
                   <li>
                     <Link href="/" className="hover:text-white transition-colors">
                       Home
@@ -334,14 +432,19 @@ export default function LandingPage() {
                       Pricing
                     </Link>
                   </li>
+                  <li>
+                    <Link href="/analytics" className="hover:text-white transition-colors">
+                      Analytics
+                    </Link>
+                  </li>
                 </ul>
               </div>
               <div>
-                <p className="font-bold mb-2">Account</p>
-                <ul className="space-y-1 text-sm text-gray-400">
+                <p className="font-bold mb-4 text-forest">Account</p>
+                <ul className="space-y-2 text-sm text-gray-400">
                   <li>
                     <Link href="/login" className="hover:text-white transition-colors">
-                      Login
+                      Sign In
                     </Link>
                   </li>
                   <li>
@@ -349,16 +452,21 @@ export default function LandingPage() {
                       Register
                     </Link>
                   </li>
+                  <li>
+                    <Link href="/profile" className="hover:text-white transition-colors">
+                      Profile
+                    </Link>
+                  </li>
                 </ul>
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-700 pt-8">
-            <p className="text-center text-gray-400 text-sm">
-              Compiled by Habeeb K. Ademola
-            </p>
-            <p className="text-center text-gray-400 text-sm mt-2">
+          <div className="border-t border-gray-700 pt-8 text-center">
+            <p className="text-gray-400 text-sm mb-2">
               © 2025 Roman Series. All rights reserved.
+            </p>
+            <p className="text-gray-500 text-xs">
+              Built by Habeeb K. Ademola | 🇳🇬 Made with ❤️ for Nigerian students
             </p>
           </div>
         </div>
