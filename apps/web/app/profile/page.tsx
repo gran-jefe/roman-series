@@ -10,7 +10,7 @@ import type { Subject, University } from "types";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -82,6 +82,7 @@ export default function ProfilePage() {
 
       if (response.status === 200 || response.data?.status === "success") {
         toast.success("Profile updated successfully!");
+        await refreshProfile();
         setIsEditing(false);
       }
     } catch (error) {

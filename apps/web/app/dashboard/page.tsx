@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import { PageLoader } from "@/components/PageLoader";
+import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
 
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string>("");
   const [errorBank, setErrorBank] = useState<ErrorBankQuestion[]>([]);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -65,6 +67,11 @@ export default function DashboardPage() {
         if (!userProfile?.subject_combination?.length) {
           router.push("/onboarding");
           return;
+        }
+
+        // Show completion modal if both course and score are missing
+        if (!userProfile?.target_course && !userProfile?.utme_score) {
+          setShowCompletionModal(true);
         }
 
         // Get user's target university
@@ -628,6 +635,10 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {showCompletionModal && (
+        <ProfileCompletionModal onComplete={() => setShowCompletionModal(false)} />
+      )}
 
       <style jsx>{`
         @keyframes fadeIn {
