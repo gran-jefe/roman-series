@@ -161,9 +161,10 @@ export default function CutoffMarksPage() {
       } else {
         toast.error(res.data.message || "Upload failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload records:", error);
-      toast.error("Failed to upload records");
+      const message = error.response?.data?.message || error.message || "Failed to upload records";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
