@@ -242,34 +242,72 @@ export default function PracticeResultsPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-6 text-center">
-              {results && userStats.avg_score_by_subject && (
-                (() => {
-                  const subjectAvg = userStats.avg_score_by_subject.find(
-                    (s) =>
-                      s.subject_id === sessionMeta.subject?.id
-                  )?.avg_percentage ?? 0;
-                  const diff = (results.percentage ?? 0) - subjectAvg;
-                  if (diff > 5) {
-                    return (
-                      <p className="text-green-700 font-medium">
-                        ✓ You're above average! Great performance.
-                      </p>
-                    );
-                  } else if (diff < -5) {
-                    return (
-                      <p className="text-amber-700 font-medium">
-                        Keep practicing to reach the subject average.
-                      </p>
-                    );
-                  } else {
-                    return (
-                      <p className="text-gray-700 font-medium">
-                        You're on par with the subject average.
-                      </p>
-                    );
-                  }
-                })()
+            <div className="mt-6 space-y-3 text-center">
+              {results && (
+                <>
+                  {/* Absolute Performance Analysis */}
+                  {(() => {
+                    const percentage = results.percentage ?? 0;
+                    if (percentage >= 80) {
+                      return (
+                        <p className="text-green-700 font-medium">
+                          ✓ Excellent! Outstanding performance ({percentage}%).
+                        </p>
+                      );
+                    } else if (percentage >= 60) {
+                      return (
+                        <p className="text-blue-700 font-medium">
+                          Good performance ({percentage}%)! Keep practicing to improve.
+                        </p>
+                      );
+                    } else if (percentage >= 40) {
+                      return (
+                        <p className="text-amber-700 font-medium">
+                          Keep practicing ({percentage}%). You're getting closer to your target.
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p className="text-red-700 font-medium">
+                          Focus on practicing ({percentage}%) to improve your score.
+                        </p>
+                      );
+                    }
+                  })()}
+
+                  {/* Peer Comparison Analysis */}
+                  {userStats.avg_score_by_subject && (
+                    (() => {
+                      const subjectAvg = userStats.avg_score_by_subject.find(
+                        (s) =>
+                          s.subject_id === sessionMeta.subject?.id
+                      )?.avg_percentage ?? 0;
+                      const diff = (results.percentage ?? 0) - subjectAvg;
+                      if (subjectAvg > 0) {
+                        if (diff > 0) {
+                          return (
+                            <p className="text-sm text-gray-600">
+                              {diff.toFixed(0)}% above the subject average ({subjectAvg.toFixed(0)}%)
+                            </p>
+                          );
+                        } else if (diff < 0) {
+                          return (
+                            <p className="text-sm text-gray-600">
+                              {Math.abs(diff).toFixed(0)}% below the subject average ({subjectAvg.toFixed(0)}%)
+                            </p>
+                          );
+                        } else {
+                          return (
+                            <p className="text-sm text-gray-600">
+                              On par with the subject average ({subjectAvg.toFixed(0)}%)
+                            </p>
+                          );
+                        }
+                      }
+                      return null;
+                    })()
+                  )}
+                </>
               )}
             </div>
           </div>

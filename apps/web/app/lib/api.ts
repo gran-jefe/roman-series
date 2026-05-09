@@ -71,6 +71,15 @@ api.interceptors.request.use(
 // Response interceptor - handle auth errors and silent refresh
 api.interceptors.response.use(
   (response) => {
+    // Extend token expiration on successful requests (activity-based timeout)
+    if (typeof window !== "undefined") {
+      const expiresIn = 86400; // 24 hours
+      const currentToken = localStorage.getItem("access_token");
+      if (currentToken) {
+        const newExpiresAt = Date.now() + expiresIn * 1000;
+        localStorage.setItem("token_expires_at", String(newExpiresAt));
+      }
+    }
     return response;
   },
   async (error: AxiosError) => {
@@ -101,13 +110,15 @@ api.interceptors.response.use(
           : null;
 
       if (!refreshToken) {
+        console.warn("[api] No refresh token available, clearing auth");
         clearAuth();
         if (typeof window !== "undefined") {
-          window.location.href = "/login";
+          window.location.href = "/login?error=session_expired";
         }
         return Promise.reject(error);
       }
 
+      console.log("[api] Attempting to refresh token");
       const { data } = await axios.post(`${apiUrl}/api/auth/refresh`, {
         refresh_token: refreshToken,
       });
@@ -115,18 +126,22 @@ api.interceptors.response.use(
       if (data.status === "success") {
         const { access_token, refresh_token: newRefresh, expires_in } =
           data.data;
+        console.log("[api] Token refreshed successfully");
         storeTokens(access_token, newRefresh, expires_in);
         processQueue(null, access_token);
         original.headers.Authorization = `Bearer ${access_token}`;
         return api(original);
       } else {
-        throw new Error("Refresh failed");
+        console.error("[api] Refresh returned non-success status:", data.message);
+        throw new Error(data.message || "Refresh failed");
       }
-    } catch (refreshError) {
+    } catch (refreshError: any) {
+      console.error("[api] Token refresh failed:", refreshError.message || refreshError);
       processQueue(refreshError, null);
       clearAuth();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        const errorMsg = refreshError?.response?.data?.message || "session_expired";
+        window.location.href = `/login?error=${encodeURIComponent(errorMsg)}`;
       }
       return Promise.reject(refreshError);
     } finally {

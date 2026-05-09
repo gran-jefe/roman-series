@@ -336,10 +336,16 @@ export interface ErrorBankQuestion extends StudentQuestion {
 export interface StartSessionResponse {
   session_id: string;
   questions: StudentQuestion[];
-  subject: Subject;
-  university: University;
+  subject?: Subject;
+  university?: University;
   topic?: Topic;
   total_questions: number;
+  // Mock exam fields
+  subjects?: Subject[];
+  time_limit_minutes?: number;
+  questions_per_subject?: number;
+  available_subjects_count?: number;
+  has_other_subjects?: boolean;
 }
 
 /**

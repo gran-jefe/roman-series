@@ -128,9 +128,9 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      // Store session creation time for 30-minute expiration validation
+      // Store session creation time for 24-hour inactivity timeout
       const sessionExpiresAt = new Date();
-      sessionExpiresAt.setMinutes(sessionExpiresAt.getMinutes() + 30);
+      sessionExpiresAt.setHours(sessionExpiresAt.getHours() + 24);
 
       await supabaseAdmin
         .from("profiles")
@@ -150,7 +150,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
             email: data.user.email,
           },
           profile: profile,
-          expires_in: 1800, // 30 minutes in seconds
+          expires_in: 86400, // 24 hours in seconds
         },
         timestamp: new Date().toISOString(),
       });
@@ -224,25 +224,30 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       });
 
       if (error || !data.session) {
+        console.error("[auth/refresh] Supabase refresh error:", error?.message || "Unknown error");
         res.status(401).json({
           status: "error",
-          message: "Failed to refresh session",
+          message: error?.message || "Failed to refresh session. Please log in again.",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      // Extend session expiration by 30 minutes
+      // Extend session expiration by 24 hours (activity-based timeout)
       if (data.user) {
         const sessionExpiresAt = new Date();
-        sessionExpiresAt.setMinutes(sessionExpiresAt.getMinutes() + 30);
+        sessionExpiresAt.setHours(sessionExpiresAt.getHours() + 24);
 
-        await supabaseAdmin
+        const { error: updateError } = await supabaseAdmin
           .from("profiles")
           .update({
             session_expires_at: sessionExpiresAt.toISOString(),
           })
           .eq("id", data.user.id);
+
+        if (updateError) {
+          console.error("[auth/refresh] Failed to update session expiry:", updateError);
+        }
       }
 
       res.json({
@@ -250,15 +255,15 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         data: {
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
-          expires_in: 1800,
+          expires_in: 86400, // 24 hours in seconds
         },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("[auth/refresh] Error:", error);
+      console.error("[auth/refresh] Unexpected error:", error);
       res.status(500).json({
         status: "error",
-        message: "Internal server error",
+        message: "Internal server error during token refresh",
         timestamp: new Date().toISOString(),
       });
     }
@@ -341,22 +346,33 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      if (subject_combination.length !== 4) {
+      if (subject_combination.length < 3 || subject_combination.length > 4) {
         res.status(400).json({
           status: "error",
-          message: "You must select exactly 4 subjects",
+          message: "You must select 3 or 4 subjects",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      // Validate all are UUIDs and exist in subjects table
+      // Validate all are UUIDs and exist in subjects table (or are "other")
+      const realSubjectIds = subject_combination.filter((id: string) => id !== "other");
+
+      if (realSubjectIds.length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "You must select at least one actual subject",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const { data: subjects, error: subjectsError } = await supabaseAdmin
         .from("subjects")
         .select("id")
-        .in("id", subject_combination);
+        .in("id", realSubjectIds);
 
-      if (subjectsError || !subjects || subjects.length !== 4) {
+      if (subjectsError || !subjects || subjects.length < 3) {
         res.status(400).json({
           status: "error",
           message: "Invalid subjects selected",
@@ -365,10 +381,10 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      // Update profile
+      // Update profile with real subjects only (filter out "other")
       const { data: profile, error: updateError } = await supabaseAdmin
         .from("profiles")
-        .update({ subject_combination })
+        .update({ subject_combination: realSubjectIds })
         .eq("id", user.id)
         .select("*")
         .single();

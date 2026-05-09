@@ -195,9 +195,12 @@ export default function DashboardPage() {
               <span className="text-sm">{profile?.full_name || "User"}</span>
               <button
                 onClick={() => logout()}
-                className="text-sm text-gray-300 hover:text-white transition-colors"
+                className="text-gray-300 hover:text-white transition-colors"
+                title="Logout"
               >
-                ⏻
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </button>
             </div>
           </div>
@@ -311,36 +314,37 @@ export default function DashboardPage() {
             {selectedUniversity && (
               <div>
                 <h3 className="text-xl font-bold text-navy mb-4">Mock PUTME Exam</h3>
-                <div className={`rounded-lg shadow-md p-8 border-t-4 transition-all ${
+                <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 transition-all ${
                   subscription?.subscription_status === "free"
                     ? "bg-gray-50 border-gray-300"
                     : "bg-white border-forest hover:shadow-lg"
                 }`}>
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
-                      <h4 className="text-2xl font-bold text-navy mb-3">Full Mock Exam</h4>
-                      <p className="text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
+                      <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
+                      <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
                       {subscription?.subscription_status === "free" && (
                         <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-amber-900">🔒 Unlock with Pro Plan</p>
                           <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock PUTME exams.</p>
                         </div>
                       )}
-                      <div className="grid grid-cols-3 gap-6 mb-6">
-                        <div>
+                      <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
+                        <div className="text-center md:text-left">
                           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Subjects</p>
-                          <p className="text-2xl font-bold text-navy">{subjects.length}</p>
-                          <p className="text-xs text-gray-500">{subjects.map(s => s.name).join(", ")}</p>
+                          <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length}</p>
+                          <p className="text-xs text-gray-500 hidden md:block">{subjects.map(s => s.name).join(", ")}</p>
+                          <p className="text-xs text-gray-500 md:hidden">Subjects</p>
                         </div>
-                        <div>
+                        <div className="text-center md:text-left">
                           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Questions</p>
-                          <p className="text-2xl font-bold text-navy">{subjects.length * 25}</p>
-                          <p className="text-xs text-gray-500">25 per subject</p>
+                          <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length * 25}</p>
+                          <p className="text-xs text-gray-500">25 each</p>
                         </div>
-                        <div>
+                        <div className="text-center md:text-left">
                           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Duration</p>
-                          <p className="text-2xl font-bold text-navy">90 min</p>
-                          <p className="text-xs text-gray-500">Standard UTME time</p>
+                          <p className="text-2xl md:text-3xl font-bold text-navy">90</p>
+                          <p className="text-xs text-gray-500">minutes</p>
                         </div>
                       </div>
                     </div>
@@ -353,7 +357,7 @@ export default function DashboardPage() {
                         }
                       }}
                       disabled={subscription?.subscription_status === "free"}
-                      className={`px-6 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+                      className={`w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
                         subscription?.subscription_status === "free"
                           ? "bg-gray-300 text-gray-600 cursor-not-allowed opacity-50"
                           : "bg-forest text-white hover:shadow-md"

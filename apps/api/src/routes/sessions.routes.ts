@@ -417,49 +417,71 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
 
       console.log("[wrong-questions] Fetching wrong answers from", userSessionIds.length, "sessions");
 
-      // Get wrong question IDs with counts and latest seen date
-      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
+      // Get all answers (correct and wrong) with session timestamps
+      const { data: allAnswers, error: answersError } = await supabaseAdmin
         .from("session_answers")
-        .select("question_id, sessions(created_at)")
+        .select("question_id, is_correct, sessions(created_at)")
         .in("session_id", userSessionIds)
-        .eq("is_correct", false)
         .order("question_id");
 
-      if (wrongError) {
-        console.error("[wrong-questions] Wrong answers fetch error:", wrongError);
+      if (answersError) {
+        console.error("[wrong-questions] Answers fetch error:", answersError);
       }
 
-      console.log("[wrong-questions] Wrong answers found:", wrongAnswers?.length || 0);
+      console.log("[wrong-questions] All answers found:", allAnswers?.length || 0);
 
-      if (wrongError || !wrongAnswers) {
+      if (answersError || !allAnswers) {
         res.status(500).json({
           status: "error",
-          message: "Failed to fetch wrong answers",
+          message: "Failed to fetch answers",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      // Deduplicate and collect metadata
+      // Build a map of each question's most recent answer
+      const latestAnswerMap = new Map<string, { is_correct: boolean; created_at: string }>();
+      allAnswers.forEach((answer: any) => {
+        const sessionData = answer.sessions || {};
+        const createdAt = sessionData.created_at || new Date().toISOString();
+        const existing = latestAnswerMap.get(answer.question_id);
+
+        // Keep the most recent answer
+        if (!existing || createdAt > existing.created_at) {
+          latestAnswerMap.set(answer.question_id, {
+            is_correct: answer.is_correct,
+            created_at: createdAt,
+          });
+        }
+      });
+
+      // Filter for questions that were answered wrong at least once AND whose most recent answer is incorrect
       const questionMap = new Map<
         string,
         { times_wrong: number; last_seen_at: string }
       >();
-      wrongAnswers.forEach((answer: any) => {
-        const existing = questionMap.get(answer.question_id);
-        const sessionData = answer.sessions || {};
-        const createdAt = sessionData.created_at || new Date().toISOString();
-        const newData = {
-          times_wrong: (existing?.times_wrong ?? 0) + 1,
-          last_seen_at: createdAt,
-        };
-        // Keep the latest date
-        if (!existing || createdAt > existing.last_seen_at) {
-          questionMap.set(answer.question_id, newData);
+      allAnswers.forEach((answer: any) => {
+        if (!answer.is_correct) {
+          const sessionData = answer.sessions || {};
+          const createdAt = sessionData.created_at || new Date().toISOString();
+          const existing = questionMap.get(answer.question_id);
+          const newData = {
+            times_wrong: (existing?.times_wrong ?? 0) + 1,
+            last_seen_at: createdAt,
+          };
+          // Keep the latest wrong answer date
+          if (!existing || createdAt > existing.last_seen_at) {
+            questionMap.set(answer.question_id, newData);
+          }
         }
       });
 
-      const uniqueQuestionIds = Array.from(questionMap.keys());
+      // Filter out questions where the most recent answer is correct
+      const uniqueQuestionIds = Array.from(questionMap.keys()).filter((questionId) => {
+        const latestAnswer = latestAnswerMap.get(questionId);
+        // Include only if the most recent answer is incorrect
+        return latestAnswer && !latestAnswer.is_correct;
+      });
       console.log("[wrong-questions] Unique wrong question IDs:", uniqueQuestionIds.length);
 
       if (uniqueQuestionIds.length === 0) {
@@ -946,16 +968,30 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Get the user's selected subjects
+      // Filter out "other" and get only actual subjects
+      const realSubjectIds = profile.subject_combination.filter((id: string) => id !== "other");
+      const hasOtherSubject = profile.subject_combination.includes("other");
+
+      // Get the user's selected subjects (excluding "other")
       const { data: subjects, error: subjectsError } = await supabaseAdmin
         .from("subjects")
         .select("id, name, colour_token")
-        .in("id", profile.subject_combination);
+        .in("id", realSubjectIds);
 
       if (subjectsError || !subjects || subjects.length === 0) {
         res.status(500).json({
           status: "error",
-          message: "Failed to load mock exam subjects",
+          message: "No available subjects found. Please select subjects with available practice questions.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Require at least 3 subjects to be available
+      if (subjects.length < 3) {
+        res.status(400).json({
+          status: "error",
+          message: `Only ${subjects.length} subject(s) have available questions. Please select more subjects with available practice questions.`,
           timestamp: new Date().toISOString(),
         });
         return;
@@ -1084,6 +1120,9 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         })) : [],
       }));
 
+      // Calculate time proportionally: 90 minutes for 4 subjects, 67.5 for 3, etc.
+      const timeLimitMinutes = Math.round((subjects.length / 4) * 90);
+
       res.status(201).json({
         status: "success",
         data: {
@@ -1092,8 +1131,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           subjects: subjects,
           university: university,
           total_questions: allQuestions.length,
-          time_limit_minutes: 90,
+          time_limit_minutes: timeLimitMinutes,
           questions_per_subject: questionsPerSubject,
+          available_subjects_count: subjects.length,
+          has_other_subjects: hasOtherSubject,
         },
         timestamp: new Date().toISOString(),
       });
@@ -1265,12 +1306,12 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         university_id: q.university_id,
         topic_id: q.topic_id,
         body: q.body,
-        options: q.options.map((o: any) => ({
+        options: q.options ? q.options.map((o: any) => ({
           id: o.id,
           question_id: o.question_id,
           label: o.label,
           body: o.body,
-        })),
+        })) : [],
       }));
 
       res.json({

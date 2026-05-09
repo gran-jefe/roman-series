@@ -76,8 +76,8 @@ export default function OnboardingPage() {
   };
 
   const handleStep1Continue = async () => {
-    if (selected.length !== 4) {
-      toast.error("Please select exactly 4 subjects");
+    if (selected.length < 3 || selected.length > 4) {
+      toast.error("Please select 3 or 4 subjects");
       return;
     }
 
@@ -187,7 +187,10 @@ export default function OnboardingPage() {
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-navy mb-4">Select Your Subjects</h1>
               <p className="text-lg text-gray-600 mb-2">
-                Choose exactly 4 subjects to focus your prep
+                Choose 3 or 4 subjects to focus your prep
+              </p>
+              <p className="text-sm text-gray-500 mb-3">
+                Only available subjects are shown. You can select "Other" for subjects not listed in our database.
               </p>
               <p className="text-sm text-gray-500">
                 You can change this later, but this determines which questions you'll see
@@ -199,7 +202,7 @@ export default function OnboardingPage() {
               <div className="bg-white rounded-lg shadow p-4 inline-block">
                 <p className="text-center">
                   <span className="text-3xl font-bold text-forest">{selected.length}</span>
-                  <span className="text-gray-600 ml-2">/ 4 subjects selected</span>
+                  <span className="text-gray-600 ml-2">/ 3-4 subjects selected</span>
                 </p>
               </div>
             </div>
@@ -247,15 +250,48 @@ export default function OnboardingPage() {
                   </button>
                 );
               })}
+
+              {/* Other Option */}
+              <button
+                onClick={() => toggleSubject("other")}
+                disabled={!selected.includes("other") && selected.length >= 4}
+                className={`relative p-6 rounded-lg transition-all cursor-pointer overflow-hidden border-2 ${
+                  selected.includes("other")
+                    ? "ring-4 ring-offset-2 ring-forest shadow-lg scale-105 border-forest bg-white"
+                    : selected.length < 4
+                    ? "hover:shadow-md hover:scale-102 border-gray-300 bg-gray-50"
+                    : "opacity-50 cursor-not-allowed border-gray-300 bg-gray-50"
+                }`}
+              >
+                <div className={`text-center ${selected.includes("other") ? "text-forest" : "text-gray-700"}`}>
+                  <h3 className="font-bold text-lg mb-2">Other Subjects</h3>
+                  <p className="text-xs opacity-75">Subjects not listed above</p>
+                  {selected.includes("other") && (
+                    <div className="flex justify-center mt-2">
+                      <svg
+                        className="w-6 h-6"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </button>
             </div>
 
             {/* Continue Button */}
             <div className="flex justify-center">
               <button
                 onClick={handleStep1Continue}
-                disabled={selected.length !== 4 || submitting}
+                disabled={selected.length < 3 || selected.length > 4 || submitting}
                 className={`px-12 py-3 rounded-lg font-medium text-white transition-opacity ${
-                  selected.length === 4 && !submitting
+                  (selected.length === 3 || selected.length === 4) && !submitting
                     ? "bg-forest hover:bg-opacity-90"
                     : "bg-gray-400 cursor-not-allowed"
                 }`}
