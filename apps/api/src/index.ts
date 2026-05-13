@@ -151,7 +151,10 @@ registerPaymentsRoutes(app, {
 
 registerLeaderboardRoutes(app, { supabaseAdmin });
 
-registerAnalyticsRoutes(app, { supabaseAdmin });
+registerAnalyticsRoutes(app, {
+  supabaseAdmin,
+  groqApiKey: process.env.GROQ_API_KEY || "",
+});
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)

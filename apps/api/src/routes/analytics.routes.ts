@@ -1,13 +1,16 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import Groq from "groq-sdk";
+import PDFDocument from "pdfkit";
 import type { AnalyticsOverview, TopicPerformance, PeerRanking, PredictionResult } from "types";
 
 interface AnalyticsDeps {
   supabaseAdmin: SupabaseClient;
+  groqApiKey: string;
 }
 
 export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
-  const { supabaseAdmin } = deps;
+  const { supabaseAdmin, groqApiKey } = deps;
 
   // GET /api/analytics/overview - User's performance overview with streak & time
   app.get("/api/analytics/overview", async (req: Request, res: Response) => {
@@ -660,6 +663,407 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       res.status(500).json({
         status: "error",
         message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Helper function to fetch all analytics data
+  async function fetchAnalyticsData(userId: string) {
+    // Fetch profile
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name, target_course, target_university_id, utme_score, subject_combination")
+      .eq("id", userId)
+      .single();
+
+    // Fetch university
+    let university = null;
+    if (profile?.target_university_id) {
+      const { data: uni } = await supabaseAdmin
+        .from("universities")
+        .select("name")
+        .eq("id", profile.target_university_id)
+        .single();
+      university = uni;
+    }
+
+    // Fetch sessions
+    const { data: sessions } = await supabaseAdmin
+      .from("sessions")
+      .select("id, score, total_questions, subject_id, started_at")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("started_at", { ascending: false });
+
+    // Fetch topic performance
+    const { data: answers } = await supabaseAdmin
+      .from("session_answers")
+      .select("question_id, is_correct")
+      .in("session_id", sessions?.map((s: any) => s.id) || []);
+
+    const { data: questionDetails } = await supabaseAdmin
+      .from("questions")
+      .select("id, topic_id")
+      .in("id", answers?.map((a: any) => a.question_id) || []);
+
+    const { data: topics } = await supabaseAdmin
+      .from("topics")
+      .select("id, name, subject_id")
+      .in("id", questionDetails?.map((q: any) => q.topic_id) || []);
+
+    const { data: subjects } = await supabaseAdmin
+      .from("subjects")
+      .select("id, name");
+
+    // Build topic stats
+    const topicStats = new Map<string, { name: string; subject_name: string; correct: number; total: number }>();
+    const subjectMap = new Map((subjects || []).map((s: any) => [s.id, s.name]));
+    const topicMap = new Map((topics || []).map((t: any) => [t.id, { name: t.name, subject_id: t.subject_id }]));
+    const questionMap = new Map((questionDetails || []).map((q: any) => [q.id, q.topic_id]));
+
+    if (answers && questionDetails && topics && subjects) {
+
+      answers.forEach((a: any) => {
+        const topicId = questionMap.get(a.question_id);
+        if (topicId && topicMap.has(topicId)) {
+          const topicInfo = topicMap.get(topicId);
+          if (topicInfo) {
+            const subjectName = subjectMap.get(topicInfo.subject_id) || "Unknown";
+            const key = topicId;
+            const existing = topicStats.get(key) || {
+              name: topicInfo.name,
+              subject_name: subjectName,
+              correct: 0,
+              total: 0,
+            };
+            existing.total++;
+            if (a.is_correct) existing.correct++;
+            topicStats.set(key, existing);
+          }
+        }
+      });
+    }
+
+    // Get worst and best topics
+    const topicArray = Array.from(topicStats.values())
+      .map((t) => ({
+        ...t,
+        percentage: t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0,
+      }))
+      .sort((a, b) => a.percentage - b.percentage);
+
+    const worstTopics = topicArray.slice(0, 5);
+    const bestTopics = topicArray.reverse().slice(0, 5);
+
+    // Per-subject stats
+    const subjectStats = new Map<string, { correct: number; total: number }>();
+    if (sessions) {
+      sessions.forEach((s: any) => {
+        const relevant = answers?.filter((a: any) => {
+          const qTopicId = questionMap.get(a.question_id);
+          const topic = qTopicId ? topics?.find((t: any) => t.id === qTopicId) : null;
+          return topic?.subject_id === s.subject_id;
+        }) || [];
+
+        const correct = relevant.filter((a: any) => a.is_correct).length;
+        const key = s.subject_id;
+        const existing = subjectStats.get(key) || { correct: 0, total: 0 };
+        existing.correct += correct;
+        existing.total += relevant.length;
+        subjectStats.set(key, existing);
+      });
+    }
+
+    const subjectAvgs = Array.from(subjectStats.entries())
+      .map(([subjectId, stats]) => {
+        const subject = subjects?.find((s: any) => s.id === subjectId);
+        return {
+          subject_name: subject?.name || "Unknown",
+          percentage: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.percentage - a.percentage);
+
+    // Calculate overall stats
+    let totalCorrect = 0;
+    let totalAnswered = 0;
+    if (answers) {
+      totalAnswered = answers.length;
+      totalCorrect = answers.filter((a: any) => a.is_correct).length;
+    }
+
+    const overallAvg = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+
+    return {
+      profile,
+      university,
+      sessions: sessions || [],
+      subjectAvgs,
+      worstTopics,
+      bestTopics,
+      overallAvg,
+      totalQuestions: totalAnswered,
+    };
+  }
+
+  // GET /api/analytics/report - Generate AI report
+  app.get("/api/analytics/report", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const data = await fetchAnalyticsData(user.id);
+
+      if (!data.profile || data.totalQuestions === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "Not enough data to generate report",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const groq = new Groq({ apiKey: groqApiKey });
+
+      const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
+Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
+Write in a warm, professional tone. Use plain text paragraphs only, no bullet points or markdown.
+Each section should flow naturally into the next. Be specific: mention actual subject names, topic names,
+percentage scores, and performance compared to their target.
+
+STUDENT DATA:
+Name: ${data.profile.full_name || "Student"}
+Target University: ${data.university?.name || "Not selected"}
+Target Course: ${data.profile.target_course || "Not specified"}
+UTME Score: ${data.profile.utme_score || "Not set"}/400
+
+Overall Performance:
+- Average Score: ${data.overallAvg}%
+- Total Questions Practiced: ${data.totalQuestions}
+- Sessions Completed: ${data.sessions.length}
+
+Performance by Subject:
+${data.subjectAvgs.map((s) => `- ${s.subject_name}: ${s.percentage}%`).join("\n")}
+
+Weakest Topics (Need Focus):
+${data.worstTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Strongest Topics (Maintain Excellence):
+${data.bestTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Write a comprehensive report that:
+1. Opens with an overall impression of the student's exam readiness
+2. Discusses performance in each subject they've practiced
+3. Identifies the weakest areas and provides 3-5 specific study actions
+4. Highlights strengths they should leverage
+5. Closes with motivational advice tied to their admission target
+
+Keep the report between 400-600 words. Use encouraging, constructive language.`;
+
+      const message = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: reportPrompt,
+          },
+        ],
+        model: "mixtral-8x7b-32768",
+        max_tokens: 1024,
+      });
+
+      const reportText = message.choices[0].message.content || "";
+
+      res.set("Cache-Control", "no-store");
+      res.json({
+        status: "success",
+        data: {
+          report: reportText,
+          generated_at: new Date().toISOString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[analytics/report] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to generate report",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/analytics/report/download - Download report as PDF
+  app.get("/api/analytics/report/download", async (req: Request, res: Response) => {
+    try {
+      // Check Bearer token or query param token
+      let token: string | null = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      } else if (typeof req.query.token === "string") {
+        token = req.query.token;
+      }
+
+      if (!token) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const data = await fetchAnalyticsData(user.id);
+
+      if (!data.profile || data.totalQuestions === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "Not enough data to generate report",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Generate report
+      const groq = new Groq({ apiKey: groqApiKey });
+
+      const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
+Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
+Write in a warm, professional tone. Use plain text paragraphs only, no bullet points or markdown.
+Each section should flow naturally into the next. Be specific: mention actual subject names, topic names,
+percentage scores, and performance compared to their target.
+
+STUDENT DATA:
+Name: ${data.profile.full_name || "Student"}
+Target University: ${data.university?.name || "Not selected"}
+Target Course: ${data.profile.target_course || "Not specified"}
+UTME Score: ${data.profile.utme_score || "Not set"}/400
+
+Overall Performance:
+- Average Score: ${data.overallAvg}%
+- Total Questions Practiced: ${data.totalQuestions}
+- Sessions Completed: ${data.sessions.length}
+
+Performance by Subject:
+${data.subjectAvgs.map((s) => `- ${s.subject_name}: ${s.percentage}%`).join("\n")}
+
+Weakest Topics (Need Focus):
+${data.worstTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Strongest Topics (Maintain Excellence):
+${data.bestTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Write a comprehensive report that:
+1. Opens with an overall impression of the student's exam readiness
+2. Discusses performance in each subject they've practiced
+3. Identifies the weakest areas and provides 3-5 specific study actions
+4. Highlights strengths they should leverage
+5. Closes with motivational advice tied to their admission target
+
+Keep the report between 400-600 words. Use encouraging, constructive language.`;
+
+      const message = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: reportPrompt,
+          },
+        ],
+        model: "mixtral-8x7b-32768",
+        max_tokens: 1024,
+      });
+
+      const reportText = message.choices[0].message.content || "";
+
+      // Generate PDF
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="roman-series-report-${Date.now()}.pdf"`
+      );
+
+      doc.pipe(res);
+
+      // Title
+      doc.fontSize(24).font("Helvetica-Bold").text("Roman Series", { align: "center" });
+      doc.fontSize(16).font("Helvetica").text("Your Personalised Study Report", { align: "center" });
+      doc.moveDown(1.5);
+
+      // Subtitle
+      doc
+        .fontSize(12)
+        .font("Helvetica")
+        .text(
+          `${data.profile.full_name || "Student"} • ${data.university?.name || "—"} • ${new Date().toLocaleDateString()}`,
+          { align: "center" }
+        );
+      doc.moveDown(1.5);
+
+      // Report body
+      doc.fontSize(11).font("Helvetica");
+      const lines = reportText.split("\n");
+      lines.forEach((line: string) => {
+        if (line.trim()) {
+          doc.text(line, { align: "left", lineGap: 5 });
+        } else {
+          doc.moveDown();
+        }
+      });
+
+      // Footer
+      doc.moveDown(2);
+      doc.fontSize(9).font("Helvetica").text("Roman Series • Confidential", {
+        align: "center",
+      });
+
+      doc.end();
+    } catch (error) {
+      console.error("[analytics/report/download] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to generate PDF",
         timestamp: new Date().toISOString(),
       });
     }

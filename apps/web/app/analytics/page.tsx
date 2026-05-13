@@ -19,6 +19,9 @@ export default function AnalyticsPage() {
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -107,6 +110,28 @@ export default function AnalyticsPage() {
     return `${minutes}m`;
   };
 
+  const handleGenerateReport = async () => {
+    try {
+      setReportLoading(true);
+      const res = await api.get("/api/analytics/report");
+      setReport(res.data.data.report);
+      setShowReport(true);
+      toast.success("Report generated successfully!");
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+      toast.error("Failed to generate report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    const token = localStorage.getItem("access_token");
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const url = `${apiUrl}/api/analytics/report/download?token=${token}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="min-h-screen bg-blush">
       {/* Navbar */}
@@ -127,10 +152,60 @@ export default function AnalyticsPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-navy mb-2">Performance Analytics</h1>
-          <p className="text-gray-600 text-sm">Your detailed performance insights and progress tracking</p>
+        <div className="mb-12 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-navy mb-2">Performance Analytics</h1>
+            <p className="text-gray-600 text-sm">Your detailed performance insights and progress tracking</p>
+          </div>
+          <button
+            onClick={handleGenerateReport}
+            disabled={reportLoading}
+            className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {reportLoading ? "Generating..." : "Generate Report"}
+          </button>
         </div>
+
+        {/* Report Panel */}
+        {showReport && report && (
+          <div className="mb-12 bg-white rounded-lg shadow-md border-t-4 border-forest p-8">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-navy mb-2">Your Personalised Study Report</h2>
+                <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+              </div>
+              <button
+                onClick={() => setShowReport(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6 p-6 bg-blush rounded-lg max-h-96 overflow-y-auto">
+              {report.split("\n\n").map((paragraph: string, idx: number) => (
+                <p key={idx} className="text-gray-700 leading-relaxed mb-4">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleDownloadPDF}
+                className="flex-1 px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all"
+              >
+                📥 Download as PDF
+              </button>
+              <button
+                onClick={() => setShowReport(false)}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Overview Cards */}
         <div className="mb-12 grid grid-cols-1 md:grid-cols-5 gap-4">

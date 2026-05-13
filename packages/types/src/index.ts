@@ -482,3 +482,8 @@ export interface PredictionResult {
   required_putme_score: number;
   status: "on_track" | "at_risk" | "no_data";
 }
+
+export interface AnalyticsReport {
+  report: string;
+  generated_at: string;
+}

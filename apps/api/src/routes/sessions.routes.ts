@@ -1112,10 +1112,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         subject_name: q.subject_name,
         subject_colour_token: q.subject_colour_token,
         body: q.body,
-        options: q.options ? shuffleArray(q.options).map((o: any) => ({
+        options: q.options ? shuffleArray(q.options).map((o: any, index: number) => ({
           id: o.id,
           question_id: o.question_id,
-          label: o.label,
+          label: String.fromCharCode(65 + index),
           body: o.body,
         })) : [],
       }));
