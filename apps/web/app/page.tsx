@@ -102,7 +102,7 @@ export default function LandingPage() {
     {
       name: "Scholar",
       price: "₦3,500",
-      duration: "month",
+      duration: "6 months",
       description: "Most students choose this",
       features: [
         "All subjects & universities",
@@ -119,7 +119,7 @@ export default function LandingPage() {
     {
       name: "Elite",
       price: "₦5,000",
-      duration: "month",
+      duration: "6 months",
       description: "For serious, dedicated students",
       features: [
         "Everything in Scholar",

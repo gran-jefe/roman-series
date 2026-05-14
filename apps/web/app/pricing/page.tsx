@@ -187,7 +187,7 @@ export default function PricingPage() {
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-[#1A7A4A]">{plan.price}</span>
                   {plan.price !== "Free" && (
-                    <span className="text-gray-600 ml-2">/ month</span>
+                    <span className="text-gray-600 ml-2">/ 6 months</span>
                   )}
                 </div>
 

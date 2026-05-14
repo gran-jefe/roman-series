@@ -34,8 +34,8 @@ Shared types live in packages/types/src/index.ts
 
 ## Subscription Tiers
 - **Explorer (Free)**: 1–2 subjects, 20 questions/day, 1 mock exam (lifetime), basic analytics
-- **Scholar (₦3,500/month)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics
-- **Elite (₦5,000/month)**: Everything in Scholar + advanced scoring, admission probability, percentile ranking, cohort insights
+- **Scholar (₦3,500/6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics — expires after 6 months
+- **Elite (₦5,000/6 months)**: Everything in Scholar + advanced scoring, admission probability, percentile ranking, cohort insights — expires after 6 months
 
 ## API base URL
 - Dev: http://localhost:4000

@@ -296,21 +296,24 @@ Feature limits and constraints by subscription tier.
   - Returns: PDF file
 
 ### Payments (Paystack)
-- `POST /api/payments/initiate` — Initiate payment for new subscription
-  - Body: `{ plan: 'explorer'|'scholar'|'elite' }`
+- `POST /api/payments/initiate` — Initiate payment for new subscription (6-month term)
+  - Body: `{ plan: 'scholar'|'elite' }`
   - Returns: `{ authorization_url }` (redirects to Paystack)
-  - **Rate limit**: Free tier only; paid users cannot start new subscriptions
+  - **Rate limit**: Explorer only; users with active Scholar/Elite cannot purchase again (must wait for expiry)
 
-- `POST /api/payments/upgrade` — Upgrade from Scholar to Elite
+- `POST /api/payments/upgrade` — Upgrade from Scholar to Elite (adds 6 months to current subscription)
   - Body: `{ target_plan: 'elite' }`
-  - Returns: `{ authorization_url }` (pro-rated amount)
+  - Returns: `{ authorization_url }` (pro-rated: ₦1,500 for remaining Scholar term)
   - Only available when current plan is 'scholar'
 
 - `GET /api/payments/status` — Get payment/subscription status
-  - Returns: `{ subscription_status, plan_id, expires_at }`
+  - Returns: `{ subscription_status, plan_id, expires_at, renewed_count }`
+  - `expires_at` is Date + 6 months from purchase/renewal
 
 - `POST /api/payments/webhook` — Paystack callback (internal)
   - Verifies payment and updates subscription status in profiles + subscriptions tables
+  - Sets `expires_at = now + 6 months` on successful payment
+  - Updates `subscriptions.upgraded_from` when upgrading (e.g., 'scholar' when Scholar→Elite)
 
 ### Leaderboard
 - `GET /api/leaderboard/top-students` — Get top performing students
@@ -337,9 +340,10 @@ Feature limits and constraints by subscription tier.
 
 - **`/pricing`** — Subscription pricing plans
   - **Explorer**: Free (1–2 subjects, 20 Q/day, 1 mock exam lifetime)
-  - **Scholar**: ₦3,500/month (all subjects, unlimited practice, 3 mocks/week) — Most Popular
-  - **Elite**: ₦5,000/month (Scholar + advanced analytics, percentile ranking, cohort insights) — Best Value
-  - Scholar→Elite upgrade: Shows "Upgrade for ₦1,500" button if user already on Scholar
+  - **Scholar**: ₦3,500 for 6 months (all subjects, unlimited practice, 3 mocks/week) — Most Popular
+  - **Elite**: ₦5,000 for 6 months (Scholar + advanced analytics, percentile ranking, cohort insights) — Best Value
+  - Scholar→Elite upgrade: Shows "Upgrade for ₦1,500" button if user already on Scholar (extends subscription to Elite tier)
+  - **Note**: Subscriptions expire after 6 months; users return to Explorer unless renewed
 
 ### Navigation
 - **Persistent Navbar** — Visible on all protected pages
@@ -423,7 +427,7 @@ Feature limits and constraints by subscription tier.
 10. **AI Study Reports** — Claude/Groq-powered elaborate personalized reports (cached 24h, rate-limited)
 11. **PDF Export** — Download reports as formatted PDF
 12. **Paystack Integration** — Payment processing with Scholar→Elite upgrade flow
-13. **Three-Tier Subscriptions** — Explorer (free), Scholar (₦3,500/month), Elite (₦5,000/month) with plan-based feature gating
+13. **Three-Tier Subscriptions** — Explorer (free), Scholar (₦3,500 for 6 months), Elite (₦5,000 for 6 months) with plan-based feature gating and 6-month expiry
 14. **Plan-Based Gating** — Blur overlays on locked features with upsell modals (e.g., Explorer users see blurred results after mock)
 15. **Google OAuth** — Google sign-in on login/register with auth callback handler
 16. **Persistent Navbar** — Navigation across all protected pages with plan-aware tooltips
