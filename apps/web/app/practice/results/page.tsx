@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import type { SessionResult, UserStats } from "types";
 import { CardSkeleton } from "@/components/skeletons";
 
@@ -17,12 +19,14 @@ export default function PracticeResultsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
+  const { profile } = useAuth();
 
   const [results, setResults] = useState<SessionResult | null>(null);
   const [sessionMeta, setSessionMeta] = useState<SessionMeta | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
   const [pageLoading, setPageLoading] = useState(true);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -80,6 +84,16 @@ export default function PracticeResultsPage() {
 
     loadResults();
   }, [sessionId, router]);
+
+  // Auto-trigger upgrade prompt for Explorer users after 1.5s
+  useEffect(() => {
+    if (profile?.subscription_status === "explorer" && results) {
+      const timer = setTimeout(() => {
+        setShowUpgradePrompt(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profile?.subscription_status, results]);
 
   const toggleAnswerExpanded = (questionId: string) => {
     setExpandedAnswers((prev) => {
@@ -218,9 +232,10 @@ export default function PracticeResultsPage() {
           </div>
         </div>
 
-        {/* How You Compare */}
-        {sessionMeta && userStats && (
-          <div className="mb-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-8">
+        {/* How You Compare / Quick Analytics */}
+        <div className={profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}>
+          {sessionMeta && userStats && (
+            <div className="mb-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-8">
             <h2 className="text-xl font-bold text-navy mb-4">How You Compare</h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="text-center">
@@ -311,10 +326,11 @@ export default function PracticeResultsPage() {
               )}
             </div>
           </div>
-        )}
+            )}
+        </div>
 
         {/* Answer Review */}
-        <div className="mb-12">
+        <div className={`mb-12 ${profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}`}>
           <h2 className="text-2xl font-bold text-navy mb-6">Answer Review</h2>
           <div className="space-y-4">
             {results.answers.map((answer, idx) => {
@@ -434,6 +450,16 @@ export default function PracticeResultsPage() {
           </button>
         </div>
       </main>
+
+      {/* Upgrade Prompt for Explorer Users */}
+      {showUpgradePrompt && profile?.subscription_status === "explorer" && (
+        <UpgradePrompt
+          title="Your full results are ready"
+          message="Your predicted UI aggregate is ready. Upgrade to unlock full analytics, performance trends, and your admission probability."
+          feature="Full Results Analytics"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

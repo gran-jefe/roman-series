@@ -43,10 +43,10 @@ export default function MockSessionPage() {
   useEffect(() => {
     const startMockSession = async () => {
       try {
-        // Guard: check if user is subscribed
-        if (profile?.subscription_status === "free") {
-          toast.error("Mock exams are only available for Pro subscribers");
-          router.push("/pricing");
+        // Guard: check if user is subscribed (explorer users can take 1 mock, gating enforced by API)
+        if (!profile?.subscription_status || !["explorer", "scholar", "elite"].includes(profile.subscription_status)) {
+          toast.error("Please log in to start a mock exam");
+          router.push("/login");
           return;
         }
 

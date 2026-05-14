@@ -31,24 +31,34 @@ export default function LandingPage() {
 
   const FEATURES = [
     {
-      title: "Real Past Questions",
-      desc: "Practice with authentic past exam questions from top Nigerian universities",
-      icon: "📋"
+      title: "Predicted Score & Admission Likelihood",
+      desc: "Get real-time predictions of your Post-UTME score and admission probability for your target university",
+      icon: "🎯"
     },
     {
-      title: "Timed Practice Sessions",
-      desc: "Build exam confidence with realistic time-bound practice tests",
-      icon: "⏱️"
-    },
-    {
-      title: "Performance Analytics",
-      desc: "Track your progress and identify weak areas with detailed analytics",
+      title: "AI-Generated Analytics Reports",
+      desc: "Receive detailed, actionable insights about your performance with personalized study recommendations",
       icon: "📊"
     },
     {
-      title: "Admission Prediction",
-      desc: "Get real-time predictions of your admission likelihood",
-      icon: "🎯"
+      title: "Error Bank & Weak Topics",
+      desc: "Build a personal error bank to revisit mistakes and focus on your weakest areas",
+      icon: "📋"
+    },
+    {
+      title: "Leaderboard & Performance Ranking",
+      desc: "See how you rank against peers practicing for the same university and course",
+      icon: "🏆"
+    },
+    {
+      title: "Mock Exams & Timed Practice",
+      desc: "Take realistic, timed mock exams to build confidence and master exam strategies",
+      icon: "⏱️"
+    },
+    {
+      title: "Daily Streak & Progress Tracking",
+      desc: "Stay motivated with daily streaks and detailed progress analytics across all subjects",
+      icon: "📈"
     },
   ];
 
@@ -75,47 +85,50 @@ export default function LandingPage() {
 
   const PLANS = [
     {
-      name: "Per University Pack",
-      price: "₦1,500",
-      duration: "1 year",
-      description: "Perfect for focused preparation",
+      name: "Explorer",
+      price: "Free",
+      duration: "forever",
+      description: "Get started with limited practice",
       features: [
-        "One university only",
-        "All subjects for that university",
-        "Valid for 1 year",
+        "1–2 subjects",
+        "20 questions per day",
+        "1 mock exam (lifetime)",
         "Basic analytics",
+        "Daily streak tracking",
+        "Top 20 leaderboard",
       ],
       highlighted: false,
     },
     {
-      name: "Monthly Access",
-      price: "₦2,000",
-      duration: "30 days",
+      name: "Scholar",
+      price: "₦3,500",
+      duration: "month",
       description: "Most students choose this",
       features: [
-        "All universities",
-        "All subjects",
-        "Valid for 30 days",
-        "Full analytics",
-        "Admission prediction",
-        "Priority support",
+        "All subjects & universities",
+        "Unlimited practice questions",
+        "3 mock exams per week",
+        "Full error bank & analytics",
+        "Full leaderboard with your rank",
+        "Predicted admission score",
+        "Weak topic recommendations",
       ],
       highlighted: true,
       badge: "Most Popular",
     },
     {
-      name: "Bundle Deal",
+      name: "Elite",
       price: "₦5,000",
-      duration: "90 days",
-      description: "Best value for comprehensive prep",
+      duration: "month",
+      description: "For serious, dedicated students",
       features: [
-        "All universities",
-        "All subjects",
-        "Valid for 90 days",
-        "Full analytics",
-        "Admission prediction",
-        "Priority support",
-        "Early access to new features",
+        "Everything in Scholar",
+        "Advanced predictive scoring",
+        "Admission probability meter",
+        "Percentile ranking & cohort insights",
+        "Course-specific leaderboard",
+        "Performance trend forecasting",
+        "Elite badge on your profile",
       ],
       highlighted: false,
       badge: "Best Value",
@@ -211,7 +224,7 @@ export default function LandingPage() {
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">Everything you need to ace your Post-UTME exam</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             {FEATURES.map((feature, idx) => (
               <div key={idx} className="bg-gray-50 rounded-xl p-8 border border-gray-200 hover:border-forest hover:shadow-lg transition-all">
                 <div className="text-4xl mb-4">{feature.icon}</div>
@@ -374,16 +387,16 @@ export default function LandingPage() {
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-10 text-center max-w-2xl mx-auto">
             <h3 className="text-2xl font-bold text-navy mb-2">Not Sure Yet?</h3>
             <p className="text-gray-700 mb-2">
-              Start with our <strong>free tier</strong> and practice 10 questions to see how Roman Series works.
+              Start with our <strong>Explorer plan</strong> for free and practice 20 questions per day to see how Roman Series works.
             </p>
             <p className="text-sm text-gray-600 mb-6">
-              No credit card required. Upgrade anytime.
+              No credit card required. Upgrade anytime to Scholar or Elite.
             </p>
             <Link
               href={user ? "/dashboard" : "/register"}
               className="inline-block text-forest font-bold hover:underline"
             >
-              Try for Free →
+              Start for Free →
             </Link>
           </div>
         </div>

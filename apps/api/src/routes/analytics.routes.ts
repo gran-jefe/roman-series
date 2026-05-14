@@ -539,7 +539,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       // Get user's profile with UTME score and target course
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("utme_score, target_course, target_university_id")
+        .select("utme_score, target_course, target_university_id, subscription_status")
         .eq("id", user.id)
         .single();
 
@@ -547,6 +547,19 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         res.status(404).json({
           status: "error",
           message: "Profile not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Check access control by plan
+      if (profile.subscription_status === "explorer") {
+        res.json({
+          status: "success",
+          data: {
+            locked: true,
+            preview_message: "Your predicted UI aggregate is ready. Upgrade to unlock.",
+          },
           timestamp: new Date().toISOString(),
         });
         return;
@@ -611,6 +624,12 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
           ? Math.ceil(((cutoff.combined_cutoff - utmeContribution) / cutoff.putme_weight) * 100)
           : 0;
 
+      // Calculate post_utme_target and gap_percentage
+      const postUtmeTarget = requiredPutmeScore;
+      const gapPercentage = postUtmeTarget > 0
+        ? Math.round(((postUtmeTarget - currentPracticeAvg) / postUtmeTarget) * 1000) / 10
+        : 0;
+
       // Admission requirements:
       // 1. UTME score must be >= 200 (minimum cutoff)
       // 2. PUTME score must be >= 50% (minimum percentage)
@@ -634,7 +653,8 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         status = "at_risk";
       }
 
-      const response: PredictionResult = {
+      // Build base response (Scholar-level)
+      const baseResponse: any = {
         utme_score: utmeScore,
         cutoff: {
           course: cutoff.course,
@@ -650,12 +670,68 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         current_practice_avg: currentPracticeAvg,
         predicted_total: predictedTotalRounded,
         required_putme_score: requiredPutmeScore,
+        post_utme_target: postUtmeTarget,
+        gap_percentage: gapPercentage,
         status,
       };
 
+      // Add percentile for Elite users only
+      if (profile.subscription_status === "elite" && profile.target_course) {
+        // Get all users with same target course
+        const { data: courseUsers } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("target_course", profile.target_course);
+
+        const courseUserIds = courseUsers?.map((u: any) => u.id) ?? [];
+
+        if (courseUserIds.length > 0) {
+          // Get all sessions for users in this course
+          const { data: allCourseSessions } = await supabaseAdmin
+            .from("sessions")
+            .select("user_id, score, total_questions")
+            .eq("completed", true)
+            .in("user_id", courseUserIds);
+
+          // Calculate avg score per user in course
+          const userCourseScores = new Map<string, { scores: number[] }>();
+
+          for (const session of allCourseSessions ?? []) {
+            const pct =
+              session.total_questions > 0
+                ? Math.round((session.score / session.total_questions) * 100)
+                : 0;
+
+            const existing = userCourseScores.get(session.user_id) ?? { scores: [] };
+            existing.scores.push(pct);
+            userCourseScores.set(session.user_id, existing);
+          }
+
+          // Calculate percentiles
+          let usersOutperformed = 0;
+          for (const [userId, data] of userCourseScores.entries()) {
+            const avgScore = Math.round(
+              data.scores.reduce((a, b) => a + b, 0) / data.scores.length
+            );
+            if (avgScore < currentPracticeAvg) {
+              usersOutperformed++;
+            }
+          }
+
+          const percentile = courseUserIds.length > 0
+            ? Math.round((usersOutperformed / courseUserIds.length) * 100)
+            : 0;
+
+          baseResponse.percentile = {
+            percentile,
+            message: `You're ahead of ${percentile}% of ${profile.target_course} aspirants`,
+          };
+        }
+      }
+
       res.json({
         status: "success",
-        data: response,
+        data: baseResponse,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -807,6 +883,100 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
     };
   }
 
+  // Helper: Get cached report or generate new one
+  async function getOrGenerateReport(userId: string, data: any) {
+    try {
+      // Check for cached report
+      const { data: cached } = await supabaseAdmin
+        .from("analytics_reports")
+        .select("report_text, generated_at, expires_at")
+        .eq("user_id", userId)
+        .single();
+
+      const now = new Date();
+      if (cached && new Date(cached.expires_at) > now) {
+        return {
+          report: cached.report_text,
+          from_cache: true,
+          generated_at: cached.generated_at,
+          expires_at: cached.expires_at,
+        };
+      }
+
+      // Generate new report
+      const groq = new Groq({ apiKey: groqApiKey });
+      const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
+Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
+Write in a warm, professional tone. Use plain text paragraphs only, no bullet points or markdown.
+Each section should flow naturally into the next. Be specific: mention actual subject names, topic names,
+percentage scores, and performance compared to their target.
+
+STUDENT DATA:
+Name: ${data.profile.full_name || "Student"}
+Target University: ${data.university?.name || "Not selected"}
+Target Course: ${data.profile.target_course || "Not specified"}
+UTME Score: ${data.profile.utme_score || "Not set"}/400
+
+Overall Performance:
+- Average Score: ${data.overallAvg}%
+- Total Questions Practiced: ${data.totalQuestions}
+- Sessions Completed: ${data.sessions.length}
+
+Performance by Subject:
+${data.subjectAvgs.map((s: any) => `- ${s.subject_name}: ${s.percentage}%`).join("\n")}
+
+Weakest Topics (Need Focus):
+${data.worstTopics.map((t: any) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Strongest Topics (Maintain Excellence):
+${data.bestTopics.map((t: any) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
+
+Write a comprehensive report that:
+1. Opens with an overall impression of the student's exam readiness
+2. Discusses performance in each subject they've practiced
+3. Identifies the weakest areas and provides 3-5 specific study actions
+4. Highlights strengths they should leverage
+5. Closes with motivational advice tied to their admission target
+
+Keep the report between 400-600 words. Use encouraging, constructive language.`;
+
+      const message = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: reportPrompt,
+          },
+        ],
+        model: "mixtral-8x7b-32768",
+        max_tokens: 1024,
+      });
+
+      const reportText = message.choices[0].message.content || "";
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      // Cache the report
+      await supabaseAdmin.from("analytics_reports").upsert(
+        {
+          user_id: userId,
+          report_text: reportText,
+          generated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+
+      return {
+        report: reportText,
+        from_cache: false,
+        generated_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      };
+    } catch (error) {
+      console.error("[getOrGenerateReport] Error:", error);
+      throw error;
+    }
+  }
+
   // GET /api/analytics/report - Generate AI report
   app.get("/api/analytics/report", async (req: Request, res: Response) => {
     try {
@@ -835,6 +1005,15 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         return;
       }
 
+      // TODO: Restrict to paid subscribers when access control is added
+      // if (user.subscription_status === "free") {
+      //   return res.status(402).json({
+      //     status: "error",
+      //     message: "Report generation is only available for Pro subscribers",
+      //     timestamp: new Date().toISOString(),
+      //   });
+      // }
+
       const data = await fetchAnalyticsData(user.id);
 
       if (!data.profile || data.totalQuestions === 0) {
@@ -846,62 +1025,16 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         return;
       }
 
-      const groq = new Groq({ apiKey: groqApiKey });
-
-      const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
-Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
-Write in a warm, professional tone. Use plain text paragraphs only, no bullet points or markdown.
-Each section should flow naturally into the next. Be specific: mention actual subject names, topic names,
-percentage scores, and performance compared to their target.
-
-STUDENT DATA:
-Name: ${data.profile.full_name || "Student"}
-Target University: ${data.university?.name || "Not selected"}
-Target Course: ${data.profile.target_course || "Not specified"}
-UTME Score: ${data.profile.utme_score || "Not set"}/400
-
-Overall Performance:
-- Average Score: ${data.overallAvg}%
-- Total Questions Practiced: ${data.totalQuestions}
-- Sessions Completed: ${data.sessions.length}
-
-Performance by Subject:
-${data.subjectAvgs.map((s) => `- ${s.subject_name}: ${s.percentage}%`).join("\n")}
-
-Weakest Topics (Need Focus):
-${data.worstTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
-
-Strongest Topics (Maintain Excellence):
-${data.bestTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
-
-Write a comprehensive report that:
-1. Opens with an overall impression of the student's exam readiness
-2. Discusses performance in each subject they've practiced
-3. Identifies the weakest areas and provides 3-5 specific study actions
-4. Highlights strengths they should leverage
-5. Closes with motivational advice tied to their admission target
-
-Keep the report between 400-600 words. Use encouraging, constructive language.`;
-
-      const message = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content: reportPrompt,
-          },
-        ],
-        model: "mixtral-8x7b-32768",
-        max_tokens: 1024,
-      });
-
-      const reportText = message.choices[0].message.content || "";
+      const result = await getOrGenerateReport(user.id, data);
 
       res.set("Cache-Control", "no-store");
       res.json({
         status: "success",
         data: {
-          report: reportText,
-          generated_at: new Date().toISOString(),
+          report: result.report,
+          from_cache: result.from_cache,
+          generated_at: result.generated_at,
+          expires_at: result.expires_at,
         },
         timestamp: new Date().toISOString(),
       });
@@ -961,56 +1094,9 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      // Generate report
-      const groq = new Groq({ apiKey: groqApiKey });
-
-      const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
-Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
-Write in a warm, professional tone. Use plain text paragraphs only, no bullet points or markdown.
-Each section should flow naturally into the next. Be specific: mention actual subject names, topic names,
-percentage scores, and performance compared to their target.
-
-STUDENT DATA:
-Name: ${data.profile.full_name || "Student"}
-Target University: ${data.university?.name || "Not selected"}
-Target Course: ${data.profile.target_course || "Not specified"}
-UTME Score: ${data.profile.utme_score || "Not set"}/400
-
-Overall Performance:
-- Average Score: ${data.overallAvg}%
-- Total Questions Practiced: ${data.totalQuestions}
-- Sessions Completed: ${data.sessions.length}
-
-Performance by Subject:
-${data.subjectAvgs.map((s) => `- ${s.subject_name}: ${s.percentage}%`).join("\n")}
-
-Weakest Topics (Need Focus):
-${data.worstTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
-
-Strongest Topics (Maintain Excellence):
-${data.bestTopics.map((t) => `- ${t.subject_name} - ${t.name}: ${t.percentage}%`).join("\n")}
-
-Write a comprehensive report that:
-1. Opens with an overall impression of the student's exam readiness
-2. Discusses performance in each subject they've practiced
-3. Identifies the weakest areas and provides 3-5 specific study actions
-4. Highlights strengths they should leverage
-5. Closes with motivational advice tied to their admission target
-
-Keep the report between 400-600 words. Use encouraging, constructive language.`;
-
-      const message = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content: reportPrompt,
-          },
-        ],
-        model: "mixtral-8x7b-32768",
-        max_tokens: 1024,
-      });
-
-      const reportText = message.choices[0].message.content || "";
+      // Get cached or generate new report
+      const result = await getOrGenerateReport(user.id, data);
+      const reportText = result.report;
 
       // Generate PDF
       const doc = new PDFDocument({

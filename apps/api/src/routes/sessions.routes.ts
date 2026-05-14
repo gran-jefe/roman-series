@@ -55,18 +55,61 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Check trial user 3-session limit
-      if (profile.subscription_status === "free") {
-        const { data: completedSessions, error: sessionCountError } = await supabaseAdmin
+      // Get plan limits for the user's subscription
+      const { data: planLimits, error: planError } = await supabaseAdmin
+        .from("plan_limits")
+        .select("*")
+        .eq("plan_id", profile.subscription_status)
+        .single();
+
+      if (planError || !planLimits) {
+        res.status(500).json({
+          status: "error",
+          message: "Plan limits not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Plan-based gating checks
+      const planId = profile.subscription_status;
+
+      // Explorer: max 1 mock exam ever
+      if (planId === "explorer") {
+        const { data: completedMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
           .select("id", { count: "exact" })
           .eq("user_id", user.id)
+          .eq("is_mock", true)
           .eq("completed", true);
 
-        if (!sessionCountError && completedSessions && completedSessions.length >= 3) {
+        if (!mockError && completedMocks && completedMocks.length >= 1) {
           res.status(402).json({
             status: "error",
-            message: "Trial limit reached. You've used all 3 free sessions. Upgrade to Pro to continue practicing.",
+            message: "Mock exam limit reached. You've used your free mock exam. Upgrade to Scholar or Elite to practice more mocks.",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+      }
+
+      // Scholar: max 3 mocks per 7-day rolling window
+      if (planId === "scholar") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const { data: recentMocks, error: mockError } = await supabaseAdmin
+          .from("sessions")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("is_mock", true)
+          .eq("completed", true)
+          .gte("started_at", sevenDaysAgo.toISOString());
+
+        if (!mockError && recentMocks && recentMocks.length >= 3) {
+          res.status(402).json({
+            status: "error",
+            message: "Mock exam limit reached. You can take 3 mocks per week. Try again in 7 days.",
             timestamp: new Date().toISOString(),
           });
           return;
@@ -89,6 +132,25 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
+      // Explorer: max 2 subjects
+      if (planId === "explorer" && planLimits.max_subjects) {
+        const { data: usedSubjects, error: subjectError } = await supabaseAdmin
+          .from("sessions")
+          .select("subject_id")
+          .eq("user_id", user.id)
+          .eq("completed", true);
+
+        const uniqueSubjects = new Set(usedSubjects?.map((s: any) => s.subject_id) || []);
+        if (uniqueSubjects.size >= planLimits.max_subjects && !uniqueSubjects.has(subject_id)) {
+          res.status(402).json({
+            status: "error",
+            message: `Subject limit reached. Explorer plan allows ${planLimits.max_subjects} subjects. Upgrade to Scholar or Elite for unlimited subjects.`,
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+      }
+
       let questionLimit = 20;
       if (total_questions === "all" || total_questions === 0) {
         questionLimit = 0;
@@ -97,8 +159,34 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         questionLimit = Math.min(Math.max(parsed, 10), 50);
       }
 
-      if (profile.subscription_status === "free") {
-        questionLimit = Math.min(questionLimit || 10, 10);
+      // Apply daily question limit if plan specifies one
+      if (planLimits.daily_question_limit) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { data: todaySessions, error: dailyError } = await supabaseAdmin
+          .from("sessions")
+          .select("total_questions")
+          .eq("user_id", user.id)
+          .gte("started_at", today.toISOString());
+
+        const questionsAnsweredToday = todaySessions?.reduce((sum: number, s: any) => sum + (s.total_questions || 0), 0) || 0;
+        const remaining = Math.max(0, planLimits.daily_question_limit - questionsAnsweredToday);
+
+        if (remaining === 0) {
+          res.status(402).json({
+            status: "error",
+            message: `Daily question limit reached. You can answer ${planLimits.daily_question_limit} questions per day. Try again tomorrow.`,
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (questionLimit === 0) {
+          questionLimit = remaining;
+        } else {
+          questionLimit = Math.min(questionLimit, remaining);
+        }
       }
 
       let idQuery = supabaseAdmin
@@ -1176,6 +1264,38 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
+      // Get user's profile for subscription status
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile) {
+        res.status(401).json({
+          status: "error",
+          message: "Profile not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get plan limits
+      const { data: planLimits, error: planError } = await supabaseAdmin
+        .from("plan_limits")
+        .select("error_bank_limit")
+        .eq("plan_id", profile.subscription_status)
+        .single();
+
+      if (planError || !planLimits) {
+        res.status(500).json({
+          status: "error",
+          message: "Plan limits not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const { question_ids } = req.body;
 
       if (!Array.isArray(question_ids) || question_ids.length === 0) {
@@ -1187,10 +1307,11 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      if (question_ids.length > 500) {
-        res.status(400).json({
+      const maxAllowed = planLimits.error_bank_limit || 500;
+      if (question_ids.length > maxAllowed) {
+        res.status(402).json({
           status: "error",
-          message: "Cannot retry more than 500 questions at once",
+          message: `Error bank limit: you can retry up to ${maxAllowed} questions. Upgrade your plan for more.`,
           timestamp: new Date().toISOString(),
         });
         return;
@@ -1213,12 +1334,19 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Get wrong answers from user's sessions
-      const { data: wrongAnswers, error: wrongError } = await supabaseAdmin
+      // Get wrong answers from user's sessions, respecting plan limits
+      let wrongQuery = supabaseAdmin
         .from("session_answers")
         .select("question_id")
         .in("session_id", userSessionIds)
-        .eq("is_correct", false);
+        .eq("is_correct", false)
+        .order("created_at", { ascending: false });
+
+      if (planLimits.error_bank_limit) {
+        wrongQuery = wrongQuery.limit(planLimits.error_bank_limit);
+      }
+
+      const { data: wrongAnswers, error: wrongError } = await wrongQuery;
 
       if (wrongError) {
         console.error("[error-bank/start] Wrong answers query error:", wrongError);

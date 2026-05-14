@@ -15,6 +15,7 @@ import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
 import { registerAnalyticsRoutes } from "./routes/analytics.routes";
+import { registerPlansRoutes } from "./routes/plans";
 
 dotenv.config();
 
@@ -155,6 +156,8 @@ registerAnalyticsRoutes(app, {
   supabaseAdmin,
   groqApiKey: process.env.GROQ_API_KEY || "",
 });
+
+registerPlansRoutes(app, { supabaseAdmin });
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)

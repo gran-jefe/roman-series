@@ -168,10 +168,14 @@ export default function DashboardPage() {
     return <PageLoader message="Loading dashboard..." />;
   }
 
-  const subscriptionBadge =
-    subscription?.subscription_status === "active"
-      ? { label: "Pro", colour: "bg-green-100 text-green-800" }
-      : { label: `Free (${3 - (sessions.length % 3)}/3)`, colour: "bg-amber-100 text-amber-800" };
+  const planLabels: Record<string, { label: string; colour: string }> = {
+    explorer: { label: "Explorer", colour: "bg-amber-100 text-amber-800" },
+    scholar: { label: "Scholar", colour: "bg-blue-100 text-blue-800" },
+    elite: { label: "Elite", colour: "bg-purple-100 text-purple-800" },
+  };
+
+  const subscriptionBadge = planLabels[subscription?.subscription_status || "explorer"] ||
+    { label: "Explorer", colour: "bg-amber-100 text-amber-800" };
 
   return (
     <div className="min-h-screen bg-blush">
@@ -315,7 +319,7 @@ export default function DashboardPage() {
               <div>
                 <h3 className="text-xl font-bold text-navy mb-4">Mock PUTME Exam</h3>
                 <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 transition-all ${
-                  subscription?.subscription_status === "free"
+                  subscription?.subscription_status === "explorer"
                     ? "bg-gray-50 border-gray-300"
                     : "bg-white border-forest hover:shadow-lg"
                 }`}>
@@ -323,7 +327,7 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
                       <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
-                      {subscription?.subscription_status === "free" && (
+                      {subscription?.subscription_status === "explorer" && (
                         <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-amber-900">🔒 Unlock with Pro Plan</p>
                           <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock PUTME exams.</p>
@@ -350,20 +354,20 @@ export default function DashboardPage() {
                     </div>
                     <button
                       onClick={() => {
-                        if (subscription?.subscription_status === "free") {
+                        if (subscription?.subscription_status === "explorer") {
                           router.push("/pricing");
                         } else {
                           router.push("/practice/mock/session");
                         }
                       }}
-                      disabled={subscription?.subscription_status === "free"}
+                      disabled={subscription?.subscription_status === "explorer"}
                       className={`w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
-                        subscription?.subscription_status === "free"
+                        subscription?.subscription_status === "explorer"
                           ? "bg-gray-300 text-gray-600 cursor-not-allowed opacity-50"
                           : "bg-forest text-white hover:shadow-md"
                       }`}
                     >
-                      {subscription?.subscription_status === "free" ? "Upgrade" : "Start Exam"}
+                      {subscription?.subscription_status === "explorer" ? "Upgrade" : "Start Exam"}
                     </button>
                   </div>
                 </div>
@@ -518,15 +522,15 @@ export default function DashboardPage() {
                   <div className="border-t pt-3">
                     <p className="text-xs text-gray-500 mb-1">Your Current Average</p>
                     <p className={`text-lg font-bold ${
-                      prediction.current_practice_avg >= prediction.required_putme_score
+                      (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
                         ? "text-green-600"
                         : "text-amber-600"
                     }`}>
-                      {prediction.current_practice_avg}%
+                      {prediction.current_practice_avg ?? 0}%
                     </p>
-                    {prediction.current_practice_avg < prediction.required_putme_score && (
+                    {(prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
                       <p className="text-xs text-amber-600 mt-1">
-                        ⚠ Need {prediction.required_putme_score - prediction.current_practice_avg}% more
+                        ⚠ Need {(prediction.required_putme_score ?? 0) - (prediction.current_practice_avg ?? 0)}% more
                       </p>
                     )}
                   </div>

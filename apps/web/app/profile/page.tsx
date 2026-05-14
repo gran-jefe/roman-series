@@ -297,7 +297,7 @@ export default function ProfilePage() {
                   </p>
                 )}
               </div>
-              {profile.subscription_status === "free" && (
+              {profile.subscription_status === "explorer" && (
                 <button className="px-4 py-2 bg-forest text-white rounded-lg hover:bg-opacity-90 transition-opacity">
                   Upgrade
                 </button>

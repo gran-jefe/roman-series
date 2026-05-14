@@ -6,15 +6,34 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
-import type { AnalyticsOverview, TopicPerformance, PeerRanking, SessionHistoryItem, PredictionResult } from "types";
+import type { AnalyticsOverview, TopicPerformance, SessionHistoryItem, PredictionResult } from "types";
 import toast from "react-hot-toast";
+
+interface LeaderboardData {
+  rankings: Array<{
+    rank: number;
+    name_initial: string;
+    avg_score: number;
+    sessions_count: number;
+    is_current_user: boolean;
+  }>;
+  window: "weekly" | "overall";
+  scope: "global" | "cohort";
+  is_truncated: boolean;
+  current_user_rank: number | null;
+  total_participants: number;
+  resets_at: string | null;
+  percentile?: {
+    percentile: number;
+    message: string;
+  };
+}
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [topics, setTopics] = useState<TopicPerformance[]>([]);
-  const [peers, setPeers] = useState<PeerRanking | null>(null);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
@@ -22,6 +41,12 @@ export default function AnalyticsPage() {
   const [report, setReport] = useState<string | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [nextGenerationAt, setNextGenerationAt] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const [leaderboardWindow, setLeaderboardWindow] = useState<"weekly" | "overall">("overall");
+  const [leaderboardScope, setLeaderboardScope] = useState<"global" | "cohort">("global");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,17 +56,15 @@ export default function AnalyticsPage() {
 
     const fetchAnalytics = async () => {
       try {
-        const [overviewRes, topicsRes, peersRes, sessionsRes, predictionRes] = await Promise.all([
+        const [overviewRes, topicsRes, sessionsRes, predictionRes] = await Promise.all([
           api.get("/api/analytics/overview"),
           api.get("/api/analytics/topics"),
-          api.get("/api/analytics/peers"),
           api.get("/api/sessions/history"),
           api.get("/api/analytics/prediction"),
         ]);
 
         setOverview(overviewRes.data.data);
         setTopics(topicsRes.data.data || []);
-        setPeers(peersRes.data.data);
         setSessions(sessionsRes.data.data || []);
         setPrediction(predictionRes.data.data);
       } catch (error) {
@@ -56,6 +79,36 @@ export default function AnalyticsPage() {
       fetchAnalytics();
     }
   }, [user, authLoading, router]);
+
+  // Fetch leaderboard data when window or scope changes
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      if (!user || !profile) return;
+
+      setLeaderboardLoading(true);
+      try {
+        const url = new URL(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/leaderboard/top-students`
+        );
+        url.searchParams.append("window", leaderboardWindow);
+        if (profile.subscription_status === "elite") {
+          url.searchParams.append("scope", leaderboardScope);
+        }
+
+        const response = await api.get(`/api/leaderboard/top-students?window=${leaderboardWindow}${profile.subscription_status === "elite" ? `&scope=${leaderboardScope}` : ""}`);
+        setLeaderboard(response.data.data);
+      } catch (error) {
+        console.error("Failed to fetch leaderboard:", error);
+        toast.error("Failed to load leaderboard");
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+
+    if (user && profile) {
+      fetchLeaderboard();
+    }
+  }, [user, profile, leaderboardWindow, leaderboardScope]);
 
   if (pageLoading) {
     return <PageLoader message="Loading analytics..." />;
@@ -110,13 +163,24 @@ export default function AnalyticsPage() {
     return `${minutes}m`;
   };
 
+  const formatCooldown = (expiresAt: string): string => {
+    const ms = new Date(expiresAt).getTime() - Date.now();
+    if (ms <= 0) return "";
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
   const handleGenerateReport = async () => {
     try {
       setReportLoading(true);
       const res = await api.get("/api/analytics/report");
       setReport(res.data.data.report);
+      setFromCache(res.data.data.from_cache);
+      setNextGenerationAt(res.data.data.expires_at);
       setShowReport(true);
-      toast.success("Report generated successfully!");
+      const cacheMsg = res.data.data.from_cache ? "(from cache)" : "✨ Fresh!";
+      toast.success(`Report generated ${cacheMsg}`);
     } catch (error) {
       console.error("Failed to generate report:", error);
       toast.error("Failed to generate report");
@@ -131,6 +195,9 @@ export default function AnalyticsPage() {
     const url = `${apiUrl}/api/analytics/report/download?token=${token}`;
     window.open(url, "_blank");
   };
+
+  const canGenerateReport = !nextGenerationAt || new Date(nextGenerationAt) <= new Date();
+  const cooldownRemaining = nextGenerationAt ? formatCooldown(nextGenerationAt) : "";
 
   return (
     <div className="min-h-screen bg-blush">
@@ -159,10 +226,10 @@ export default function AnalyticsPage() {
           </div>
           <button
             onClick={handleGenerateReport}
-            disabled={reportLoading}
+            disabled={reportLoading || !canGenerateReport}
             className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            {reportLoading ? "Generating..." : "Generate Report"}
+            {reportLoading ? "Generating..." : canGenerateReport ? "Generate Report" : `Available in ${cooldownRemaining}`}
           </button>
         </div>
 
@@ -171,7 +238,16 @@ export default function AnalyticsPage() {
           <div className="mb-12 bg-white rounded-lg shadow-md border-t-4 border-forest p-8">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-navy mb-2">Your Personalised Study Report</h2>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-2xl font-bold text-navy">Your Personalised Study Report</h2>
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                    fromCache
+                      ? "bg-gray-200 text-gray-700"
+                      : "bg-green-100 text-green-700"
+                  }`}>
+                    {fromCache ? "📦 From Cache" : "✨ Fresh"}
+                  </span>
+                </div>
                 <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
               </div>
               <button
@@ -280,20 +356,20 @@ export default function AnalyticsPage() {
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Your Current Avg</p>
                 <p className={`text-2xl font-bold ${
-                  prediction.current_practice_avg >= prediction.required_putme_score
+                  (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
                     ? "text-green-600"
                     : "text-amber-600"
                 }`}>
-                  {prediction.current_practice_avg}%
+                  {prediction.current_practice_avg ?? 0}%
                 </p>
                 <p className={`text-xs font-semibold mt-1 ${
-                  prediction.current_practice_avg >= prediction.required_putme_score
+                  (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
                     ? "text-green-600"
                     : "text-amber-600"
                 }`}>
-                  {prediction.current_practice_avg >= prediction.required_putme_score
+                  {(prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
                     ? "✓ On Track"
-                    : `⚠ ${prediction.required_putme_score - prediction.current_practice_avg}% gap`}
+                    : `⚠ ${(prediction.required_putme_score ?? 0) - (prediction.current_practice_avg ?? 0)}% gap`}
                 </p>
               </div>
             </div>
@@ -304,7 +380,7 @@ export default function AnalyticsPage() {
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-2">UTME Minimum (200)</p>
                 <div className="flex items-center gap-2">
                   <p className={`text-lg font-bold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.utme_score}
+                    {prediction.utme_score ?? 0}
                   </p>
                   <span className={`text-sm font-semibold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
                     {prediction.utme_qualifies ? "✓" : "✗"}
@@ -315,7 +391,7 @@ export default function AnalyticsPage() {
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-2">PUTME Minimum (50%)</p>
                 <div className="flex items-center gap-2">
                   <p className={`text-lg font-bold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.current_practice_avg}%
+                    {prediction.current_practice_avg ?? 0}%
                   </p>
                   <span className={`text-sm font-semibold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
                     {prediction.putme_qualifies ? "✓" : "✗"}
@@ -324,55 +400,88 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Prediction Bar */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Predicted Score</p>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="h-3 bg-gray-300 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-forest transition-all"
-                      style={{ width: `${Math.min((prediction.predicted_total / prediction.cutoff.combined_cutoff) * 100, 100)}%` }}
-                    />
+            {/* Prediction Card */}
+            <div className="relative">
+              <div className={`bg-gray-50 rounded-lg p-6 ${profile?.subscription_status === "explorer" ? "blur-sm" : ""}`}>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-lg font-bold text-navy">Predicted Score</p>
+                    {prediction && "post_utme_target" in prediction && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Post-UTME Target: <span className="font-semibold">{prediction.post_utme_target}%</span>
+                      </p>
+                    )}
+                  </div>
+                  {prediction && "gap_percentage" in prediction && (
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-red-500">
+                        {prediction.gap_percentage}% gap
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-300 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-forest transition-all"
+                        style={{ width: `${Math.min(((prediction.predicted_total ?? 0) / (prediction.cutoff?.combined_cutoff ?? 100)) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-navy">
+                      {(prediction.predicted_total ?? 0).toFixed(1)}/{prediction.cutoff?.combined_cutoff ?? 0}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0)
+                        ? "✓ On track for admission"
+                        : "⚠ Below cutoff"}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-navy">
-                    {prediction.predicted_total.toFixed(1)}/{prediction.cutoff.combined_cutoff}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {prediction.predicted_total >= prediction.cutoff.combined_cutoff
-                      ? "✓ On track for admission"
-                      : "⚠ Below cutoff"}
-                  </p>
-                </div>
               </div>
+
+              {/* Explorer Lock Overlay */}
+              {profile?.subscription_status === "explorer" && (
+                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-white font-semibold mb-3">Your predicted UI aggregate is ready. Upgrade to unlock.</p>
+                    <button
+                      onClick={() => router.push("/pricing")}
+                      className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                    >
+                      Upgrade
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Advice */}
-            {!prediction.utme_qualifies && (
+            {!prediction.utme_qualifies && prediction.utme_qualifies !== undefined && (
               <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm font-semibold text-red-900 mb-1">⚠ UTME Score Below Minimum</p>
                 <p className="text-sm text-red-800">
-                  Your UTME score ({prediction.utme_score}) is below the required minimum of 200. You will not be eligible for admission regardless of your Post-UTME performance.
+                  Your UTME score ({prediction.utme_score ?? 0}) is below the required minimum of 200. You will not be eligible for admission regardless of your Post-UTME performance.
                 </p>
               </div>
             )}
 
-            {!prediction.putme_qualifies && (
+            {!prediction.putme_qualifies && prediction.putme_qualifies !== undefined && (
               <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm font-semibold text-red-900 mb-1">⚠ PUTME Score Below Minimum</p>
                 <p className="text-sm text-red-800">
-                  Your current practice score ({prediction.current_practice_avg}%) is below the required minimum of 50%. You must score at least 50% on the Post-UTME exam to be eligible for admission.
+                  Your current practice score ({prediction.current_practice_avg ?? 0}%) is below the required minimum of 50%. You must score at least 50% on the Post-UTME exam to be eligible for admission.
                 </p>
               </div>
             )}
 
-            {prediction.utme_qualifies && prediction.putme_qualifies && prediction.current_practice_avg < prediction.required_putme_score && (
+            {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
               <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm font-semibold text-amber-900 mb-1">📌 Recommendation</p>
                 <p className="text-sm text-amber-800">
-                  You need to improve your practice score from {prediction.current_practice_avg}% to {prediction.required_putme_score}% to reach the admission cutoff of {prediction.cutoff.combined_cutoff}/100.
+                  You need to improve your practice score from {prediction.current_practice_avg ?? 0}% to {prediction.required_putme_score ?? 0}% to reach the admission cutoff of {prediction.cutoff?.combined_cutoff ?? 0}/100.
                 </p>
               </div>
             )}
@@ -537,32 +646,120 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Right Column - Peer Ranking & Insights */}
+          {/* Right Column - Leaderboard & Insights */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Peer Ranking */}
-            {peers && (
-              <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
-                <h3 className="text-lg font-bold text-navy mb-4">Your Rank</h3>
-                <div className="text-center mb-6 p-4 bg-blush rounded-lg">
-                  <p className="text-4xl font-bold text-navy mb-1">#{peers.rank}</p>
-                  <p className="text-sm text-gray-600">of {peers.total_peers} peers</p>
-                  <p className="text-xs text-gray-500 mt-2">Same course • {peers.my_avg}% avg</p>
+            {/* Leaderboard Section */}
+            {leaderboard && (
+              <div className="relative">
+                <div className={`bg-white rounded-lg shadow-md border-t-4 border-forest p-6 ${profile?.subscription_status === "explorer" ? "blur-sm" : ""}`}>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-navy">Top Performers</h3>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setLeaderboardWindow("overall")}
+                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          leaderboardWindow === "overall"
+                            ? "bg-forest text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        All Time
+                      </button>
+                      <button
+                        onClick={() => setLeaderboardWindow("weekly")}
+                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          leaderboardWindow === "weekly"
+                            ? "bg-forest text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        This Week
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Elite User Scope Toggle */}
+                  {profile?.subscription_status === "elite" && (
+                    <div className="flex gap-2 mb-6 pb-6 border-b">
+                      <button
+                        onClick={() => setLeaderboardScope("global")}
+                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          leaderboardScope === "global"
+                            ? "bg-forest text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        All Aspirants
+                      </button>
+                      <button
+                        onClick={() => setLeaderboardScope("cohort")}
+                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          leaderboardScope === "cohort"
+                            ? "bg-forest text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        My Course
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Current User Rank Display */}
+                  {leaderboard.current_user_rank !== null && (
+                    <div className="text-center mb-6 p-4 bg-blush rounded-lg">
+                      <p className="text-4xl font-bold text-navy mb-1">#{leaderboard.current_user_rank}</p>
+                      <p className="text-sm text-gray-600">of {leaderboard.total_participants} participants</p>
+                      {leaderboard.percentile && (
+                        <p className="text-xs text-forest font-semibold mt-2">{leaderboard.percentile.message}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Rankings List */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
+                      {leaderboardScope === "cohort" ? "Your Course" : "Global"} Leaderboard
+                    </p>
+                    {leaderboard.rankings.slice(0, 10).map((entry) => (
+                      <div
+                        key={`${entry.rank}-${entry.name_initial}`}
+                        className={`flex items-center justify-between p-2 rounded ${
+                          entry.is_current_user ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-500">#{entry.rank}</span>
+                          <span className={`text-sm font-medium ${entry.is_current_user ? "text-forest font-bold" : "text-navy"}`}>
+                            {entry.name_initial} {entry.is_current_user && "👈 You"}
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-navy">{entry.avg_score}%</span>
+                      </div>
+                    ))}
+
+                    {/* Explorer: Show "See full leaderboard" overlay */}
+                    {profile?.subscription_status === "explorer" && leaderboard.is_truncated && (
+                      <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center border-2 border-dashed border-gray-300">
+                        <p className="text-sm text-gray-600 font-medium">See your full ranking — Upgrade to Scholar</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Top Performers</p>
-                  {peers.peers.slice(0, 5).map(peer => (
-                    <div key={`${peer.rank}-${peer.name_initial}`} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-500">#{peer.rank}</span>
-                        <span className={`text-sm font-medium ${peer.is_me ? "text-forest font-bold" : "text-navy"}`}>
-                          {peer.name_initial}. {peer.is_me && "👈 You"}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold text-navy">{peer.avg_score}%</span>
+                {/* Explorer Lock Overlay */}
+                {profile?.subscription_status === "explorer" && (
+                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-white font-semibold mb-3">See the full leaderboard. Upgrade to unlock.</p>
+                      <button
+                        onClick={() => router.push("/pricing")}
+                        className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                      >
+                        Upgrade
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 

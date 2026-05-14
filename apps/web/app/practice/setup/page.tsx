@@ -151,7 +151,7 @@ export default function PracticeSetupPage() {
     }
   };
 
-  const isFreeUser = profile?.subscription_status === "free";
+  const isFreeUser = profile?.subscription_status === "explorer";
   const subjectColour = subject ? subjectColours[subject.name] || "#7B68EE" : "#7B68EE";
 
   return (

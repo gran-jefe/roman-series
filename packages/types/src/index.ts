@@ -87,7 +87,7 @@ export interface Profile {
   subject_combination: string[] | null;
   utme_score?: number | null;
   role: "student" | "admin";
-  subscription_status: "free" | "active" | "expired";
+  subscription_status: "explorer" | "scholar" | "elite";
   subscription_expires_at?: string;
   created_at: string;
   updated_at: string;
@@ -465,8 +465,8 @@ export interface CutoffMark {
  * Shows student's UTME qualification status and predicted Post-UTME target
  */
 export interface PredictionResult {
-  utme_score: number | null;
-  cutoff: {
+  utme_score?: number | null;
+  cutoff?: {
     course: string;
     year: number;
     utme_cutoff: number;
@@ -474,13 +474,21 @@ export interface PredictionResult {
     utme_weight: number;
     putme_weight: number;
   } | null;
-  utme_qualifies: boolean;
-  putme_qualifies: boolean;
-  utme_contribution: number;
-  current_practice_avg: number;
-  predicted_total: number;
-  required_putme_score: number;
-  status: "on_track" | "at_risk" | "no_data";
+  utme_qualifies?: boolean;
+  putme_qualifies?: boolean;
+  utme_contribution?: number;
+  current_practice_avg?: number;
+  predicted_total?: number;
+  required_putme_score?: number;
+  post_utme_target?: number;
+  gap_percentage?: number;
+  status?: "on_track" | "at_risk" | "no_data";
+  locked?: boolean;
+  preview_message?: string;
+  percentile?: {
+    percentile: number;
+    message: string;
+  };
 }
 
 export interface AnalyticsReport {
