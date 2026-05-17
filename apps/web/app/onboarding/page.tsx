@@ -22,7 +22,7 @@ const subjectColours: Record<string, string> = {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [utmeScore, setUtmeScore] = useState<string>("");
@@ -30,6 +30,11 @@ export default function OnboardingPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [cutoffMark, setCutoffMark] = useState<CutoffMark | null>(null);
   const [universityName, setUniversityName] = useState<string>("");
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [courses, setCourses] = useState<string[]>([]);
+  const [selectedUniversity, setSelectedUniversity] = useState<string>("");
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [coursesLoading, setCoursesLoading] = useState(false);
 
   // Guard: redirect if already has subject combination
   useEffect(() => {
@@ -38,6 +43,17 @@ export default function OnboardingPage() {
     }
   }, [profile, loading, router]);
 
+  // Determine starting step based on profile completeness
+  useEffect(() => {
+    if (!loading && profile) {
+      if (!profile.target_university_id || !profile.target_course) {
+        setStep(0);
+      } else {
+        setStep(1);
+      }
+    }
+  }, [profile, loading]);
+
   // Guard: redirect if not logged in
   useEffect(() => {
     if (!loading && !user) {
@@ -45,24 +61,81 @@ export default function OnboardingPage() {
     }
   }, [user, loading, router]);
 
-  // Fetch all subjects
+  // Fetch all subjects and universities
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get("/api/subjects");
-        setSubjects(res.data.data || []);
+        const [subjectsRes, universitiesRes] = await Promise.all([
+          api.get("/api/subjects"),
+          api.get("/api/universities"),
+        ]);
+        setSubjects(subjectsRes.data.data || []);
+        setUniversities(universitiesRes.data.data || []);
         setPageLoading(false);
       } catch (error) {
-        console.error("Failed to fetch subjects:", error);
-        toast.error("Failed to load subjects");
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load data");
         setPageLoading(false);
       }
     };
 
     if (!loading && user) {
-      fetchSubjects();
+      fetchData();
     }
   }, [user, loading]);
+
+  // Fetch courses when university changes
+  useEffect(() => {
+    if (!selectedUniversity) {
+      setCourses([]);
+      setSelectedCourse("");
+      return;
+    }
+
+    const fetchCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const res = await api.get("/api/cutoff-marks", {
+          params: { universityId: selectedUniversity },
+        });
+        const courseSet = new Set(
+          res.data.data?.map((r: CutoffMark) => r.course) || []
+        );
+        setCourses(Array.from(courseSet).sort() as string[]);
+        setSelectedCourse("");
+      } catch (error) {
+        console.error("Failed to fetch courses:", error);
+        toast.error("Failed to load courses");
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [selectedUniversity]);
+
+  const handleStep0Continue = async () => {
+    if (!selectedUniversity || !selectedCourse) {
+      toast.error("Please select a university and course");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.patch("/api/profiles/me", {
+        target_course: selectedCourse,
+      });
+      // Update university_id is handled by profile context
+      toast.success("University and course saved!");
+      setStep(1);
+      setSubmitting(false);
+    } catch (error) {
+      console.error("Failed to save university/course:", error);
+      toast.error("Failed to save university and course");
+      setSubmitting(false);
+    }
+  };
 
   const toggleSubject = (subjectId: string) => {
     setSelected((prev) => {
@@ -169,20 +242,97 @@ export default function OnboardingPage() {
         {/* Progress Bar */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Step {step} of 2</span>
+            <span className="text-sm font-medium text-gray-600">Step {step + 1} of 3</span>
             <span className="text-sm text-gray-500">
-              {step === 1 ? "Subject Selection" : "UTME Score"}
+              {step === 0 ? "University Selection" : step === 1 ? "Subject Selection" : "UTME Score"}
             </span>
           </div>
           <div className="w-full bg-gray-300 rounded-full h-2">
             <div
               className="bg-forest h-2 rounded-full transition-all"
-              style={{ width: `${(step / 2) * 100}%` }}
+              style={{ width: `${((step + 1) / 3) * 100}%` }}
             />
           </div>
         </div>
 
-        {step === 1 ? (
+        {step === 0 ? (
+          <>
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-navy mb-4">Select Your University</h1>
+              <p className="text-lg text-gray-600 mb-2">
+                Choose your target university and course
+              </p>
+              <p className="text-sm text-gray-500">
+                This helps us tailor questions to your specific admission requirements
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-8 max-w-md mx-auto space-y-6">
+              {/* University Selection */}
+              <div>
+                <label className="block text-sm font-medium text-navy mb-2">
+                  Target University *
+                </label>
+                <select
+                  value={selectedUniversity}
+                  onChange={(e) => setSelectedUniversity(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
+                >
+                  <option value="">Select a university</option>
+                  {universities.map((uni) => (
+                    <option key={uni.id} value={uni.id}>
+                      {uni.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Course Selection */}
+              <div>
+                <label className="block text-sm font-medium text-navy mb-2">
+                  Course of Study *
+                </label>
+                {selectedUniversity ? (
+                  coursesLoading ? (
+                    <div className="p-3 bg-gray-100 rounded-lg text-gray-600 text-sm">
+                      Loading courses...
+                    </div>
+                  ) : courses.length > 0 ? (
+                    <select
+                      value={selectedCourse}
+                      onChange={(e) => setSelectedCourse(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
+                    >
+                      <option value="">Select a course</option>
+                      {courses.map((course) => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="p-3 bg-gray-100 rounded-lg text-gray-600 text-sm">
+                      No courses found for this university
+                    </div>
+                  )
+                ) : (
+                  <div className="p-3 bg-gray-100 rounded-lg text-gray-600 text-sm">
+                    Select a university first
+                  </div>
+                )}
+              </div>
+
+              {/* Continue Button */}
+              <button
+                onClick={handleStep0Continue}
+                disabled={!selectedUniversity || !selectedCourse || submitting}
+                className="w-full py-3 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              >
+                {submitting ? "Saving..." : "Continue"}
+              </button>
+            </div>
+          </>
+        ) : step === 1 ? (
           <>
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-navy mb-4">Select Your Subjects</h1>

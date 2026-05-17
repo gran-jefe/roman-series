@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AxiosError } from "axios";
 import { useAuth } from "@/context/AuthContext";
-import supabase from "@/lib/supabase";
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,6 +48,11 @@ export default function LoginPage() {
     setError("");
 
     try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

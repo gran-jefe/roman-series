@@ -25,6 +25,7 @@
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.18.0",
     "types": "../types",
+    "ws": "^8.20.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {

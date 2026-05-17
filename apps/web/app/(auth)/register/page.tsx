@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import supabase from "@/lib/supabase";
+import { createBrowserClient } from '@supabase/ssr';
 import type { University } from "types";
 
 export default function RegisterPage() {
@@ -82,6 +82,11 @@ export default function RegisterPage() {
     setError("");
 
     try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
