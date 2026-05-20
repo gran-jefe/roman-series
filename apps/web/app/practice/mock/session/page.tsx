@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import toast from "react-hot-toast";
 import type { StartSessionResponse, Subject } from "types";
 
@@ -28,6 +29,8 @@ interface Question {
 export default function MockSessionPage() {
   const router = useRouter();
   const { user, loading, profile } = useAuth();
+  const { checkMockExamAccess } = useFeatureAccess();
+  const mockExamAccess = checkMockExamAccess();
   const [sessionData, setSessionData] = useState<StartSessionResponse | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -43,7 +46,14 @@ export default function MockSessionPage() {
   useEffect(() => {
     const startMockSession = async () => {
       try {
-        // Guard: check if user is subscribed (explorer users can take 1 mock, gating enforced by API)
+        // Guard: check if user has mock exam access
+        if (!mockExamAccess.hasAccess) {
+          toast.error(mockExamAccess.reason || "Mock exams are not available on your plan");
+          router.push("/pricing");
+          return;
+        }
+
+        // Guard: check if user is subscribed
         if (!profile?.subscription_status || !["explorer", "scholar", "elite"].includes(profile.subscription_status)) {
           toast.error("Please log in to start a mock exam");
           router.push("/login");
