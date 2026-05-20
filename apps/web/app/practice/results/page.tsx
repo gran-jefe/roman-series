@@ -233,9 +233,26 @@ export default function PracticeResultsPage() {
         </div>
 
         {/* How You Compare / Quick Analytics */}
-        <div className={profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}>
-          {sessionMeta && userStats && (
-            <div className="mb-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-8">
+        <div className="relative mb-12">
+          {profile?.subscription_status === "explorer" && showUpgradePrompt && (
+            <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center z-10">
+              <div className="bg-white rounded-lg shadow-xl p-6 text-center max-w-sm">
+                <h3 className="text-lg font-bold text-navy mb-2">Advanced Analytics Locked</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Upgrade to Scholar to unlock full performance insights, detailed score predictions, and how you compare to peers.
+                </p>
+                <button
+                  onClick={() => setShowUpgradePrompt(false)}
+                  className="text-sm text-forest hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+          <div className={profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}>
+            {sessionMeta && userStats && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow p-8">
             <h2 className="text-xl font-bold text-navy mb-4">How You Compare</h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="text-center">
@@ -327,11 +344,29 @@ export default function PracticeResultsPage() {
             </div>
           </div>
             )}
+          </div>
         </div>
 
         {/* Answer Review */}
-        <div className={`mb-12 ${profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}`}>
-          <h2 className="text-2xl font-bold text-navy mb-6">Answer Review</h2>
+        <div className="relative mb-12">
+          {profile?.subscription_status === "explorer" && showUpgradePrompt && (
+            <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center z-10">
+              <div className="bg-white rounded-lg shadow-xl p-6 text-center max-w-sm">
+                <h3 className="text-lg font-bold text-navy mb-2">Full Answer Review Locked</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Upgrade to Scholar to access complete answer reviews, detailed explanations, and performance analytics.
+                </p>
+                <button
+                  onClick={() => setShowUpgradePrompt(false)}
+                  className="text-sm text-forest hover:underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+          <div className={profile?.subscription_status === "explorer" && showUpgradePrompt ? "blur-sm" : ""}>
+            <h2 className="text-2xl font-bold text-navy mb-6">Answer Review</h2>
           <div className="space-y-4">
             {results.answers.map((answer, idx) => {
               const isExpanded = expandedAnswers.has(answer.question_id);
@@ -433,6 +468,7 @@ export default function PracticeResultsPage() {
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
 
