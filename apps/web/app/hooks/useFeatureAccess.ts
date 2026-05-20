@@ -1,0 +1,118 @@
+import { useAuth } from "@/context/AuthContext";
+import { getFeatures } from "@/lib/subscription";
+import type { FeatureAccess } from "@/lib/subscription";
+
+interface FeatureAccessResult {
+  hasAccess: boolean;
+  reason?: string;
+  currentLimit?: number;
+}
+
+export function useFeatureAccess() {
+  const { profile } = useAuth();
+
+  const features = getFeatures(profile?.subscription_status);
+
+  const checkMockExamAccess = (): FeatureAccessResult => {
+    if (features.mockExamsPerMonth > 0) {
+      return { hasAccess: true };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Scholar or Elite to access mock exams",
+    };
+  };
+
+  const checkErrorBankAccess = (): FeatureAccessResult => {
+    if (features.errorBankSize !== "none") {
+      return {
+        hasAccess: true,
+        currentLimit:
+          features.errorBankSize === "unlimited"
+            ? -1
+            : features.errorBankSize === "last_50"
+              ? 50
+              : 10,
+      };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Scholar or Elite to access the error bank",
+    };
+  };
+
+  const checkAnalyticsAccess = (): FeatureAccessResult => {
+    if (features.analytics !== "none") {
+      return { hasAccess: true, reason: features.analytics };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Scholar or Elite to access advanced analytics",
+    };
+  };
+
+  const checkTopicPracticeLimit = (): number => {
+    return features.maxSubjects;
+  };
+
+  const checkQuestionsPerDay = (): number => {
+    return features.questionsPerDay;
+  };
+
+  const checkLeaderboardAccess = (): FeatureAccessResult => {
+    const access = features.leaderboardAccess;
+    if (access !== "none") {
+      return { hasAccess: true, reason: access };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Scholar or Elite to access the leaderboard",
+    };
+  };
+
+  const checkPredictedScoreAccess = (): FeatureAccessResult => {
+    const access = features.predictedScore;
+    if (access === "locked") {
+      return {
+        hasAccess: false,
+        reason:
+          "Upgrade to Scholar to preview your score, or Elite for full predicted scores",
+      };
+    }
+    return { hasAccess: true, reason: access };
+  };
+
+  const checkWeakTopicAnalysisAccess = (): FeatureAccessResult => {
+    const access = features.weakTopicAnalysis;
+    if (access !== "none") {
+      return { hasAccess: true, reason: access };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Scholar or Elite to access weak topic analysis",
+    };
+  };
+
+  const checkCourseComparisonAccess = (): FeatureAccessResult => {
+    if (features.courseComparison) {
+      return { hasAccess: true };
+    }
+    return {
+      hasAccess: false,
+      reason: "Upgrade to Elite to compare performance across courses",
+    };
+  };
+
+  return {
+    features,
+    checkMockExamAccess,
+    checkErrorBankAccess,
+    checkAnalyticsAccess,
+    checkTopicPracticeLimit,
+    checkQuestionsPerDay,
+    checkLeaderboardAccess,
+    checkPredictedScoreAccess,
+    checkWeakTopicAnalysisAccess,
+    checkCourseComparisonAccess,
+  };
+}

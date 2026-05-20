@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import toast from "react-hot-toast";
 import type { Subject, CutoffMark, University } from "types";
 
@@ -22,6 +23,8 @@ const subjectColours: Record<string, string> = {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
+  const { checkTopicPracticeLimit } = useFeatureAccess();
+  const maxSubjects = checkTopicPracticeLimit();
   const [step, setStep] = useState<1 | 2>(1);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -68,7 +71,7 @@ export default function OnboardingPage() {
     setSelected((prev) => {
       if (prev.includes(subjectId)) {
         return prev.filter((id) => id !== subjectId);
-      } else if (prev.length < 4) {
+      } else if (prev.length < maxSubjects) {
         return [...prev, subjectId];
       }
       return prev;
@@ -76,8 +79,15 @@ export default function OnboardingPage() {
   };
 
   const handleStep1Continue = async () => {
-    if (selected.length < 3 || selected.length > 4) {
-      toast.error("Please select 3 or 4 subjects");
+    const minSubjects = maxSubjects <= 2 ? 2 : 3;
+    const maxAllowed = maxSubjects;
+
+    if (selected.length < minSubjects || selected.length > maxAllowed) {
+      if (minSubjects === maxAllowed) {
+        toast.error(`Please select exactly ${minSubjects} subject${minSubjects > 1 ? 's' : ''}`);
+      } else {
+        toast.error(`Please select between ${minSubjects} and ${maxAllowed} subjects`);
+      }
       return;
     }
 
@@ -187,7 +197,9 @@ export default function OnboardingPage() {
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-navy mb-4">Select Your Subjects</h1>
               <p className="text-lg text-gray-600 mb-2">
-                Choose 3 or 4 subjects to focus your prep
+                {maxSubjects <= 2
+                  ? `Choose ${maxSubjects} subjects to focus your prep`
+                  : `Choose between ${maxSubjects - 1} and ${maxSubjects} subjects to focus your prep`}
               </p>
               <p className="text-sm text-gray-500 mb-3">
                 Only available subjects are shown. You can select "Other" for subjects not listed in our database.
@@ -202,7 +214,9 @@ export default function OnboardingPage() {
               <div className="bg-white rounded-lg shadow p-4 inline-block">
                 <p className="text-center">
                   <span className="text-3xl font-bold text-forest">{selected.length}</span>
-                  <span className="text-gray-600 ml-2">/ 3-4 subjects selected</span>
+                  <span className="text-gray-600 ml-2">
+                    / {maxSubjects <= 2 ? maxSubjects : `${maxSubjects - 1}-${maxSubjects}`} subjects selected
+                  </span>
                 </p>
               </div>
             </div>
@@ -211,7 +225,7 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-2 gap-4 mb-12">
               {subjects.map((subject) => {
                 const isSelected = selected.includes(subject.id);
-                const canSelect = !isSelected && selected.length < 4;
+                const canSelect = !isSelected && selected.length < maxSubjects;
 
                 return (
                   <button

@@ -6,6 +6,8 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { AnalyticsOverview, TopicPerformance, SessionHistoryItem, PredictionResult } from "types";
 import toast from "react-hot-toast";
 
@@ -32,6 +34,9 @@ interface LeaderboardData {
 export default function AnalyticsPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
+  const { checkAnalyticsAccess } = useFeatureAccess();
+  const analyticsAccess = checkAnalyticsAccess();
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [topics, setTopics] = useState<TopicPerformance[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
@@ -112,6 +117,39 @@ export default function AnalyticsPage() {
 
   if (pageLoading) {
     return <PageLoader message="Loading analytics..." />;
+  }
+
+  // Check analytics access
+  if (!analyticsAccess.hasAccess) {
+    return (
+      <div className="min-h-screen bg-blush">
+        <nav className="bg-navy text-white shadow-lg sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
+                RS
+              </div>
+              <h1 className="text-lg font-bold">Roman Series</h1>
+            </Link>
+            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
+              Back to Dashboard
+            </Link>
+          </div>
+        </nav>
+        <main className="max-w-7xl mx-auto px-6 py-12 text-center">
+          <div className="bg-white rounded-lg shadow p-12 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-navy mb-4">Analytics Locked</h2>
+            <p className="text-gray-600 mb-6">{analyticsAccess.reason}</p>
+            <Link
+              href="/pricing"
+              className="inline-block px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition"
+            >
+              Upgrade to Scholar
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (!overview) {
@@ -791,6 +829,16 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </main>
+
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          title="Unlock Advanced Analytics"
+          message="Scholar and Elite plans unlock advanced analytics with deeper insights, performance trends, percentile rankings, and cohort comparisons to help you track your progress."
+          feature="Advanced Analytics & Insights"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

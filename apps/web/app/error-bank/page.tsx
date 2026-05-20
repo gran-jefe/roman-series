@@ -6,15 +6,25 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { ErrorBankQuestion } from "types";
 import toast from "react-hot-toast";
 
 export default function ErrorBankPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
+  const { checkErrorBankAccess } = useFeatureAccess();
   const [questions, setQuestions] = useState<ErrorBankQuestion[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+
+  const errorBankAccess = checkErrorBankAccess();
+  const isLimited = errorBankAccess.currentLimit && errorBankAccess.currentLimit > 0;
+  const limitedQuestions = isLimited
+    ? questions.slice(0, errorBankAccess.currentLimit)
+    : questions;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -67,9 +77,34 @@ export default function ErrorBankPage() {
     );
   }
 
-  // Group by subject
+  // Check if user has access to error bank
+  if (!errorBankAccess.hasAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <nav className="bg-navy text-white shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-forest rounded-full" />
+              <h1 className="text-xl font-bold">Roman Series</h1>
+            </Link>
+            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
+              Back to Dashboard
+            </Link>
+          </div>
+        </nav>
+        <main className="max-w-6xl mx-auto px-4 py-12 text-center">
+          <p className="text-gray-600 mb-4">{errorBankAccess.reason}</p>
+          <Link href="/pricing" className="text-forest font-medium hover:underline">
+            Upgrade to Scholar
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
+  // Group by subject (using limited questions if applicable)
   const bySubject = new Map<string, ErrorBankQuestion[]>();
-  questions.forEach(q => {
+  limitedQuestions.forEach(q => {
     if (!bySubject.has(q.subject_name)) {
       bySubject.set(q.subject_name, []);
     }
@@ -85,8 +120,8 @@ export default function ErrorBankPage() {
 
   // Filter questions based on selected subject
   const displayedQuestions = selectedSubject
-    ? questions.filter(q => q.subject_name === selectedSubject)
-    : questions;
+    ? limitedQuestions.filter(q => q.subject_name === selectedSubject)
+    : limitedQuestions;
 
   // Filter by subject for display
   const displayBySubject = new Map<string, ErrorBankQuestion[]>();
@@ -119,6 +154,20 @@ export default function ErrorBankPage() {
           <p className="text-gray-600">
             {displayedQuestions.length} of {questions.length} question{questions.length !== 1 ? 's' : ''} to review
           </p>
+          {isLimited && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Explorer Plan:</strong> You can view your {errorBankAccess.currentLimit} most recent errors.{" "}
+                <button
+                  onClick={() => setShowUpgradePrompt(true)}
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Upgrade to Scholar
+                </button>{" "}
+                to access unlimited error history.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Subject Filter Buttons */}
@@ -246,6 +295,16 @@ export default function ErrorBankPage() {
         </div>
         )}
       </main>
+
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          title="Unlock Full Error Bank"
+          message="Explorer users can view their 10 most recent errors. Scholar users get unlimited access to your entire error history, helping you focus on your weakest areas."
+          feature="Unlimited Error History"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

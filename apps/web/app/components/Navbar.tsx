@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import { requiresUpgrade, getSubscriptionName } from "@/lib/subscription";
+import { canAccessAnalytics, canAccessErrorBank, canAccessMockExam, getSubscriptionName } from "@/lib/subscription";
 
 interface NavItem {
   label: string;
@@ -34,8 +34,10 @@ export function Navbar() {
     return null;
   }
 
-  const shouldUpgrade = requiresUpgrade(profile.subscription_status);
   const planName = getSubscriptionName(profile.subscription_status);
+  const hasMockExamAccess = canAccessMockExam(profile.subscription_status);
+  const hasErrorBankAccess = canAccessErrorBank(profile.subscription_status);
+  const hasAnalyticsAccess = canAccessAnalytics(profile.subscription_status);
 
   const navItems: NavItem[] = [
     {
@@ -47,8 +49,8 @@ export function Navbar() {
       label: "Mock Exam",
       href: "/practice/mock/session",
       icon: <Clipboard size={20} />,
-      requiresUpgrade: shouldUpgrade,
-      upgradeTooltip: "Upgrade to unlock full mock exam access",
+      requiresUpgrade: !hasMockExamAccess,
+      upgradeTooltip: "Upgrade to Scholar to unlock mock exams",
     },
     {
       label: "Subjects",
@@ -59,15 +61,15 @@ export function Navbar() {
       label: "Error Bank",
       href: "/error-bank",
       icon: <AlertCircle size={20} />,
-      requiresUpgrade: shouldUpgrade,
-      upgradeTooltip: "Limited to 10 recent errors. Upgrade for unlimited access",
+      requiresUpgrade: !hasErrorBankAccess,
+      upgradeTooltip: "Upgrade to Scholar to unlock error bank",
     },
     {
       label: "Analytics",
       href: "/analytics",
       icon: <BarChart3 size={20} />,
-      requiresUpgrade: shouldUpgrade,
-      upgradeTooltip: "Upgrade to unlock full analytics",
+      requiresUpgrade: !hasAnalyticsAccess,
+      upgradeTooltip: "Upgrade to Scholar to unlock advanced analytics",
     },
     {
       label: "Profile",
