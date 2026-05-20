@@ -50,7 +50,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         target_university_id,
         target_course,
         role: "student",
-        subscription_status: "free",
+        subscription_status: "explorer",
       });
 
       if (profileError) {
