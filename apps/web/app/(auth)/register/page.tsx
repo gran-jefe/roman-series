@@ -10,7 +10,17 @@ export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [universities, setUniversities] = useState<University[]>([]);
+  const [universities, setUniversities] = useState<University[]>([
+    {
+      id: "055b85ef-6d9c-4b7a-bdda-51597b90ed76",
+      name: "University of Ibadan",
+      short_code: "UI",
+      colour_token: "navy",
+      is_available: true,
+      created_at: "2026-04-15T22:22:51.866064+00:00",
+      updated_at: "2026-04-15T22:22:51.866064+00:00",
+    },
+  ]);
   const [courses, setCourses] = useState<string[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -209,27 +219,29 @@ export default function RegisterPage() {
             />
           </div>
 
-          {universities.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-navy mb-1">
-                Target University *
-              </label>
-              <select
-                name="target_university_id"
-                value={formData.target_university_id}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
-              >
-                <option value="">Select a university</option>
-                {universities.map((uni) => (
+          <div>
+            <label className="block text-sm font-medium text-navy mb-1">
+              Target University *
+            </label>
+            <select
+              name="target_university_id"
+              value={formData.target_university_id}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-forest focus:ring-2 focus:ring-forest focus:ring-opacity-20"
+            >
+              <option value="">Select a university</option>
+              {universities.length > 0 ? (
+                universities.map((uni) => (
                   <option key={uni.id} value={uni.id}>
                     {uni.name}
                   </option>
-                ))}
-              </select>
-            </div>
-          )}
+                ))
+              ) : (
+                <option disabled>Loading universities...</option>
+              )}
+            </select>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-navy mb-1">
