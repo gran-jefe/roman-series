@@ -86,6 +86,28 @@ export default function RegisterPage() {
     });
   };
 
+  // const handleGoogleSignIn = async () => {
+  //   setLoading(true);
+  //   setError("");
+
+  //   try {
+  //     const { error } = await supabase.auth.signInWithOAuth({
+  //       provider: "google",
+  //       options: {
+  //         redirectTo: `${window.location.origin}/auth/callback`,
+  //       },
+  //     });
+
+  //     if (error) {
+  //       setError(error.message || "Failed to sign in with Google");
+  //       setLoading(false);
+  //     }
+  //   } catch {
+  //     setError("Failed to sign in with Google. Please try again.");
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");

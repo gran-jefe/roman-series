@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AxiosError } from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,6 +39,33 @@ export default function LoginPage() {
       setError(
         error.response?.data?.message || "Failed to login. Please try again.",
       );
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setError(error.message || "Failed to sign in with Google");
+        setLoading(false);
+      }
+    } catch {
+      setError("Failed to sign in with Google. Please try again.");
       setLoading(false);
     }
   };
