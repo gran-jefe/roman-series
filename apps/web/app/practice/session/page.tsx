@@ -328,8 +328,8 @@ export default function PracticeSessionPage() {
               </button>
             </div>
 
-            {/* Question Palette (Mobile - Wrapped) */}
-            <div className="md:hidden mt-6 bg-white rounded-lg shadow-lg p-3">
+            {/* Question Palette (Mobile & Tablet - Wrapped) */}
+            <div className="lg:hidden mt-6 bg-white rounded-lg shadow-lg p-3">
               <div className="flex flex-wrap gap-2">
                 {questions.map((q, idx) => {
                   const isCurrentQuestion = idx === currentIndex;

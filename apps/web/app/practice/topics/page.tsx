@@ -141,7 +141,6 @@ export default function TopicsPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-bold text-navy">{topic.name}</h3>
-                      <p className="text-sm text-gray-600">{topic.question_count} questions</p>
                     </div>
                   </div>
 

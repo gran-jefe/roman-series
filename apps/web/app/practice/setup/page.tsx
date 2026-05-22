@@ -25,7 +25,7 @@ export default function PracticeSetupPage() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [university, setUniversity] = useState<University | null>(null);
   const [topic, setTopic] = useState<Topic | null>(null);
-  const [questionCount, setQuestionCount] = useState<number | "all">(20);
+  const [questionCount, setQuestionCount] = useState<number | "all">(10);
   const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -156,17 +156,6 @@ export default function PracticeSetupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-navy text-white shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-3 hover:opacity-80"
-          >
-            <div className="w-8 h-8 bg-forest rounded-full" />
-            <h1 className="text-xl font-bold">Roman Series</h1>
-          </button>
-        </div>
-      </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
         {loading || pageLoading ? (

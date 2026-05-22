@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import toast from "react-hot-toast";
 import type { Subject, CutoffMark, University } from "types";
 
@@ -23,8 +22,7 @@ const subjectColours: Record<string, string> = {
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
-  const { checkTopicPracticeLimit } = useFeatureAccess();
-  const maxSubjects = checkTopicPracticeLimit();
+  const maxSubjects = 4; // Allow up to 4 subjects for UTME exam during onboarding
   const [step, setStep] = useState<1 | 2>(1);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selected, setSelected] = useState<string[]>([]);

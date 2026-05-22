@@ -142,17 +142,7 @@ export default function PracticeResultsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-navy text-white shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-forest rounded-full" />
-              <h1 className="text-xl font-bold">Roman Series</h1>
-            </Link>
-          </div>
-        </div>
-      </nav>
+     
 
       {/* Results Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">

@@ -32,7 +32,7 @@ export default function PricingPage() {
     try {
       // Check if user is already on Scholar and upgrading to Elite
       if (plan === "elite" && profile?.subscription_status === "scholar") {
-        const res = await api.post("/api/payments/upgrade", { target_plan: "elite" });
+        const res = await api.post("/api/payments/upgrade", { target_plan: plan });
         if (res.data.data?.authorization_url) {
           window.location.href = res.data.data.authorization_url;
         }
@@ -137,17 +137,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#F7F9FC]">
       {/* Navbar */}
-      <nav className="bg-[#0D1B2A] text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#1A7A4A] rounded-full" />
-            <h1 className="text-xl font-bold">Roman Series</h1>
-          </Link>
-          <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-            Back to Dashboard
-          </Link>
-        </div>
-      </nav>
+    
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">

@@ -40,19 +40,18 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
       const { plan } = req.body;
 
-      if (!plan || !["monthly", "per_university", "bundle"].includes(plan)) {
+      if (!plan || !["scholar", "elite"].includes(plan)) {
         res.status(400).json({
           status: "error",
-          message: "Invalid plan. Must be 'monthly', 'per_university', or 'bundle'",
+          message: "Invalid plan. Must be 'scholar' or 'elite'",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
       const pricing = {
-        monthly: 200000,
-        per_university: 150000,
-        bundle: 500000,
+        scholar: 350000, // ₦3,500
+        elite: 500000,   // ₦5,000
       };
 
       const amount = pricing[plan as keyof typeof pricing];
@@ -156,8 +155,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
               })
               .eq("id", user_id);
           } else {
-            // Handle legacy plan payment
-            const durationDays = plan === "monthly" ? 30 : plan === "bundle" ? 90 : 365;
+            // Handle plan payment for scholar and elite
+            const durationDays = 180; // 6 months for all plans
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + durationDays);
 
@@ -172,7 +171,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             await supabaseAdmin
               .from("profiles")
               .update({
-                subscription_status: "active",
+                subscription_status: plan,
                 subscription_expires_at: expiresAt.toISOString(),
               })
               .eq("id", user_id);
@@ -242,8 +241,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             })
             .eq("id", user_id);
         } else {
-          // Handle legacy plan payment
-          const durationDays = plan === "monthly" || plan === "bundle" ? 30 : 365;
+          // Handle plan payment for scholar and elite
+          const durationDays = 180; // 6 months for all plans
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + durationDays);
 
@@ -258,7 +257,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
           await supabaseAdmin
             .from("profiles")
             .update({
-              subscription_status: "active",
+              subscription_status: plan,
               subscription_expires_at: expiresAt.toISOString(),
             })
             .eq("id", user_id);
@@ -296,24 +295,23 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const { data: subscription } = await supabaseAdmin
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
+      // Get subscription status from profiles table (which is the source of truth)
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status, subscription_expires_at")
+        .eq("id", user.id)
         .single();
 
       const isActive =
-        subscription?.status === "active" &&
-        new Date(subscription.expires_at) > new Date();
+        profile?.subscription_status &&
+        profile.subscription_status !== "explorer" &&
+        new Date(profile.subscription_expires_at) > new Date();
 
       res.json({
         status: "success",
         data: {
-          subscription_status: isActive ? "active" : "inactive",
-          plan: subscription?.plan || null,
-          expires_at: subscription?.expires_at || null,
+          subscription_status: profile?.subscription_status || "explorer",
+          expires_at: profile?.subscription_expires_at || null,
           is_active: isActive,
         },
         timestamp: new Date().toISOString(),

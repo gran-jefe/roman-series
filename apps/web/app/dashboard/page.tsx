@@ -31,7 +31,7 @@ const subjectColours: Record<string, string> = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, logout } = useAuth();
+  const { profile } = useAuth();
   const [subjects, setSubjects] = useState<SubjectWithCounts[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -168,49 +168,8 @@ export default function DashboardPage() {
     return <PageLoader message="Loading dashboard..." />;
   }
 
-  const planLabels: Record<string, { label: string; colour: string }> = {
-    explorer: { label: "Explorer", colour: "bg-amber-100 text-amber-800" },
-    scholar: { label: "Scholar", colour: "bg-blue-100 text-blue-800" },
-    elite: { label: "Elite", colour: "bg-purple-100 text-purple-800" },
-  };
-
-  const subscriptionBadge = planLabels[subscription?.subscription_status || "explorer"] ||
-    { label: "Explorer", colour: "bg-amber-100 text-amber-800" };
-
   return (
     <div className="min-h-screen bg-blush">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-navy text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
-              RS
-            </div>
-            <h1 className="text-lg font-bold">Roman Series</h1>
-          </div>
-          <div className="flex items-center gap-6">
-            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${subscriptionBadge.colour}`}>
-              {subscriptionBadge.label}
-            </span>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-forest flex items-center justify-center text-xs font-bold text-white">
-                {profile?.full_name?.split(" ").map(n => n[0]).join("") || "U"}
-              </div>
-              <span className="text-sm">{profile?.full_name || "User"}</span>
-              <button
-                onClick={() => logout()}
-                className="text-gray-300 hover:text-white transition-colors"
-                title="Logout"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Welcome Header Band */}
         <div className="mb-8 bg-navy text-white rounded-lg p-8 shadow-md">
