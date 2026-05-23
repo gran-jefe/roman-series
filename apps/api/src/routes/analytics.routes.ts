@@ -2,7 +2,7 @@ import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
-import type { AnalyticsOverview, TopicPerformance, PeerRanking, PredictionResult } from "types";
+import type { AnalyticsOverview, TopicPerformance, PeerRanking, PredictionResult } from "../../../../packages/types/dist";
 
 interface AnalyticsDeps {
   supabaseAdmin: SupabaseClient;
