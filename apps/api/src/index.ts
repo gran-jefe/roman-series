@@ -56,25 +56,24 @@ const webUrl = process.env.WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || "http:/
 app.use(helmet());
 
 // CORS configuration
-const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.ALLOWED_ORIGIN,
-].filter(Boolean);
-
-app.options('*', cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean)
+  .concat(['http://localhost:3000']);
 
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+app.options('*', cors());
 
 // Body parsing middleware
 app.use(express.json({ limit: '50mb' }));
