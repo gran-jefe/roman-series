@@ -23,7 +23,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
   const maxSubjects = 4; // Allow up to 4 subjects for UTME exam during onboarding
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<0 | 1 | 2>(1);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [utmeScore, setUtmeScore] = useState<string>("");
@@ -154,11 +154,7 @@ export default function OnboardingPage() {
     const maxAllowed = maxSubjects;
 
     if (selected.length < minSubjects || selected.length > maxAllowed) {
-      if (minSubjects === maxAllowed) {
-        toast.error(`Please select exactly ${minSubjects} subject${minSubjects > 1 ? 's' : ''}`);
-      } else {
-        toast.error(`Please select between ${minSubjects} and ${maxAllowed} subjects`);
-      }
+      toast.error(`Please select between ${minSubjects} and ${maxAllowed} subjects`);
       return;
     }
 
