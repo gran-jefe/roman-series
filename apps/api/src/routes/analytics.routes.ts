@@ -887,14 +887,19 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
   async function getOrGenerateReport(userId: string, data: any) {
     try {
       // Check for cached report
-      const { data: cached } = await supabaseAdmin
+      const { data: cached, error: cacheError } = await supabaseAdmin
         .from("analytics_reports")
         .select("report_text, generated_at, expires_at")
         .eq("user_id", userId)
         .single();
 
+      if (cacheError) {
+        console.warn("[getOrGenerateReport] Cache check error:", cacheError.message);
+      }
+
       const now = new Date();
       if (cached && new Date(cached.expires_at) > now) {
+        console.log("[getOrGenerateReport] Returning cached report for user:", userId);
         return {
           report: cached.report_text,
           from_cache: true,
@@ -904,6 +909,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       }
 
       // Generate new report
+      console.log("[getOrGenerateReport] Generating new report for user:", userId);
       const groq = new Groq({ apiKey: groqApiKey });
       const reportPrompt = `You are a Post-UTME exam coach for Nigerian students.
 Given the following performance data for a student, write an elaborate, encouraging, and specific study report.
@@ -947,15 +953,19 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
             content: reportPrompt,
           },
         ],
-        model: "mixtral-8x7b-32768",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 1024,
       });
 
       const reportText = message.choices[0].message.content || "";
+      if (!reportText) {
+        throw new Error("Groq API returned empty response");
+      }
+
       const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       // Cache the report
-      await supabaseAdmin.from("analytics_reports").upsert(
+      const { error: upsertError } = await supabaseAdmin.from("analytics_reports").upsert(
         {
           user_id: userId,
           report_text: reportText,
@@ -964,6 +974,10 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         },
         { onConflict: "user_id" }
       );
+
+      if (upsertError) {
+        console.warn("[getOrGenerateReport] Failed to cache report:", upsertError.message);
+      }
 
       return {
         report: reportText,
@@ -1005,6 +1019,17 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
+      // Check if Groq API key is configured
+      if (!groqApiKey) {
+        console.error("[analytics/report] Groq API key not configured");
+        res.status(503).json({
+          status: "error",
+          message: "Report generation service is temporarily unavailable",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       // TODO: Restrict to paid subscribers when access control is added
       // if (user.subscription_status === "free") {
       //   return res.status(402).json({
@@ -1016,10 +1041,19 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
 
       const data = await fetchAnalyticsData(user.id);
 
-      if (!data.profile || data.totalQuestions === 0) {
+      if (!data.profile) {
         res.status(400).json({
           status: "error",
-          message: "Not enough data to generate report",
+          message: "Profile not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (data.totalQuestions === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "Not enough data to generate report. Please complete at least one practice session first.",
           timestamp: new Date().toISOString(),
         });
         return;
@@ -1040,9 +1074,11 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       });
     } catch (error) {
       console.error("[analytics/report] Error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json({
         status: "error",
-        message: "Failed to generate report",
+        message: "Failed to generate report. Please try again later.",
+        error: process.env.NODE_ENV === "development" ? errorMessage : undefined,
         timestamp: new Date().toISOString(),
       });
     }

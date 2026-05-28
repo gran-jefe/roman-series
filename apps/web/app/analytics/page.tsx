@@ -11,6 +11,22 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { AnalyticsOverview, TopicPerformance, SessionHistoryItem, PredictionResult } from "types";
 import toast from "react-hot-toast";
 
+// Color mapping for subjects
+const SUBJECT_COLORS: Record<string, string> = {
+  "Biology": "#1A7A4A",
+  "Government": "#1E3A5F",
+  "Chemistry": "#8B2252",
+  "Literature": "#C4522A",
+  "CRS": "#D97B20",
+  "IRS": "#B0287A",
+  "English": "#2166B2",
+  "Physics": "#7B4F1A",
+};
+
+const getSubjectColor = (subjectName: string): string => {
+  return SUBJECT_COLORS[subjectName] || "#666666";
+};
+
 interface LeaderboardData {
   rankings: Array<{
     rank: number;
@@ -123,19 +139,7 @@ export default function AnalyticsPage() {
   if (!analyticsAccess.hasAccess) {
     return (
       <div className="min-h-screen bg-blush">
-        <nav className="bg-navy text-white shadow-lg sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
-                RS
-              </div>
-              <h1 className="text-lg font-bold">Roman Series</h1>
-            </Link>
-            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-              Back to Dashboard
-            </Link>
-          </div>
-        </nav>
+        
         <main className="max-w-7xl mx-auto px-6 py-12 text-center">
           <div className="bg-white rounded-lg shadow p-12 max-w-md mx-auto">
             <h2 className="text-2xl font-bold text-navy mb-4">Analytics Locked</h2>
@@ -152,31 +156,27 @@ export default function AnalyticsPage() {
     );
   }
 
+  
   if (!overview) {
     return (
       <div className="min-h-screen bg-blush">
-        <nav className="bg-navy text-white shadow-lg sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
-                RS
-              </div>
-              <h1 className="text-lg font-bold">Roman Series</h1>
-            </Link>
-            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-              Back to Dashboard
-            </Link>
-          </div>
-        </nav>
+       
         <main className="max-w-7xl mx-auto px-6 py-12 text-center">
-          <p className="text-gray-600 mb-4">No analytics data yet. Take some practice tests to get started!</p>
-          <Link href="/dashboard" className="text-forest hover:underline font-medium">
+          <p className="text-gray-600 mb-4">
+            No analytics data yet. Take some practice tests to get started!
+          </p>
+          <Link
+            href="/dashboard"
+            className="text-forest hover:underline font-medium"
+          >
             Back to Dashboard
           </Link>
         </main>
       </div>
     );
   }
+
+ 
 
   const filteredTopics = selectedSubject
     ? topics.filter(t => t.subject_name === selectedSubject)
@@ -240,19 +240,7 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-blush">
       {/* Navbar */}
-      <nav className="bg-navy text-white shadow-lg sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
-              RS
-            </div>
-            <h1 className="text-lg font-bold">Roman Series</h1>
-          </Link>
-          <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-            Back to Dashboard
-          </Link>
-        </div>
-      </nav>
+     
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
@@ -562,12 +550,12 @@ export default function AnalyticsPage() {
                         style={{
                           backgroundColor:
                             selectedSubject === subject
-                              ? sampleTopic?.subject_colour_token
+                              ? getSubjectColor(subject)
                               : "white",
                           borderColor:
                             selectedSubject === subject
-                              ? sampleTopic?.subject_colour_token
-                              : sampleTopic?.subject_colour_token + "40",
+                              ? getSubjectColor(subject)
+                              : getSubjectColor(subject) + "40",
                         }}
                       >
                         {subject} ({subjectTopics.length})
@@ -597,7 +585,7 @@ export default function AnalyticsPage() {
                               <div className="flex items-center gap-3">
                                 <div
                                   className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: topic.subject_colour_token }}
+                                  style={{ backgroundColor: getSubjectColor(topic.subject_name) }}
                                 />
                                 <div>
                                   <p className="font-medium text-navy">{topic.topic_name}</p>
@@ -614,7 +602,7 @@ export default function AnalyticsPage() {
                                     className="h-full transition-all"
                                     style={{
                                       width: `${topic.avg_percentage}%`,
-                                      backgroundColor: topic.subject_colour_token,
+                                      backgroundColor: getSubjectColor(topic.subject_name),
                                     }}
                                   />
                                 </div>
@@ -660,7 +648,7 @@ export default function AnalyticsPage() {
                         <div className="flex items-center gap-3">
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: session.subject_colour_token || "#666" }}
+                            style={{ backgroundColor: getSubjectColor(session.subject_name || "") }}
                           />
                           <span className="font-medium text-navy">{session.subject_name || "—"}</span>
                           {session.topic_name && <span className="text-xs text-gray-500">• {session.topic_name}</span>}
@@ -803,10 +791,10 @@ export default function AnalyticsPage() {
 
             {/* Insights Cards */}
             {strongestTopic && (
-              <div className="bg-white rounded-lg shadow-md border-t-4 p-6" style={{ borderTopColor: strongestTopic.subject_colour_token }}>
+              <div className="bg-white rounded-lg shadow-md border-t-4 p-6" style={{ borderTopColor: getSubjectColor(strongestTopic.subject_name) }}>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Strongest Topic</p>
                 <p className="text-xl font-bold text-navy mb-1">{strongestTopic.topic_name}</p>
-                <p className="text-sm font-semibold mb-3 text-gray-500" style={{ color: strongestTopic.subject_colour_token }}>
+                <p className="text-sm font-semibold mb-3 text-gray-500" style={{ color: getSubjectColor(strongestTopic.subject_name) }}>
                   {strongestTopic.avg_percentage}% • {strongestTopic.subject_name}
                 </p>
                 <p className="text-xs text-gray-500">Keep this momentum! 🚀</p>

@@ -826,6 +826,18 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         })
         .eq("id", id);
 
+      // Update last_mock_exam_date if this is a mock exam
+      if (session.is_mock) {
+        const { error: profileUpdateError } = await supabaseAdmin
+          .from("profiles")
+          .update({ last_mock_exam_date: new Date().toISOString() })
+          .eq("id", user.id);
+
+        if (profileUpdateError) {
+          console.warn("[sessions/:id/submit] Failed to update last_mock_exam_date:", profileUpdateError);
+        }
+      }
+
       const { data: questions } = await supabaseAdmin
         .from("questions")
         .select("id, body, explanation, options(*)")
@@ -1028,15 +1040,57 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Mock exams are locked for trial users
-      if (profile.subscription_status === "free") {
-        res.status(402).json({
-          status: "error",
-          message: "Mock exams are only available for Pro subscribers. Upgrade to access full mock PUTME exams.",
-          timestamp: new Date().toISOString(),
-        });
-        return;
+      // Check mock exam access based on subscription tier
+      const planId = profile.subscription_status;
+
+      // Explorer: max 1 mock exam per month
+      if (planId === "explorer") {
+        const lastMockDate = profile.last_mock_exam_date;
+        if (lastMockDate) {
+          const lastMockTime = new Date(lastMockDate);
+          const now = new Date();
+          const lastMockMonth = lastMockTime.getMonth();
+          const lastMockYear = lastMockTime.getFullYear();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+
+          // If the mock was taken in the current month, deny access
+          if (lastMockYear === currentYear && lastMockMonth === currentMonth) {
+            const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            res.status(402).json({
+              status: "error",
+              message: `You've used your monthly mock exam. Next available: ${nextMonthDate.toLocaleDateString()}`,
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+        }
       }
+
+      // Scholar: max 3 mocks per 7-day rolling window
+      if (planId === "scholar") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const { data: recentMocks, error: mockError } = await supabaseAdmin
+          .from("sessions")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("is_mock", true)
+          .eq("completed", true)
+          .gte("started_at", sevenDaysAgo.toISOString());
+
+        if (!mockError && recentMocks && recentMocks.length >= 3) {
+          res.status(402).json({
+            status: "error",
+            message: "Mock exam limit reached. You can take 3 mocks per week. Try again in 7 days.",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+      }
+
+      // Elite users have unlimited mocks (no checks needed)
 
       if (!profile.target_university_id) {
         res.status(400).json({
@@ -1181,6 +1235,17 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           timestamp: new Date().toISOString(),
         });
         return;
+      }
+
+      // Update last_mock_exam_date for explorer users to track monthly limit
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ last_mock_exam_date: new Date().toISOString() })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.warn("[sessions/mock/start] Failed to update last_mock_exam_date:", updateError);
+        // Don't fail the request, just log the warning
       }
 
       // Get university info

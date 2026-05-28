@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useContentProtection } from "@/hooks/useContentProtection";
 import toast from "react-hot-toast";
 import type { StartSessionResponse, Subject } from "types";
 
@@ -27,6 +28,7 @@ interface Question {
 }
 
 export default function MockSessionPage() {
+  useContentProtection();
   const router = useRouter();
   const { user, loading, profile } = useAuth();
   const { checkMockExamAccess } = useFeatureAccess();
@@ -60,14 +62,44 @@ export default function MockSessionPage() {
           return;
         }
 
+        // Check if there's a saved session in progress
+        const savedSessionId = sessionStorage.getItem("mock_session_id_in_progress");
+
+        if (savedSessionId) {
+          // Resume saved session
+          const savedQuestions = sessionStorage.getItem(`mock_questions_${savedSessionId}`);
+          const savedAnswers = sessionStorage.getItem(`mock_answers_${savedSessionId}`);
+          const savedCurrentQuestion = sessionStorage.getItem(`mock_current_question_${savedSessionId}`);
+          const savedTime = sessionStorage.getItem(`mock_time_remaining_${savedSessionId}`);
+          const savedSessionData = sessionStorage.getItem(`mock_session_data_${savedSessionId}`);
+
+          if (savedQuestions && savedAnswers && savedSessionData) {
+            setSessionId(savedSessionId);
+            setQuestions(JSON.parse(savedQuestions));
+            setAnswers(JSON.parse(savedAnswers));
+            setCurrentQuestion(parseInt(savedCurrentQuestion || "0"));
+            setSessionData(JSON.parse(savedSessionData));
+            setTimeRemaining(parseInt(savedTime || "0"));
+            setPageLoading(false);
+            return;
+          }
+        }
+
         const response = await api.post("/api/sessions/mock/start", {});
+        const newSessionId = response.data.data.session_id;
         setSessionData(response.data.data);
         setQuestions(response.data.data.questions);
-        setSessionId(response.data.data.session_id);
+        setSessionId(newSessionId);
+
+        // Save session data for resume
+        sessionStorage.setItem("mock_session_id_in_progress", newSessionId);
+        sessionStorage.setItem(`mock_session_data_${newSessionId}`, JSON.stringify(response.data.data));
+        sessionStorage.setItem(`mock_questions_${newSessionId}`, JSON.stringify(response.data.data.questions));
 
         // Set time limit from API response (in minutes, convert to seconds)
         const timeLimitSeconds = (response.data.data.time_limit_minutes || 90) * 60;
         setTimeRemaining(timeLimitSeconds);
+        sessionStorage.setItem(`mock_time_remaining_${newSessionId}`, timeLimitSeconds.toString());
 
         // Initialize answers array
         const emptyAnswers = response.data.data.questions.map((q: Question) => ({
@@ -75,13 +107,23 @@ export default function MockSessionPage() {
           selected_option_id: null,
         }));
         setAnswers(emptyAnswers);
+        sessionStorage.setItem(`mock_answers_${newSessionId}`, JSON.stringify(emptyAnswers));
         setPageLoading(false);
       } catch (error) {
         console.error("Failed to start mock session:", error);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((error as any)?.response?.status === 402) {
-          toast.error("Mock exams are only available for Pro subscribers");
-          router.push("/pricing");
+        const errorResponse = (error as any)?.response;
+        if (errorResponse?.status === 402) {
+          const errorMessage = errorResponse?.data?.message || "Mock exam limit reached";
+          toast.error(errorMessage);
+
+          // Only redirect to pricing if it's truly about subscription, not monthly limit
+          if (errorMessage.includes("paid") || errorMessage.includes("upgrade")) {
+            router.push("/pricing");
+          } else {
+            // Monthly limit or other 402 errors - go back to dashboard
+            router.push("/dashboard");
+          }
         } else {
           toast.error("Failed to start mock exam");
           router.push("/dashboard");
@@ -107,6 +149,14 @@ export default function MockSessionPage() {
         time_taken_seconds: Math.max(timeTaken, 0),
       });
 
+      // Store questions data for results page
+      if (questions.length > 0) {
+        sessionStorage.setItem(
+          `session_questions_${sessionId}`,
+          JSON.stringify(questions)
+        );
+      }
+
       // Store results in sessionStorage so results page can access them
       if (res.data.data) {
         sessionStorage.setItem(
@@ -115,13 +165,35 @@ export default function MockSessionPage() {
         );
       }
 
+      // Clear the saved session from sessionStorage
+      sessionStorage.removeItem("mock_session_id_in_progress");
+      sessionStorage.removeItem(`mock_session_data_${sessionId}`);
+      sessionStorage.removeItem(`mock_questions_${sessionId}`);
+      sessionStorage.removeItem(`mock_answers_${sessionId}`);
+      sessionStorage.removeItem(`mock_current_question_${sessionId}`);
+      sessionStorage.removeItem(`mock_time_remaining_${sessionId}`);
+
       router.push(`/practice/results?sessionId=${sessionId}`);
     } catch (error) {
       console.error("Failed to submit session:", error);
       toast.error("Failed to submit exam. Please try again.");
       setIsSubmitting(false);
     }
-  }, [sessionId, answers, timeRemaining, isSubmitting, router]);
+  }, [sessionId, answers, timeRemaining, isSubmitting, router, questions]);
+
+  // Save current question to sessionStorage
+  useEffect(() => {
+    if (sessionId) {
+      sessionStorage.setItem(`mock_current_question_${sessionId}`, currentQuestion.toString());
+    }
+  }, [currentQuestion, sessionId]);
+
+  // Save answers to sessionStorage
+  useEffect(() => {
+    if (sessionId && answers.length > 0) {
+      sessionStorage.setItem(`mock_answers_${sessionId}`, JSON.stringify(answers));
+    }
+  }, [answers, sessionId]);
 
   // Timer countdown
   useEffect(() => {
@@ -132,6 +204,13 @@ export default function MockSessionPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Save time remaining to sessionStorage periodically
+  useEffect(() => {
+    if (sessionId && timeRemaining >= 0) {
+      sessionStorage.setItem(`mock_time_remaining_${sessionId}`, timeRemaining.toString());
+    }
+  }, [timeRemaining, sessionId]);
+
   // Auto-submit when time runs out
   useEffect(() => {
     if (timeRemaining <= 0 && !hasSubmittedRef.current && sessionId) {
@@ -140,12 +219,6 @@ export default function MockSessionPage() {
     }
   }, [timeRemaining, sessionId, handleSubmitSession]);
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const handleSelectOption = (optionId: string) => {
     const newAnswers = [...answers];
@@ -175,18 +248,23 @@ export default function MockSessionPage() {
   );
   const isTimeWarning = timeRemaining < 600; // 10 minutes
   const isCritical = timeRemaining < 60; // 1 minute
-
-  // Calculate subject and question number within subject
   const questionsPerSubject = 25;
   const subjectIndex = Math.floor(currentQuestion / questionsPerSubject);
   const subjects = (sessionData?.subjects || []) as Subject[];
   const currentSubject = subjects[subjectIndex]?.name || "Question";
   const questionInSubject = (currentQuestion % questionsPerSubject) + 1;
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="min-h-screen bg-blush flex flex-col">
-      {/* Top Navigation Bar */}
-      <div className="bg-navy text-white shadow-lg sticky top-0 z-40">
+      {/* Top Navigation Bar with Time */}
+      <div className="bg-navy text-white shadow-lg z-40">
         <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -335,7 +413,7 @@ export default function MockSessionPage() {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl mx-auto">
             {/* Question */}
-            <div className="mb-8">
+            <div className="mb-8 select-none">
               <p className="text-sm text-gray-600 mb-4">
                 Question {currentQuestion + 1} of {questions.length}
               </p>
@@ -377,48 +455,54 @@ export default function MockSessionPage() {
 
       {/* Bottom Navigation - Fixed/Sticky */}
       <div className="fixed md:relative bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-lg p-2 md:p-4 z-40">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto flex gap-2 md:gap-4">
+          {/* Left Arrow (Mobile) */}
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestion === 0}
-            className="hidden md:block px-3 md:px-6 py-1.5 md:py-2 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs md:text-base"
-          >
-            Prev
-          </button>
-
-          {/* Mobile Previous Button */}
-          <button
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestion === 0}
-            className="md:hidden px-3 py-1.5 bg-gray-200 text-gray-900 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors flex items-center justify-center"
+            className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
             title="Previous question"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
 
-          <div className="flex gap-2 w-full md:w-auto md:order-3">
-            {currentQuestion < questions.length - 1 && (
-              <button
-                onClick={handleNextQuestion}
-                className="flex-1 md:flex-none px-3 md:px-6 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition-opacity text-xs md:text-base"
-              >
-                Next
-              </button>
-            )}
-            <button
-              onClick={handleSubmitSession}
-              disabled={isSubmitting}
-              className="flex-1 md:flex-none px-3 md:px-8 py-1.5 md:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition-opacity text-xs md:text-base"
-            >
-              {isSubmitting ? "..." : "Submit"}
-            </button>
-          </div>
+          <button
+            onClick={handlePreviousQuestion}
+            disabled={currentQuestion === 0}
+            className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            ← Previous
+          </button>
 
-          <div className="text-xs md:text-sm text-gray-600 font-medium w-full text-center md:w-auto md:order-2">
-            {currentQuestion + 1} / {questions.length}
-          </div>
+          <button
+            onClick={handleSubmitSession}
+            disabled={isSubmitting}
+            className="px-4 md:px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSubmitting ? "..." : "Submit"}
+          </button>
+
+          <button
+            onClick={handleNextQuestion}
+            disabled={currentQuestion === questions.length - 1}
+            className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next →
+          </button>
+
+          {/* Right Arrow (Mobile) */}
+          <button
+            onClick={handleNextQuestion}
+            disabled={currentQuestion === questions.length - 1}
+            className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            title="Next question"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
 

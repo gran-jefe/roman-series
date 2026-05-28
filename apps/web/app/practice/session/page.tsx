@@ -3,10 +3,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
-import type { StudentQuestion, Subject, University } from "types";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import type { StudentQuestion } from "types";
 import { QuestionSkeleton } from "@/components/skeletons";
 
 export default function PracticeSessionPage() {
+  useContentProtection();
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
@@ -16,9 +18,6 @@ export default function PracticeSessionPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, string | null>>(new Map());
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [subject, setSubject] = useState<Subject | null>(null);
-  const [university, setUniversity] = useState<University | null>(null);
-  const [topicName, setTopicName] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
@@ -48,14 +47,8 @@ export default function PracticeSessionPage() {
 
     try {
       const questionsData = JSON.parse(questionsRaw);
-      const meta = JSON.parse(metaRaw);
 
       setQuestions(questionsData);
-      setSubject(meta.subject);
-      setUniversity(meta.university);
-      if (meta.topic) {
-        setTopicName(meta.topic.name);
-      }
 
       const calcTotalTime = questionsData.length * 60; // 1 minute per question
       setTotalTime(calcTotalTime);
@@ -182,15 +175,12 @@ export default function PracticeSessionPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="h-16 bg-navy" />
-        <div className="mt-16 flex-1 flex">
-          <main className="flex-1 pb-32 overflow-y-auto">
-            <div className="max-w-3xl mx-auto px-4 py-8">
-              <QuestionSkeleton />
-            </div>
-          </main>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex">
+        <main className="flex-1 pb-32 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            <QuestionSkeleton />
+          </div>
+        </main>
       </div>
     );
   }
@@ -214,12 +204,8 @@ export default function PracticeSessionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Bar */}
-      <div className="fixed top-0 left-0 right-0 h-16 bg-navy text-white px-4 flex items-center justify-between shadow-lg z-40">
-        <div className="text-sm font-medium">
-          {subject?.name || "Practice"}
-          {topicName && ` • ${topicName}`}
-        </div>
+      {/* Top Bar with Time */}
+      <div className="bg-navy text-white px-4 py-4 flex items-center justify-between shadow-lg z-40">
         <div className="text-sm font-medium">
           Question {currentIndex + 1} of {questions.length}
         </div>
@@ -231,12 +217,12 @@ export default function PracticeSessionPage() {
       </div>
 
       {/* Main Content */}
-      <div className="mt-16 flex-1 flex">
+      <div className="flex-1 flex">
         {/* Question Area */}
         <main className="flex-1 pb-32 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 py-8">
             {/* Question Body */}
-            <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+            <div className="bg-white rounded-lg shadow-lg p-8 mb-6 select-none">
               <h2 className="text-lg font-semibold text-navy mb-6">
                 {currentQuestion.body}
               </h2>

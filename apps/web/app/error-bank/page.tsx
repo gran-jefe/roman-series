@@ -11,6 +11,22 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { ErrorBankQuestion } from "types";
 import toast from "react-hot-toast";
 
+// Color mapping for subjects
+const SUBJECT_COLORS: Record<string, string> = {
+  "Biology": "#1A7A4A",
+  "Government": "#1E3A5F",
+  "Chemistry": "#8B2252",
+  "Literature": "#C4522A",
+  "CRS": "#D97B20",
+  "IRS": "#B0287A",
+  "English": "#2166B2",
+  "Physics": "#7B4F1A",
+};
+
+const getSubjectColor = (subjectName: string): string => {
+  return SUBJECT_COLORS[subjectName] || "#666666";
+};
+
 export default function ErrorBankPage() {
   const router = useRouter();
   const { user, loading, profile } = useAuth();
@@ -56,17 +72,7 @@ export default function ErrorBankPage() {
   if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <nav className="bg-navy text-white shadow-lg">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-forest rounded-full" />
-              <h1 className="text-xl font-bold">Roman Series</h1>
-            </Link>
-            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-              Back to Dashboard
-            </Link>
-          </div>
-        </nav>
+      
         <main className="max-w-6xl mx-auto px-4 py-12 text-center">
           <p className="text-gray-600 mb-4">No questions in your error bank yet</p>
           <Link href="/dashboard" className="text-forest hover:underline">
@@ -81,17 +87,7 @@ export default function ErrorBankPage() {
   if (!errorBankAccess.hasAccess) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <nav className="bg-navy text-white shadow-lg">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-forest rounded-full" />
-              <h1 className="text-xl font-bold">Roman Series</h1>
-            </Link>
-            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-              Back to Dashboard
-            </Link>
-          </div>
-        </nav>
+        
         <main className="max-w-6xl mx-auto px-4 py-12 text-center">
           <p className="text-gray-600 mb-4">{errorBankAccess.reason}</p>
           <Link href="/pricing" className="text-forest font-medium hover:underline">
@@ -115,7 +111,7 @@ export default function ErrorBankPage() {
   const subjects = Array.from(bySubject.entries()).map(([name, qs]) => ({
     name,
     count: qs.length,
-    colour_token: qs[0]?.subject_colour_token || "#666",
+    colour: getSubjectColor(name),
   }));
 
   // Filter questions based on selected subject
@@ -134,18 +130,7 @@ export default function ErrorBankPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-navy text-white shadow-lg sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-forest rounded-full" />
-            <h1 className="text-xl font-bold">Roman Series</h1>
-          </Link>
-          <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white">
-            Back to Dashboard
-          </Link>
-        </div>
-      </nav>
+    
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-12">
@@ -194,12 +179,12 @@ export default function ErrorBankPage() {
               style={{
                 backgroundColor:
                   selectedSubject === subject.name
-                    ? subject.colour_token
+                    ? subject.colour
                     : "white",
                 borderColor:
                   selectedSubject === subject.name
-                    ? subject.colour_token
-                    : subject.colour_token + "40",
+                    ? subject.colour
+                    : subject.colour + "40",
               }}
             >
               {subject.name} ({subject.count})
@@ -229,7 +214,7 @@ export default function ErrorBankPage() {
               <div className="flex items-center gap-3 mb-4">
                 <div
                   className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: subjectQuestions[0]?.subject_colour_token || "#666" }}
+                  style={{ backgroundColor: getSubjectColor(subjectName) }}
                 />
                 <h2 className="text-2xl font-bold text-navy">
                   {subjectName} ({subjectQuestions.length})
@@ -245,9 +230,9 @@ export default function ErrorBankPage() {
                 }}
                 className="mb-4 px-4 py-2 rounded-lg font-medium transition-opacity"
                 style={{
-                  backgroundColor: (subjectQuestions[0]?.subject_colour_token || "#666") + "20",
-                  color: subjectQuestions[0]?.subject_colour_token || "#666",
-                  border: `2px solid ${subjectQuestions[0]?.subject_colour_token || "#666"}`,
+                  backgroundColor: getSubjectColor(subjectName) + "20",
+                  color: getSubjectColor(subjectName),
+                  border: `2px solid ${getSubjectColor(subjectName)}`,
                 }}
               >
                 Retry {subjectName} ({subjectQuestions.length} questions)

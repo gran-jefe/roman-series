@@ -39,10 +39,41 @@ export default function PracticeResultsPage() {
         // Try sessionStorage first
         const resultsRaw = sessionStorage.getItem(`session_results_${sessionId}`);
         const metaRaw = sessionStorage.getItem(`session_meta_${sessionId}`);
+        const questionsRaw = sessionStorage.getItem(`session_questions_${sessionId}`);
 
-        if (resultsRaw && metaRaw) {
-          setResults(JSON.parse(resultsRaw));
-          setSessionMeta(JSON.parse(metaRaw));
+        if (resultsRaw) {
+          const parsedResults = JSON.parse(resultsRaw);
+
+          // If we have stored questions (from mock exam), merge them with results
+          if (questionsRaw && !metaRaw) {
+            const storedQuestions = JSON.parse(questionsRaw);
+            const enhancedResults: SessionResult = {
+              score: parsedResults.score,
+              total: parsedResults.total_questions || parsedResults.total,
+              percentage: parsedResults.percentage || Math.round(
+                (parsedResults.score / (parsedResults.total_questions || parsedResults.total)) * 100
+              ),
+              answers: parsedResults.answers?.map((answer: any, idx: number) => {
+                const question = storedQuestions[idx];
+                return {
+                  question_id: answer.question_id,
+                  question_body: question?.body || answer.question_body || "Question not found",
+                  selected_option_id: answer.selected_option_id,
+                  is_correct: answer.is_correct,
+                  correct_option_id: question?.options?.find((o: any) => o.is_correct)?.id || answer.correct_option_id,
+                  explanation: question?.explanation || answer.explanation,
+                  options: question?.options || answer.options || [],
+                };
+              }) || [],
+            };
+            setResults(enhancedResults);
+          } else {
+            setResults(parsedResults);
+          }
+
+          if (metaRaw) {
+            setSessionMeta(JSON.parse(metaRaw));
+          }
         } else {
           // Fallback to API
           const res = await api.get(`/api/sessions/${sessionId}`);
@@ -109,18 +140,10 @@ export default function PracticeResultsPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-navy text-white shadow-lg">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-forest rounded-full" />
-              <h1 className="text-xl font-bold">Roman Series</h1>
-            </div>
-          </div>
-        </nav>
-        <main className="max-w-4xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-4xl mx-auto">
           <CardSkeleton />
-        </main>
+        </div>
       </div>
     );
   }
@@ -285,7 +308,7 @@ export default function PracticeResultsPage() {
                     } else if (percentage >= 40) {
                       return (
                         <p className="text-amber-700 font-medium">
-                          Keep practicing ({percentage}%). You're getting closer to your target.
+                          Keep practicing ({percentage}%). You&apos;re getting closer to your target.
                         </p>
                       );
                     } else {

@@ -14,13 +14,40 @@ export function useFeatureAccess() {
   const features = getFeatures(profile?.subscription_status);
 
   const checkMockExamAccess = (): FeatureAccessResult => {
-    if (features.mockExamsPerMonth > 0) {
+    if (features.mockExamsPerMonth === 0) {
+      return {
+        hasAccess: false,
+        reason: "Upgrade to Scholar or Elite to access mock exams",
+      };
+    }
+
+    // Check monthly limit for explorer users
+    if (profile?.subscription_status === "explorer") {
+      const lastMockDate = profile?.last_mock_exam_date;
+      if (lastMockDate) {
+        const lastMockTime = new Date(lastMockDate).getTime();
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const lastMockDate_obj = new Date(lastMockDate);
+        const lastMockMonth = lastMockDate_obj.getMonth();
+        const lastMockYear = lastMockDate_obj.getFullYear();
+
+        // If the mock was taken in the current month, deny access
+        if (lastMockYear === currentYear && lastMockMonth === currentMonth) {
+          const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+          return {
+            hasAccess: false,
+            reason: `You've used your monthly mock exam. Next available: ${nextMonthDate.toLocaleDateString()}`,
+          };
+        }
+      }
       return { hasAccess: true };
     }
-    return {
-      hasAccess: false,
-      reason: "Upgrade to Scholar or Elite to access mock exams",
-    };
+
+    // Scholar and Elite have unlimited or high limits
+    return { hasAccess: true };
   };
 
   const checkErrorBankAccess = (): FeatureAccessResult => {

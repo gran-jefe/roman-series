@@ -277,19 +277,15 @@ export default function DashboardPage() {
             {selectedUniversity && (
               <div>
                 <h3 className="text-xl font-bold text-navy mb-4">Mock PUTME Exam</h3>
-                <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 transition-all ${
-                  subscription?.subscription_status === "explorer"
-                    ? "bg-gray-50 border-gray-300"
-                    : "bg-white border-forest hover:shadow-lg"
-                }`}>
+                <div className="rounded-lg shadow-md p-4 md:p-8 border-t-4 border-forest bg-white hover:shadow-lg transition-all">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
                       <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
                       <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
                       {subscription?.subscription_status === "explorer" && (
-                        <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-amber-900">🔒 Unlock with Pro Plan</p>
-                          <p className="text-xs text-amber-800 mt-1">Mock exams are available for paid subscribers. Upgrade now to access full mock PUTME exams.</p>
+                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 1 mock per month</p>
+                          <p className="text-xs text-blue-800 mt-1">You can take one full mock exam per calendar month. Upgrade to Scholar or Elite for more attempts.</p>
                         </div>
                       )}
                       <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
@@ -313,20 +309,11 @@ export default function DashboardPage() {
                     </div>
                     <button
                       onClick={() => {
-                        if (subscription?.subscription_status === "explorer") {
-                          router.push("/pricing");
-                        } else {
-                          router.push("/practice/mock/session");
-                        }
+                        router.push("/practice/mock/session");
                       }}
-                      disabled={subscription?.subscription_status === "explorer"}
-                      className={`w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
-                        subscription?.subscription_status === "explorer"
-                          ? "bg-gray-300 text-gray-600 cursor-not-allowed opacity-50"
-                          : "bg-forest text-white hover:shadow-md"
-                      }`}
+                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-forest text-white hover:shadow-md"
                     >
-                      {subscription?.subscription_status === "explorer" ? "Upgrade" : "Start Exam"}
+                      Start Exam
                     </button>
                   </div>
                 </div>
