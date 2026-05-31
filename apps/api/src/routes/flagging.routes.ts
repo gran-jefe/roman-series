@@ -64,9 +64,11 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
         .single();
 
       if (error) {
+        console.error("[flagging/flag] Database error:", error);
         res.status(500).json({
           status: "error",
           message: "Failed to flag question",
+          details: error.message,
           timestamp: new Date().toISOString(),
         });
         return;
