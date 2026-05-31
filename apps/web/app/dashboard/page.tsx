@@ -37,7 +37,6 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useState<SubjectWithCounts[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userName, setUserName] = useState<string>("");
@@ -46,10 +45,12 @@ export default function DashboardPage() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [targetCourse, setTargetCourse] = useState<string>("");
 
-  // Fetch initial data
+  // Loading state for essential data only
+  const [essentialLoading, setEssentialLoading] = useState(true);
+
+  // Fetch essential data first (blocks page render until done)
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchEssentialData = async () => {
       const token = localStorage.getItem("access_token");
       console.log("[Dashboard] Token in storage:", token ? `${token.slice(0, 20)}...` : "MISSING");
       try {
@@ -105,59 +106,71 @@ export default function DashboardPage() {
             setSubjects(userSubjects);
           }
         }
+      } catch (error) {
+        console.error("Failed to fetch essential data:", error);
+        toast.error("Failed to load dashboard");
+      } finally {
+        setEssentialLoading(false);
+      }
+    };
 
-        // Get user stats
-        try {
-          const statsRes = await api.get("/api/stats/me");
-          setStats(statsRes.data.data);
-        } catch {
-          // Stats endpoint error - continue without it
-        }
+    fetchEssentialData();
+  }, [profile, router]);
 
-        // Get session history
-        try {
-          const sessionRes = await api.get("/api/sessions/history");
-          setSessions(sessionRes.data.data || []);
-        } catch {
-          // Sessions endpoint error - continue without it
-        }
-
-        // Get subscription status (optional)
+  // Fetch optional data in parallel (non-blocking)
+  useEffect(() => {
+    if (!essentialLoading) {
+      // Fetch subscription status
+      (async () => {
         try {
           const subRes = await api.get("/api/payments/status");
           setSubscription(subRes.data.data);
         } catch {
           // Subscription endpoint error - continue without it
         }
+      })();
 
-        // Get error bank questions (optional)
+      // Fetch user stats
+      (async () => {
+        try {
+          const statsRes = await api.get("/api/stats/me");
+          setStats(statsRes.data.data);
+        } catch {
+          // Stats endpoint error - continue without it
+        }
+      })();
+
+      // Fetch session history
+      (async () => {
+        try {
+          const sessionRes = await api.get("/api/sessions/history");
+          setSessions(sessionRes.data.data || []);
+        } catch {
+          // Sessions endpoint error - continue without it
+        }
+      })();
+
+      // Fetch error bank questions
+      (async () => {
         try {
           const errorRes = await api.get("/api/sessions/wrong-questions");
           setErrorBank(errorRes.data.data?.questions || []);
         } catch {
           // Error bank endpoint error - continue without it
         }
+      })();
 
-        // Get prediction (optional)
+      // Fetch prediction
+      (async () => {
         try {
           const predRes = await api.get("/api/analytics/prediction");
           setPrediction(predRes.data.data);
         } catch {
           // Prediction endpoint error - continue without it
         }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        if (error instanceof Error) {
-          console.error("Error details:", error.message);
-        }
-        toast.error("Failed to load dashboard");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [profile]);
+      })();
+    }
+  }, [essentialLoading]);
 
   const handleSelectSubject = (subject: Subject) => {
     if (!selectedUniversity) return;
@@ -166,7 +179,8 @@ export default function DashboardPage() {
     );
   };
 
-  if (loading) {
+  // Show loader only for essential data (profile, university, subjects)
+  if (essentialLoading) {
     return <PageLoader message="Loading dashboard..." />;
   }
 
