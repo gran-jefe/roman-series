@@ -32,16 +32,15 @@ export default function PricingPage() {
     try {
       // Check if user is already on Scholar and upgrading to Elite
       if (plan === "elite" && profile?.subscription_status === "scholar") {
-        const res = await api.post("/api/payments/upgrade", { target_plan: plan });
-        if (res.data.data?.authorization_url) {
-          window.location.href = res.data.data.authorization_url;
-        }
-      } else {
-        // Standard payment flow for new subscribers
-        const res = await api.post("/api/payments/initiate", { plan });
-        if (res.data.data?.authorization_url) {
-          window.location.href = res.data.data.authorization_url;
-        }
+        // Redirect to dedicated upgrade page for Scholar → Elite
+        router.push("/upgrade");
+        return;
+      }
+
+      // Standard payment flow for new subscribers
+      const res = await api.post("/api/payments/initiate", { plan });
+      if (res.data.data?.authorization_url) {
+        window.location.href = res.data.data.authorization_url;
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
