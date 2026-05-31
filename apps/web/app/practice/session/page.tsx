@@ -30,6 +30,27 @@ export default function PracticeSessionPage() {
     answersRef.current = answers;
   }, [answers]);
 
+  // Per-question timing tracking
+  const questionStartTime = useRef<number>(Date.now());
+  const questionTimes = useRef<Map<string, number>>(new Map());
+
+  // Track when question changes
+  useEffect(() => {
+    if (questions.length === 0 || !questions[currentIndex]) return;
+
+    // Save time for previous question
+    if (questionTimes.current.size > 0 || currentIndex > 0) {
+      const elapsed = Math.round((Date.now() - questionStartTime.current) / 1000);
+      const prevIndex = currentIndex - 1;
+      if (prevIndex >= 0) {
+        questionTimes.current.set(questions[prevIndex].id, elapsed);
+      }
+    }
+
+    // Reset for current question
+    questionStartTime.current = Date.now();
+  }, [currentIndex, questions]);
+
   // Load session data from sessionStorage
   useEffect(() => {
     if (!sessionId) {
@@ -142,9 +163,16 @@ export default function PracticeSessionPage() {
 
     setSubmitting(true);
     try {
+      // Capture time for the current question before submitting
+      const elapsed = Math.round((Date.now() - questionStartTime.current) / 1000);
+      if (currentIndex >= 0 && currentIndex < questions.length) {
+        questionTimes.current.set(questions[currentIndex].id, elapsed);
+      }
+
       const answersPayload = questions.map((q) => ({
         question_id: q.id,
         selected_option_id: answers.get(q.id) ?? null,
+        time_spent_seconds: questionTimes.current.get(q.id) ?? null,
       }));
 
       const timeTaken = totalTime - timeLeft;

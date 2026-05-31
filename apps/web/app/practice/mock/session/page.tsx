@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
@@ -30,6 +30,7 @@ interface Question {
 export default function MockSessionPage() {
   useContentProtection();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, profile } = useAuth();
   const { checkMockExamAccess } = useFeatureAccess();
   const mockExamAccess = checkMockExamAccess();
@@ -39,15 +40,23 @@ export default function MockSessionPage() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0); // Will be set from API response
+  const [timeLimitSeconds, setTimeLimitSeconds] = useState<number>(90 * 60); // Default 90 minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hardMode, setHardMode] = useState(false);
   const hasSubmittedRef = useRef(false);
 
   // Check subscription and initialize mock session
   useEffect(() => {
     const startMockSession = async () => {
       try {
+        // Read mode from URL params
+        const mode = searchParams.get("mode");
+        if (mode === "hard") {
+          setHardMode(true);
+        }
+
         // Guard: check if user has mock exam access
         if (!mockExamAccess.hasAccess) {
           toast.error(mockExamAccess.reason || "Mock exams are not available on your plan");
@@ -72,6 +81,7 @@ export default function MockSessionPage() {
           const savedCurrentQuestion = sessionStorage.getItem(`mock_current_question_${savedSessionId}`);
           const savedTime = sessionStorage.getItem(`mock_time_remaining_${savedSessionId}`);
           const savedSessionData = sessionStorage.getItem(`mock_session_data_${savedSessionId}`);
+          const savedMode = sessionStorage.getItem(`mock_mode_${savedSessionId}`);
 
           if (savedQuestions && savedAnswers && savedSessionData) {
             setSessionId(savedSessionId);
@@ -80,12 +90,13 @@ export default function MockSessionPage() {
             setCurrentQuestion(parseInt(savedCurrentQuestion || "0"));
             setSessionData(JSON.parse(savedSessionData));
             setTimeRemaining(parseInt(savedTime || "0"));
+            if (savedMode === "hard") setHardMode(true);
             setPageLoading(false);
             return;
           }
         }
 
-        const response = await api.post("/api/sessions/mock/start", {});
+        const response = await api.post("/api/sessions/mock/start", { mode: mode || undefined });
         const newSessionId = response.data.data.session_id;
         setSessionData(response.data.data);
         setQuestions(response.data.data.questions);
@@ -95,11 +106,15 @@ export default function MockSessionPage() {
         sessionStorage.setItem("mock_session_id_in_progress", newSessionId);
         sessionStorage.setItem(`mock_session_data_${newSessionId}`, JSON.stringify(response.data.data));
         sessionStorage.setItem(`mock_questions_${newSessionId}`, JSON.stringify(response.data.data.questions));
+        if (mode === "hard") {
+          sessionStorage.setItem(`mock_mode_${newSessionId}`, "hard");
+        }
 
         // Set time limit from API response (in minutes, convert to seconds)
-        const timeLimitSeconds = (response.data.data.time_limit_minutes || 90) * 60;
-        setTimeRemaining(timeLimitSeconds);
-        sessionStorage.setItem(`mock_time_remaining_${newSessionId}`, timeLimitSeconds.toString());
+        const calculatedTimeLimitSeconds = (response.data.data.time_limit_minutes || 90) * 60;
+        setTimeLimitSeconds(calculatedTimeLimitSeconds);
+        setTimeRemaining(calculatedTimeLimitSeconds);
+        sessionStorage.setItem(`mock_time_remaining_${newSessionId}`, calculatedTimeLimitSeconds.toString());
 
         // Initialize answers array
         const emptyAnswers = response.data.data.questions.map((q: Question) => ({
@@ -134,7 +149,7 @@ export default function MockSessionPage() {
     if (!loading && user) {
       startMockSession();
     }
-  }, [user, loading, router, profile]);
+  }, [user, loading, router, profile, searchParams, mockExamAccess]);
 
   // Submit session handler - defined before auto-submit effect
   const handleSubmitSession = useCallback(async () => {
@@ -142,7 +157,7 @@ export default function MockSessionPage() {
     setIsSubmitting(true);
 
     try {
-      const timeTaken = (90 * 60) - timeRemaining;
+      const timeTaken = timeLimitSeconds - timeRemaining;
 
       const res = await api.post(`/api/sessions/${sessionId}/submit`, {
         answers,
@@ -179,7 +194,7 @@ export default function MockSessionPage() {
       toast.error("Failed to submit exam. Please try again.");
       setIsSubmitting(false);
     }
-  }, [sessionId, answers, timeRemaining, isSubmitting, router, questions]);
+  }, [sessionId, answers, timeRemaining, isSubmitting, router, questions, timeLimitSeconds]);
 
   // Save current question to sessionStorage
   useEffect(() => {
@@ -275,11 +290,18 @@ export default function MockSessionPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
-            <p className="text-xs md:text-sm text-gray-300 truncate">
-              {currentSubject} • Q{questionInSubject}/25
-            </p>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <div>
+              <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
+              <p className="text-xs md:text-sm text-gray-300 truncate">
+                {currentSubject} • Q{questionInSubject}/25
+              </p>
+            </div>
+            {hardMode && (
+              <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
+                HARD MODE
+              </span>
+            )}
           </div>
           <div
             className={`text-base md:text-2xl font-bold px-2 md:px-4 py-1 md:py-2 rounded-lg whitespace-nowrap flex-shrink-0 ${

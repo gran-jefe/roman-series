@@ -40,6 +40,13 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         return;
       }
 
+      // Get user profile for subscription check
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
       // Get all completed sessions with time and date info
       const { data: sessions, error: sessionError } = await supabaseAdmin
         .from("sessions")
@@ -188,6 +195,54 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         sessions_count: data.total,
       }));
 
+      // Calculate speed_by_subject for Scholar+ (empty array for Explorer)
+      let speedBySubject: any[] = [];
+      if (profile?.subscription_status && profile.subscription_status !== "explorer") {
+        const speedMap = new Map<string, { times: number[]; count: number }>();
+
+        // Get all session_answers with time_spent_seconds for this user
+        const { data: sessionAnswers } = await supabaseAdmin
+          .from("session_answers")
+          .select("question_id, time_spent_seconds")
+          .in("session_id", sessions.map(s => s.id))
+          .not("time_spent_seconds", "is", null);
+
+        // Fetch question details to map to subjects
+        const questionIds = sessionAnswers?.map(a => a.question_id) ?? [];
+        let questionSubjectMap = new Map<string, string>();
+
+        if (questionIds.length > 0) {
+          const { data: questions } = await supabaseAdmin
+            .from("questions")
+            .select("id, subject_id")
+            .in("id", questionIds);
+
+          questions?.forEach(q => {
+            questionSubjectMap.set(q.id, q.subject_id);
+          });
+        }
+
+        // Group times by subject
+        sessionAnswers?.forEach(answer => {
+          const subjectId = questionSubjectMap.get(answer.question_id);
+          if (subjectId && answer.time_spent_seconds) {
+            const existing = speedMap.get(subjectId) || { times: [], count: 0 };
+            existing.times.push(answer.time_spent_seconds);
+            existing.count++;
+            speedMap.set(subjectId, existing);
+          }
+        });
+
+        // Build response
+        speedBySubject = [...speedMap.entries()].map(([subjectId, data]) => ({
+          subject_id: subjectId,
+          subject_name: subjectNameMap.get(subjectId) ?? "Unknown",
+          avg_time_per_question_seconds: Math.round(
+            data.times.reduce((a, b) => a + b, 0) / data.times.length
+          ),
+        }));
+      }
+
       const response: AnalyticsOverview = {
         total_sessions: totalSessions,
         total_questions_answered: totalQuestionsAnswered,
@@ -198,6 +253,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         total_time_practiced_seconds: totalTimeSeconds,
         avg_time_per_question_seconds: avgTimePerQuestion,
         avg_score_by_subject: avgScoreBySubject,
+        speed_by_subject: speedBySubject,
       };
 
       res.json({
@@ -946,20 +1002,30 @@ Write a comprehensive report that:
 
 Keep the report between 400-600 words. Use encouraging, constructive language.`;
 
-      const message = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content: reportPrompt,
-          },
-        ],
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 1024,
-      });
+      if (!groqApiKey) {
+        throw new Error("Groq API key is not configured. Please set GROQ_API_KEY in environment variables.");
+      }
 
-      const reportText = message.choices[0].message.content || "";
+      let message;
+      try {
+        message = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "user",
+              content: reportPrompt,
+            },
+          ],
+          model: "llama-3.3-70b-versatile",
+          max_tokens: 1024,
+        });
+      } catch (groqError: any) {
+        console.error("[getOrGenerateReport] Groq API error:", groqError);
+        throw new Error(`Failed to generate report with AI: ${groqError.message || "Unknown Groq API error"}`);
+      }
+
+      const reportText = message.choices[0]?.message.content || "";
       if (!reportText) {
-        throw new Error("Groq API returned empty response");
+        throw new Error("Groq API returned empty response. Please try again.");
       }
 
       const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -1186,6 +1252,294 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       res.status(500).json({
         status: "error",
         message: "Failed to generate PDF",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/analytics/speed - Detailed speed analysis by topic (Scholar+ only)
+  app.get("/api/analytics/speed", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Check subscription
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_status === "explorer") {
+        res.status(403).json({
+          status: "error",
+          message: "Speed analysis is available for Scholar and Elite members only",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get all completed sessions for this user
+      const { data: sessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("completed", true);
+
+      if (!sessions || sessions.length === 0) {
+        res.json({
+          status: "success",
+          data: [],
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get session answers with time data
+      const { data: sessionAnswers } = await supabaseAdmin
+        .from("session_answers")
+        .select("question_id, time_spent_seconds")
+        .in("session_id", sessions.map(s => s.id))
+        .not("time_spent_seconds", "is", null);
+
+      if (!sessionAnswers || sessionAnswers.length === 0) {
+        res.json({
+          status: "success",
+          data: [],
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get question details with topic info
+      const questionIds = sessionAnswers.map(a => a.question_id);
+      const { data: questions } = await supabaseAdmin
+        .from("questions")
+        .select("id, topic_id")
+        .in("id", questionIds);
+
+      // Get topic details
+      const topicIds = questions?.map(q => q.topic_id) ?? [];
+      const { data: topics } = await supabaseAdmin
+        .from("topics")
+        .select("id, name, subject_id")
+        .in("id", topicIds);
+
+      // Get subject names
+      const subjectIds = topics?.map(t => t.subject_id) ?? [];
+      const { data: subjects } = await supabaseAdmin
+        .from("subjects")
+        .select("id, name")
+        .in("id", subjectIds);
+
+      // Build maps
+      const questionTopicMap = new Map(questions?.map(q => [q.id, q.topic_id]) ?? []);
+      const topicMap = new Map(topics?.map(t => [t.id, t]) ?? []);
+      const subjectMap = new Map(subjects?.map(s => [s.id, s.name]) ?? []);
+
+      // Group by topic and calculate avg time
+      const topicTimeMap = new Map<string, { times: number[]; topic: any }>();
+
+      sessionAnswers.forEach(answer => {
+        const topicId = questionTopicMap.get(answer.question_id);
+        if (topicId && topicMap.has(topicId)) {
+          const topic = topicMap.get(topicId);
+          const existing = topicTimeMap.get(topicId) || { times: [], topic };
+          if (answer.time_spent_seconds) {
+            existing.times.push(answer.time_spent_seconds);
+          }
+          topicTimeMap.set(topicId, existing);
+        }
+      });
+
+      // Build response, sorted by slowest first
+      const speedData = [...topicTimeMap.values()]
+        .map(({ times, topic }) => ({
+          topic_id: topic.id,
+          topic_name: topic.name,
+          subject_name: subjectMap.get(topic.subject_id) ?? "Unknown",
+          avg_seconds: Math.round(times.reduce((a, b) => a + b, 0) / times.length),
+          total_answered: times.length,
+        }))
+        .sort((a, b) => b.avg_seconds - a.avg_seconds);
+
+      res.json({
+        status: "success",
+        data: speedData,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[analytics/speed] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/analytics/study-plan - AI-powered study plan (Elite only, cached 24h)
+  app.get("/api/analytics/study-plan", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Check Elite subscription
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_status !== "elite") {
+        res.status(403).json({
+          status: "error",
+          message: "Study plan generation is available for Elite members only",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Check for cached study plan (24h)
+      const { data: cachedReport } = await supabaseAdmin
+        .from("analytics_reports")
+        .select("cached_data")
+        .eq("user_id", user.id)
+        .eq("report_type", "study_plan")
+        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedReport?.cached_data) {
+        res.json({
+          status: "success",
+          data: cachedReport.cached_data,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get topic performance data
+      const { data: topicPerformance } = await supabaseAdmin
+        .rpc("get_user_topic_performance", { user_id: user.id });
+
+      if (!topicPerformance || topicPerformance.length === 0) {
+        res.json({
+          status: "success",
+          data: [],
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get weakest topics for AI context
+      const weakTopics = topicPerformance
+        .filter((t: any) => t.mastery_percentage < 70)
+        .sort((a: any, b: any) => a.mastery_percentage - b.mastery_percentage)
+        .slice(0, 10);
+
+      // Call Groq to generate study plan
+      const groq = new Groq({ apiKey: groqApiKey });
+
+      const prompt = `Based on a student's performance data, create a prioritized study plan.
+Weak topics (mastery < 70%):
+${weakTopics.map((t: any) => `- ${t.topic_name} (${t.subject_name}): ${t.mastery_percentage}% mastery, ${t.total_answered} questions answered`).join("\n")}
+
+Generate a JSON study plan with 5-8 topics prioritized by urgency. Each item should have:
+- priority (integer 1-8, where 1 is highest)
+- topic_name (string)
+- subject_name (string)
+- reason (1 sentence explaining why this topic needs focus)
+- urgency ("high", "medium", or "low" based on gap to 70% mastery)
+
+Return ONLY valid JSON array, no markdown formatting.`;
+
+      const message = await groq.messages.create({
+        model: "mixtral-8x7b-32768",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+
+      // Parse JSON response
+      let studyPlan: any = [];
+      try {
+        studyPlan = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse Groq response:", responseText);
+        studyPlan = weakTopics.slice(0, 5).map((t: any, idx: number) => ({
+          priority: idx + 1,
+          topic_name: t.topic_name,
+          subject_name: t.subject_name,
+          reason: `Focus on this topic to improve mastery from ${t.mastery_percentage}%`,
+          urgency: t.mastery_percentage < 40 ? "high" : t.mastery_percentage < 60 ? "medium" : "low",
+        }));
+      }
+
+      // Cache the study plan
+      await supabaseAdmin.from("analytics_reports").insert({
+        user_id: user.id,
+        report_type: "study_plan",
+        cached_data: studyPlan,
+        created_at: new Date().toISOString(),
+      });
+
+      res.json({
+        status: "success",
+        data: studyPlan,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[analytics/study-plan] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to generate study plan",
         timestamp: new Date().toISOString(),
       });
     }

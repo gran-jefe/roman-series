@@ -430,7 +430,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             email: user.email,
             amount: upgradeDifference,
             reference,
-            callback_url: `${webUrl}/plans/upgrade/success?reference=${reference}`,
+            callback_url: `${webUrl}/payments/success?reference=${reference}`,
             metadata: {
               user_id: user.id,
               upgrade_from: profile.subscription_status,
@@ -451,7 +451,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         // Record the pending upgrade
         await supabaseAdmin.from("subscriptions").insert({
           user_id: user.id,
-          plan_id: target_plan,
+          plan: target_plan,
           plan_price: upgradeDifference,
           upgraded_from: profile.subscription_status,
           status: "pending",

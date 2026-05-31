@@ -92,7 +92,7 @@ export default function LandingPage() {
       features: [
         "1–2 subjects",
         "20 questions per day",
-        "1 mock exam (lifetime)",
+        "2 mock exams (lifetime)",
         "Basic analytics",
         "Daily streak tracking",
         "Top 20 leaderboard",

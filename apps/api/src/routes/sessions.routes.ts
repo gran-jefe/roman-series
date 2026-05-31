@@ -74,7 +74,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Plan-based gating checks
       const planId = profile.subscription_status;
 
-      // Explorer: max 1 mock exam ever
+      // Explorer: max 2 mock exams lifetime
       if (planId === "explorer") {
         const { data: completedMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
@@ -83,10 +83,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           .eq("is_mock", true)
           .eq("completed", true);
 
-        if (!mockError && completedMocks && completedMocks.length >= 1) {
+        if (!mockError && completedMocks && completedMocks.length >= 2) {
           res.status(402).json({
             status: "error",
-            message: "Mock exam limit reached. You've used your free mock exam. Upgrade to Scholar or Elite to practice more mocks.",
+            message: "Mock exam limit reached. You've used your 2 free mock exams. Upgrade to Scholar or Elite to practice more mocks.",
             timestamp: new Date().toISOString(),
           });
           return;
@@ -800,6 +800,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           question_id: a.question_id,
           selected_option_id: a.selected_option_id ?? null,
           is_correct: isCorrect,
+          time_spent_seconds: a.time_spent_seconds ?? null,
         };
       });
 
@@ -1040,30 +1041,37 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
+      const { mode } = req.body;
+
+      // Gate hard mode to Elite only
+      if (mode === "hard" && profile.subscription_status !== "elite") {
+        res.status(403).json({
+          status: "error",
+          message: "Hard mode mock exams are available for Elite members only",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       // Check mock exam access based on subscription tier
       const planId = profile.subscription_status;
 
-      // Explorer: max 1 mock exam per month
+      // Explorer: max 2 mock exams lifetime
       if (planId === "explorer") {
-        const lastMockDate = profile.last_mock_exam_date;
-        if (lastMockDate) {
-          const lastMockTime = new Date(lastMockDate);
-          const now = new Date();
-          const lastMockMonth = lastMockTime.getMonth();
-          const lastMockYear = lastMockTime.getFullYear();
-          const currentMonth = now.getMonth();
-          const currentYear = now.getFullYear();
+        const { data: completedMocks, error: mockError } = await supabaseAdmin
+          .from("sessions")
+          .select("id", { count: "exact" })
+          .eq("user_id", user.id)
+          .eq("is_mock", true)
+          .eq("completed", true);
 
-          // If the mock was taken in the current month, deny access
-          if (lastMockYear === currentYear && lastMockMonth === currentMonth) {
-            const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-            res.status(402).json({
-              status: "error",
-              message: `You've used your monthly mock exam. Next available: ${nextMonthDate.toLocaleDateString()}`,
-              timestamp: new Date().toISOString(),
-            });
-            return;
-          }
+        if (!mockError && completedMocks && completedMocks.length >= 2) {
+          res.status(402).json({
+            status: "error",
+            message: "Mock exam limit reached. You've used your 2 free mock exams. Upgrade to Scholar or Elite to practice more mocks.",
+            timestamp: new Date().toISOString(),
+          });
+          return;
         }
       }
 
@@ -1144,11 +1152,18 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const questionsPerSubject = 25;
 
       for (const subject of subjects) {
-        const { data: questionIds, error: idError } = await supabaseAdmin
+        let query = supabaseAdmin
           .from("questions")
           .select("id")
           .eq("subject_id", subject.id)
-          .eq("university_id", profile.target_university_id)
+          .eq("university_id", profile.target_university_id);
+
+        // In hard mode, filter for medium and hard difficulty questions
+        if (mode === "hard") {
+          query = query.in("difficulty", ["medium", "hard"]);
+        }
+
+        const { data: questionIds, error: idError } = await query
           .limit(100); // Get more than needed to have options for shuffling
 
         if (idError || !questionIds?.length) {

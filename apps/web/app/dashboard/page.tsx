@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import { PageLoader } from "@/components/PageLoader";
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
+import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
 
@@ -32,6 +33,7 @@ const subjectColours: Record<string, string> = {
 export default function DashboardPage() {
   const router = useRouter();
   const { profile } = useAuth();
+  const mockExamLimit = useMockExamLimit(profile?.subscription_status);
   const [subjects, setSubjects] = useState<SubjectWithCounts[]>([]);
   const [sessions, setSessions] = useState<SessionHistoryItem[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -282,12 +284,21 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
                       <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
-                      {subscription?.subscription_status === "explorer" && (
-                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 1 mock per month</p>
-                          <p className="text-xs text-blue-800 mt-1">You can take one full mock exam per calendar month. Upgrade to Scholar or Elite for more attempts.</p>
+
+                      {subscription?.subscription_status === "explorer" && mockExamLimit.hasExhausted && (
+                        <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                          <p className="text-sm font-semibold text-red-900">🔒 Mock Exam Limit Reached</p>
+                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar or Elite for unlimited attempts.</p>
                         </div>
                       )}
+
+                      {subscription?.subscription_status === "explorer" && !mockExamLimit.hasExhausted && (
+                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 2 mock exams (lifetime)</p>
+                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit} free exams. Upgrade to Scholar or Elite for unlimited attempts.</p>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
                         <div className="text-center md:text-left">
                           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Subjects</p>
@@ -307,18 +318,134 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        router.push("/practice/mock/session");
-                      }}
-                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-forest text-white hover:shadow-md"
-                    >
-                      Start Exam
-                    </button>
+                    {mockExamLimit.hasExhausted ? (
+                      <button
+                        onClick={() => {
+                          router.push("/pricing");
+                        }}
+                        className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-md"
+                      >
+                        Upgrade Now ⭐
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          router.push("/practice/mock/session");
+                        }}
+                        disabled={mockExamLimit.isLoading}
+                        className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-forest text-white hover:shadow-md disabled:opacity-50"
+                      >
+                        {mockExamLimit.isLoading ? "Loading..." : "Start Exam"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Recalled Questions Section */}
+            <div>
+              <div className="rounded-lg shadow-md p-4 md:p-8 border-t-4 border-purple-600 bg-white hover:shadow-lg transition-all">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <h4 className="text-xl md:text-2xl font-bold text-navy">Recalled UI-POSTUTME Questions</h4>
+                      <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">Elite Only</span>
+                    </div>
+                    <p className="text-sm md:text-base text-gray-600 mb-4">Questions confirmed to have appeared in past Post-UTME exams. Practice with authentic exam content from your target university.</p>
+                    {subscription?.subscription_status !== "elite" && (
+                      <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4">
+                        <p className="text-sm font-semibold text-purple-900">⭐ Elite Exclusive Feature</p>
+                        <p className="text-xs text-purple-800 mt-1">Upgrade to Elite (₦5,000/6 months) to unlock access to our database of recalled exam questions and gain advanced analytics.</p>
+                      </div>
+                    )}
+                    {subscription?.subscription_status === "elite" && (
+                      <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
+                        <p className="text-sm font-semibold text-green-900">✓ You have full access to this feature!</p>
+                      </div>
+                    )}
+                  </div>
+                  {subscription?.subscription_status === "elite" ? (
+                    <button
+                      onClick={() => {
+                        router.push("/practice/recalled-questions");
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-purple-600 text-white hover:shadow-md"
+                    >
+                      View Questions
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        router.push("/pricing");
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-md"
+                    >
+                      Upgrade Now ⭐
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Hard Mode Mock Exam Section */}
+            <div>
+              <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 bg-white hover:shadow-lg transition-all ${subscription?.subscription_status === "elite" ? "border-red-600" : "border-gray-300"} ${subscription?.subscription_status !== "elite" ? "blur-sm" : ""}`}>
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <h4 className="text-xl md:text-2xl font-bold text-navy">Hard Mode Mock Exam</h4>
+                      <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Elite Only</span>
+                    </div>
+                    <p className="text-sm md:text-base text-gray-600 mb-4">Push yourself with the toughest questions from your subject pool. Practice under realistic exam pressure conditions.</p>
+
+                    <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
+                      <div className="text-center md:text-left">
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Subjects</p>
+                        <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length}</p>
+                        <p className="text-xs text-gray-500">Hard difficulty</p>
+                      </div>
+                      <div className="text-center md:text-left">
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Questions</p>
+                        <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length * 25}</p>
+                        <p className="text-xs text-gray-500">25 each</p>
+                      </div>
+                      <div className="text-center md:text-left">
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Duration</p>
+                        <p className="text-2xl md:text-3xl font-bold text-navy">90</p>
+                        <p className="text-xs text-gray-500">minutes</p>
+                      </div>
+                    </div>
+
+                    {subscription?.subscription_status !== "elite" && (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                        <p className="text-sm font-semibold text-red-900">⭐ Elite Exclusive Feature</p>
+                        <p className="text-xs text-red-800 mt-1">Upgrade to Elite (₦5,000/6 months) to unlock hard mode exams with advanced difficulty filtering and time-pressure diagnostics.</p>
+                      </div>
+                    )}
+                  </div>
+                  {subscription?.subscription_status === "elite" ? (
+                    <button
+                      onClick={() => {
+                        router.push("/practice/mock/session?mode=hard");
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-red-600 text-white hover:shadow-md hover:bg-red-700"
+                    >
+                      Start Hard Exam
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        router.push("/pricing");
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-red-600 to-red-700 text-white hover:shadow-md"
+                    >
+                      Upgrade Now ⭐
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Subjects Section */}
             {selectedUniversity && (

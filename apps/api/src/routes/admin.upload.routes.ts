@@ -63,6 +63,7 @@ const questionSchema = z.object({
   explanation: z.string().nullable(),
   answer: z.enum(["A", "B", "C", "D", "E"]).nullable(),
   options: z.array(optionSchema),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
 });
 
 const topicSchema = z.object({
@@ -240,6 +241,7 @@ export function registerUploadRoutes(app: Express, deps: UploadDeps) {
               year: new Date().getFullYear(),
               body: q.body,
               explanation: q.explanation,
+              difficulty: q.difficulty || "medium",
             },
             sourceIndex: idx,
           }));

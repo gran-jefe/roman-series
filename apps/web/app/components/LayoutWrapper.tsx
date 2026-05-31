@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import api from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/onboarding"];
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"];
 const EXCLUDE_NAVBAR_ROUTES = ["/practice/session", "/practice/mock/session"];
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {

@@ -33,9 +33,35 @@ sessions, session_answers, subscriptions, plan_limits, analytics_reports, cutoff
 Shared types live in packages/types/src/index.ts
 
 ## Subscription Tiers
-- **Explorer (Free)**: 1–2 subjects, 20 questions/day, 1 mock exam (lifetime), basic analytics
-- **Scholar (₦3,500/6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics — expires after 6 months
-- **Elite (₦5,000/6 months)**: Everything in Scholar + advanced scoring, admission probability, percentile ranking, cohort insights — expires after 6 months
+
+### Feature Comparison
+
+| Feature | Explorer | Scholar | Elite |
+|---------|----------|---------|-------|
+| Subjects | 1–2 | All | All |
+| Daily question limit | 20/day | Unlimited | Unlimited |
+| Mock exams | 2 (lifetime) | 3/week | Unlimited |
+| Error bank | Last 10 | Full | Full |
+| Analytics | Basic | Detailed | Advanced |
+| Predicted score | ✗ | Basic | Advanced |
+| Percentile ranking | ✗ | ✗ | ✓ |
+| Cohort insights | ✗ | ✗ | ✓ |
+| Course comparison | ✗ | ✗ | ✓ |
+| **Recalled UI-POSTUTME Questions** | **✗** | **✗** | **✓** |
+| Hard mode exams | ✗ | ✗ | ✓ |
+
+### Detailed Descriptions
+
+- **Explorer (Free)**: 1–2 subjects, 20 questions/day, 2 mock exams (lifetime), basic analytics, top 20 leaderboard
+- **Scholar (₦3,500/6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics, full leaderboard with ranking — expires after 6 months
+- **Elite (₦5,000/6 months)**: Everything in Scholar + advanced scoring, admission probability, percentile ranking, cohort insights, recalled UI-POSTUTME questions, hard-mode mock exams — expires after 6 months
+
+### Recalled UI-POSTUTME Questions (Elite Only)
+Database of questions confirmed to have appeared in past Post-UTME exams. Enables students to:
+- Practice with authentic, proven exam questions
+- Filter by university, subject, and year
+- See difficulty levels and explanations
+- Build confidence with real past exam content
 
 ## API base URL
 - Dev: http://localhost:4000

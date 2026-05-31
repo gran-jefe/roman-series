@@ -246,9 +246,15 @@ export default function OnboardingPage() {
         {/* Progress Bar */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Step {step + 1} of 3</span>
+            <span className="text-sm font-medium text-gray-600">
+              Step {step + 1} of 3
+            </span>
             <span className="text-sm text-gray-500">
-              {step === 0 ? "University Selection" : step === 1 ? "Subject Selection" : "UTME Score"}
+              {step === 0
+                ? "University Selection"
+                : step === 1
+                  ? "Subject Selection"
+                  : "UTME Score"}
             </span>
           </div>
           <div className="w-full bg-gray-300 rounded-full h-2">
@@ -262,12 +268,15 @@ export default function OnboardingPage() {
         {step === 0 ? (
           <>
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-navy mb-4">Select Your University</h1>
+              <h1 className="text-4xl font-bold text-navy mb-4">
+                Select Your University
+              </h1>
               <p className="text-lg text-gray-600 mb-2">
                 Choose your target university and course
               </p>
               <p className="text-sm text-gray-500">
-                This helps us tailor questions to your specific admission requirements
+                This helps us tailor questions to your specific admission
+                requirements
               </p>
             </div>
 
@@ -339,17 +348,21 @@ export default function OnboardingPage() {
         ) : step === 1 ? (
           <>
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-navy mb-4">Select Your Subjects</h1>
+              <h1 className="text-4xl font-bold text-navy mb-4">
+                Select Your Subjects
+              </h1>
               <p className="text-lg text-gray-600 mb-2">
                 {maxSubjects <= 2
                   ? `Choose ${maxSubjects} subjects to focus your prep`
                   : `Choose between ${maxSubjects - 1} and ${maxSubjects} subjects to focus your prep`}
               </p>
               <p className="text-sm text-gray-500 mb-3">
-                Only available subjects are shown. You can select "Other" for subjects not listed in our database.
+                Only available subjects are shown. You can select
+                &rdquo;Other&rdquo; for subjects not listed in our database.
               </p>
               <p className="text-sm text-gray-500">
-                You can change this later, but this determines which questions you'll see
+                You can change this later, but this determines which questions
+                you&lsquo;ll see
               </p>
             </div>
 
@@ -357,9 +370,15 @@ export default function OnboardingPage() {
             <div className="flex justify-center mb-8">
               <div className="bg-white rounded-lg shadow p-4 inline-block">
                 <p className="text-center">
-                  <span className="text-3xl font-bold text-forest">{selected.length}</span>
+                  <span className="text-3xl font-bold text-forest">
+                    {selected.length}
+                  </span>
                   <span className="text-gray-600 ml-2">
-                    / {maxSubjects <= 2 ? maxSubjects : `${maxSubjects - 1}-${maxSubjects}`} subjects selected
+                    /{" "}
+                    {maxSubjects <= 2
+                      ? maxSubjects
+                      : `${maxSubjects - 1}-${maxSubjects}`}{" "}
+                    subjects selected
                   </span>
                 </p>
               </div>
@@ -380,11 +399,12 @@ export default function OnboardingPage() {
                       isSelected
                         ? "ring-4 ring-offset-2 ring-forest shadow-lg scale-105"
                         : canSelect
-                        ? "hover:shadow-md hover:scale-102"
-                        : "opacity-50 cursor-not-allowed"
+                          ? "hover:shadow-md hover:scale-102"
+                          : "opacity-50 cursor-not-allowed"
                     }`}
                     style={{
-                      backgroundColor: subjectColours[subject.name] || "#7B68EE",
+                      backgroundColor:
+                        subjectColours[subject.name] || "#7B68EE",
                     }}
                   >
                     <div className="text-white text-center">
@@ -417,13 +437,17 @@ export default function OnboardingPage() {
                   selected.includes("other")
                     ? "ring-4 ring-offset-2 ring-forest shadow-lg scale-105 border-forest bg-white"
                     : selected.length < 4
-                    ? "hover:shadow-md hover:scale-102 border-gray-300 bg-gray-50"
-                    : "opacity-50 cursor-not-allowed border-gray-300 bg-gray-50"
+                      ? "hover:shadow-md hover:scale-102 border-gray-300 bg-gray-50"
+                      : "opacity-50 cursor-not-allowed border-gray-300 bg-gray-50"
                 }`}
               >
-                <div className={`text-center ${selected.includes("other") ? "text-forest" : "text-gray-700"}`}>
+                <div
+                  className={`text-center ${selected.includes("other") ? "text-forest" : "text-gray-700"}`}
+                >
                   <h3 className="font-bold text-lg mb-2">Other Subjects</h3>
-                  <p className="text-xs opacity-75">Subjects not listed above</p>
+                  <p className="text-xs opacity-75">
+                    Subjects not listed above
+                  </p>
                   {selected.includes("other") && (
                     <div className="flex justify-center mt-2">
                       <svg
@@ -447,9 +471,12 @@ export default function OnboardingPage() {
             <div className="flex justify-center">
               <button
                 onClick={handleStep1Continue}
-                disabled={selected.length < 3 || selected.length > 4 || submitting}
+                disabled={
+                  selected.length < 3 || selected.length > 4 || submitting
+                }
                 className={`px-12 py-3 rounded-lg font-medium text-white transition-opacity ${
-                  (selected.length === 3 || selected.length === 4) && !submitting
+                  (selected.length === 3 || selected.length === 4) &&
+                  !submitting
                     ? "bg-forest hover:bg-opacity-90"
                     : "bg-gray-400 cursor-not-allowed"
                 }`}
@@ -461,7 +488,9 @@ export default function OnboardingPage() {
         ) : (
           <>
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-navy mb-4">What was your UTME score?</h1>
+              <h1 className="text-4xl font-bold text-navy mb-4">
+                What was your UTME score?
+              </h1>
               <p className="text-lg text-gray-600">
                 Help us predict your Post-UTME target score
               </p>
@@ -471,12 +500,18 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-lg shadow p-6 mb-8">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Target University</p>
-                  <p className="text-lg font-semibold text-navy">{universityName || profile?.target_university_id}</p>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Target University
+                  </p>
+                  <p className="text-lg font-semibold text-navy">
+                    {universityName || profile?.target_university_id}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Course of Study</p>
-                  <p className="text-lg font-semibold text-navy">{profile?.target_course}</p>
+                  <p className="text-lg font-semibold text-navy">
+                    {profile?.target_course}
+                  </p>
                 </div>
               </div>
             </div>
@@ -484,19 +519,27 @@ export default function OnboardingPage() {
             {/* Cutoff Mark Display */}
             {cutoffMark && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-                <p className="text-sm text-blue-600 font-medium mb-2">Cutoff Information</p>
+                <p className="text-sm text-blue-600 font-medium mb-2">
+                  Cutoff Information
+                </p>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Min UTME Required</p>
-                    <p className="text-xl font-bold text-navy">{cutoffMark.utme_cutoff}/400</p>
+                    <p className="text-xl font-bold text-navy">
+                      {cutoffMark.utme_cutoff}/400
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Combined Cutoff</p>
-                    <p className="text-xl font-bold text-navy">{cutoffMark.combined_cutoff}/100</p>
+                    <p className="text-xl font-bold text-navy">
+                      {cutoffMark.combined_cutoff}/100
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Year</p>
-                    <p className="text-xl font-bold text-navy">{cutoffMark.year}</p>
+                    <p className="text-xl font-bold text-navy">
+                      {cutoffMark.year}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -505,7 +548,9 @@ export default function OnboardingPage() {
             {/* UTME Score Input */}
             <div className="bg-white rounded-lg shadow p-6 mb-8">
               <label className="block mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Your UTME Score (0-400)</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Your UTME Score (0-400)
+                </p>
                 <input
                   type="number"
                   min="0"
@@ -513,7 +558,7 @@ export default function OnboardingPage() {
                   value={utmeScore}
                   onChange={(e) => setUtmeScore(e.target.value)}
                   placeholder="Enter your score"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
+                  className="w-full px-4 py-3 border border-gray-300 text-navy rounded-lg focus:outline-none focus:ring-2 focus:ring-forest"
                 />
               </label>
               <p className="text-xs text-gray-500">
@@ -524,9 +569,14 @@ export default function OnboardingPage() {
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex items-center">
                     <span className="text-sm text-gray-600 mr-2">Status:</span>
-                    {cutoffMark.utme_cutoff && parseInt(utmeScore) >= cutoffMark.utme_cutoff ? (
+                    {cutoffMark.utme_cutoff &&
+                    parseInt(utmeScore) >= cutoffMark.utme_cutoff ? (
                       <span className="text-sm font-medium text-green-600 flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -537,7 +587,11 @@ export default function OnboardingPage() {
                       </span>
                     ) : (
                       <span className="text-sm font-medium text-amber-600 flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"

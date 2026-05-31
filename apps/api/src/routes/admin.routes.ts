@@ -367,6 +367,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
                 university_id,
                 body: question.body,
                 explanation: question.explanation,
+                difficulty: question.difficulty || "medium",
               })
               .select()
               .single();
@@ -426,7 +427,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     if (!userId) return;
 
     try {
-      const { subject_id, university_id, body, explanation, options } = req.body;
+      const { subject_id, university_id, body, explanation, options, difficulty } = req.body;
 
       if (!subject_id || !university_id || !body || !options) {
         res.status(400).json({
@@ -454,6 +455,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           university_id,
           body,
           explanation: explanation || null,
+          difficulty: difficulty || "medium",
         })
         .select()
         .single();
