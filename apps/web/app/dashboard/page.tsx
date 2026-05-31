@@ -47,6 +47,7 @@ export default function DashboardPage() {
 
   // Loading state for essential data only
   const [essentialLoading, setEssentialLoading] = useState(true);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
 
   // Fetch essential data first (blocks page render until done)
   useEffect(() => {
@@ -147,6 +148,8 @@ export default function DashboardPage() {
           setSessions(sessionRes.data.data || []);
         } catch {
           // Sessions endpoint error - continue without it
+        } finally {
+          setSessionsLoaded(true);
         }
       })();
 
@@ -650,7 +653,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Sessions */}
-        {loading ? (
+        {!sessionsLoaded ? (
           <div className="mt-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
