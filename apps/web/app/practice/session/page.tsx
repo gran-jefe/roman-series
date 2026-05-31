@@ -126,17 +126,30 @@ export default function PracticeSessionPage() {
     setAnswers((prev) => new Map(prev).set(currentQuestion.id, optionId));
   };
 
-  // Toggle flag
-  const handleToggleFlag = () => {
-    setFlagged((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(currentQuestion.id)) {
-        newSet.delete(currentQuestion.id);
+  // Toggle flag with API persistence
+  const handleToggleFlag = async () => {
+    try {
+      const isFlagged = flagged.has(currentQuestion.id);
+
+      if (isFlagged) {
+        // Unflag
+        await api.delete(`/api/flagging/flag/${currentQuestion.id}`);
+        setFlagged((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(currentQuestion.id);
+          return newSet;
+        });
       } else {
-        newSet.add(currentQuestion.id);
+        // Flag
+        await api.post("/api/flagging/flag", {
+          question_id: currentQuestion.id,
+          reason: "Flagged during practice session",
+        });
+        setFlagged((prev) => new Set(prev).add(currentQuestion.id));
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error("Failed to toggle flag:", error);
+    }
   };
 
   // Navigation

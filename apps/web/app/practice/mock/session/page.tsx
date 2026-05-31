@@ -45,17 +45,24 @@ export default function MockSessionPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hardMode, setHardMode] = useState(false);
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const hasSubmittedRef = useRef(false);
+
+  // Initialize hard mode from URL params early
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "hard") {
+      setHardMode(true);
+    }
+    // Only run once when component mounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Check subscription and initialize mock session
   useEffect(() => {
     const startMockSession = async () => {
       try {
-        // Read mode from URL params
         const mode = searchParams.get("mode");
-        if (mode === "hard") {
-          setHardMode(true);
-        }
 
         // Guard: check if user has mock exam access
         if (!mockExamAccess.hasAccess) {
@@ -149,7 +156,9 @@ export default function MockSessionPage() {
     if (!loading && user) {
       startMockSession();
     }
-  }, [user, loading, router, profile, searchParams, mockExamAccess]);
+    // Only run when user data is loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading]);
 
   // Submit session handler - defined before auto-submit effect
   const handleSubmitSession = useCallback(async () => {
@@ -241,6 +250,54 @@ export default function MockSessionPage() {
     setAnswers(newAnswers);
   };
 
+  const handleToggleFlag = async () => {
+    if (!sessionId || !currentQ) return;
+
+    const isFlagged = flaggedQuestions.has(currentQ.id);
+
+    try {
+      if (isFlagged) {
+        // Unflag
+        await api.delete(`/api/flagging/flag/${currentQ.id}`);
+        setFlaggedQuestions((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(currentQ.id);
+          return newSet;
+        });
+        toast.success("Question unflagged");
+      } else {
+        // Flag
+        await api.post("/api/flagging/flag", {
+          question_id: currentQ.id,
+          session_id: sessionId,
+          reason: "Flagged during mock exam",
+        });
+        setFlaggedQuestions((prev) => new Set(prev).add(currentQ.id));
+        toast.success("Question flagged for review");
+      }
+    } catch (error) {
+      console.error("Failed to toggle flag:", error);
+      toast.error("Failed to flag question");
+    }
+  };
+
+  // Load flagged questions on mount
+  useEffect(() => {
+    const loadFlaggedQuestions = async () => {
+      try {
+        const res = await api.get("/api/flagging/flags");
+        const ids: string[] = (res.data.data || []).map((f: { question_id: string }) => f.question_id);
+        setFlaggedQuestions(new Set(ids));
+      } catch (error) {
+        console.error("Failed to load flagged questions:", error);
+      }
+    };
+
+    if (!loading && user) {
+      loadFlaggedQuestions();
+    }
+  }, [user, loading]);
+
   const handleNextQuestion = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -291,17 +348,15 @@ export default function MockSessionPage() {
             </svg>
           </button>
           <div className="flex-1 min-w-0 flex items-center gap-2">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
               <p className="text-xs md:text-sm text-gray-300 truncate">
                 {currentSubject} • Q{questionInSubject}/25
               </p>
             </div>
-            {hardMode && (
-              <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0">
-                HARD MODE
-              </span>
-            )}
+            <span className={`text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0 ${hardMode ? "bg-red-600" : "invisible"}`}>
+              HARD MODE
+            </span>
           </div>
           <div
             className={`text-base md:text-2xl font-bold px-2 md:px-4 py-1 md:py-2 rounded-lg whitespace-nowrap flex-shrink-0 ${
@@ -436,9 +491,6 @@ export default function MockSessionPage() {
           <div className="max-w-2xl mx-auto">
             {/* Question */}
             <div className="mb-8 select-none">
-              <p className="text-sm text-gray-600 mb-4">
-                Question {currentQuestion + 1} of {questions.length}
-              </p>
               <div
                 className="p-6 rounded-lg border-l-4 mb-6"
                 style={{
@@ -496,6 +548,18 @@ export default function MockSessionPage() {
             className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             ← Previous
+          </button>
+
+          <button
+            onClick={handleToggleFlag}
+            className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-colors ${
+              flaggedQuestions.has(currentQ.id)
+                ? "bg-crs text-white hover:bg-opacity-90"
+                : "border border-gray-300 text-navy hover:bg-gray-50"
+            }`}
+            title={flaggedQuestions.has(currentQ.id) ? "Unflag this question" : "Flag for review"}
+          >
+            {flaggedQuestions.has(currentQ.id) ? "✓ Flagged" : "Flag"}
           </button>
 
           <button

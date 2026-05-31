@@ -1288,8 +1288,9 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         })) : [],
       }));
 
-      // Calculate time proportionally: 90 minutes for 4 subjects, 67.5 for 3, etc.
-      const timeLimitMinutes = Math.round((subjects.length / 4) * 90);
+      // Calculate time proportionally: 90 minutes for normal, 60 for hard mode
+      const baseMinutes = mode === "hard" ? 60 : 90;
+      const timeLimitMinutes = Math.round((subjects.length / 4) * baseMinutes);
 
       res.status(201).json({
         status: "success",

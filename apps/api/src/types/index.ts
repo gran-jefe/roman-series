@@ -501,3 +501,17 @@ export interface AnalyticsReport {
   report: string;
   generated_at: string;
 }
+
+/**
+ * FlaggedQuestion model
+ * Represents a question flagged by a user for review or issues
+ */
+export interface FlaggedQuestion {
+  id: string;
+  user_id: string;
+  question_id: string;
+  session_id?: string;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+}

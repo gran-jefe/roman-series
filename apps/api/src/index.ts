@@ -17,6 +17,7 @@ import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
 import { registerAnalyticsRoutes } from "./routes/analytics.routes";
+import { registerFlaggingRoutes } from "./routes/flagging.routes";
 import { registerPlansRoutes } from "./routes/plans";
 import { registerRecalledQuestionsRoutes } from "./routes/recalled-questions.routes";
 
@@ -162,6 +163,8 @@ registerAnalyticsRoutes(app, {
   supabaseAdmin,
   groqApiKey: process.env.GROQ_API_KEY || "",
 });
+
+registerFlaggingRoutes(app, { supabaseAdmin });
 
 registerPlansRoutes(app, { supabaseAdmin });
 

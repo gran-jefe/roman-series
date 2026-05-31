@@ -179,11 +179,13 @@ export default function PricingPage() {
                   {plan.price !== "Free" && (
                     <span className="text-gray-600 ml-2">/ 6 months</span>
                   )}
+                  {plan.upgradeNote && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-sm font-semibold text-forest mb-1">Coming from Scholar?</p>
+                      <p className="text-lg font-bold text-forest">Pay ₦1,500 only</p>
+                    </div>
+                  )}
                 </div>
-
-                {plan.upgradeNote && (
-                  <p className="text-xs text-gray-500 mb-4 italic">{plan.upgradeNote}</p>
-                )}
 
                 <button
                   onClick={() => handleSelectPlan(plan.ctaPlan)}
