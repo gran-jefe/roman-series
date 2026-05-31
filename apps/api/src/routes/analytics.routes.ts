@@ -1499,13 +1499,13 @@ Generate a JSON study plan with 5-8 topics prioritized by urgency. Each item sho
 
 Return ONLY valid JSON array, no markdown formatting.`;
 
-      const message = await groq.messages.create({
+      const message = await groq.chat.completions.create({
         model: "mixtral-8x7b-32768",
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       });
 
-      const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+      const responseText = message.choices[0].message.content || "";
 
       // Parse JSON response
       let studyPlan: any = [];

@@ -89,6 +89,7 @@ export interface Profile {
   role: "student" | "admin";
   subscription_status: "explorer" | "scholar" | "elite";
   subscription_expires_at?: string;
+  last_mock_exam_date?: string;
   created_at: string;
   updated_at: string;
 }
@@ -414,6 +415,11 @@ export interface AnalyticsOverview {
     subject_name: string;
     avg_percentage: number;
     sessions_count: number;
+  }>;
+  speed_by_subject?: Array<{
+    subject_id: string;
+    subject_name: string;
+    avg_time_per_question_seconds: number;
   }>;
 }
 

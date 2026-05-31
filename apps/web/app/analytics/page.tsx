@@ -812,7 +812,7 @@ export default function AnalyticsPage() {
                       <tbody className="divide-y">
                         {sessions.slice(0, 10).map((session, idx) => {
                           const speed = session.time_taken_seconds ? Math.round(session.time_taken_seconds / session.total_questions) : 0;
-                          const accuracy = Math.round((session.correct / session.total_questions) * 100);
+                          const accuracy = Math.round((session.score / session.total_questions) * 100);
                           const isTimePressure = speed < 30 && accuracy < 60;
                           return (
                             <tr key={idx} className={isTimePressure ? "bg-red-50" : ""}>
