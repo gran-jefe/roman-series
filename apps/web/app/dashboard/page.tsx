@@ -407,7 +407,7 @@ export default function DashboardPage() {
 
             {/* Hard Mode Mock Exam Section */}
             <div>
-              <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 bg-white hover:shadow-lg transition-all ${subscription?.subscription_status === "elite" ? "border-red-600" : "border-gray-300"} ${subscription?.subscription_status !== "elite" ? "blur-sm" : ""}`}>
+              <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 bg-white hover:shadow-lg transition-all ${subscription?.subscription_status === "elite" ? "border-red-600" : "border-gray-300"}`}>
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
