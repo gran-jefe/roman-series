@@ -342,7 +342,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         userIds.length > 0
           ? await supabaseAdmin
               .from("profiles")
-              .select("id, full_name, target_university_id")
+              .select("id, full_name, target_university_id, subscription_status")
               .in("id", userIds)
           : { data: [] };
 
@@ -383,6 +383,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
           total_sessions: entry.total_sessions,
           university_code: university?.short_code ?? null,
           user_id: entry.user_id,
+          subscription_status: profile?.subscription_status ?? null,
         };
       });
 

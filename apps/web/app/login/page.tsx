@@ -20,9 +20,10 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success("Logged in successfully!");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Login failed";
+      const errorMessage =
+        err.response?.data?.message || err.message || "Login failed";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -39,7 +40,7 @@ export default function LoginPage() {
             RS
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
-          <p className="text-gray-400">Master Post-UTME Exams</p>
+          <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
 
         {/* Login Card */}

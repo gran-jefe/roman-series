@@ -152,3 +152,11 @@ export function getMaxSubjects(status?: string | null): number {
 export function getMockExamsPerMonth(status?: string | null): number {
   return getFeatures(status).mockExamsPerMonth;
 }
+
+export function canAccessHardMode(status?: string | null): boolean {
+  return isElite(status);
+}
+
+export function canAccessRecalledQuestions(status?: string | null): boolean {
+  return isElite(status);
+}

@@ -45,7 +45,8 @@ export default function RegisterPage() {
         }, 1500);
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Registration failed";
+      const errorMessage =
+        err.response?.data?.message || err.message || "Registration failed";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -62,7 +63,7 @@ export default function RegisterPage() {
             RS
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
-          <p className="text-gray-400">Master Post-UTME Exams</p>
+          <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
 
         {/* Register Card */}
@@ -77,7 +78,10 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="fullName"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Full Name
               </label>
               <input
@@ -93,7 +97,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -109,7 +116,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <input
@@ -125,7 +135,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm Password
               </label>
               <input
@@ -152,7 +165,10 @@ export default function RegisterPage() {
           <div className="mt-6 border-t border-gray-200 pt-6">
             <p className="text-center text-gray-600 text-sm">
               Already have an account?{" "}
-              <Link href="/login" className="text-forest font-semibold hover:underline">
+              <Link
+                href="/login"
+                className="text-forest font-semibold hover:underline"
+              >
                 Sign in
               </Link>
             </p>

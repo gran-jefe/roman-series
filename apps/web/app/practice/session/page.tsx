@@ -81,6 +81,21 @@ export default function PracticeSessionPage() {
     }
   }, [sessionId, router]);
 
+  // Load flagged questions on mount
+  useEffect(() => {
+    const loadFlaggedQuestions = async () => {
+      try {
+        const res = await api.get("/api/flagging/flags");
+        const ids: string[] = (res.data.data || []).map((f: { question_id: string }) => f.question_id);
+        setFlagged(new Set(ids));
+      } catch (error) {
+        console.error("Failed to load flagged questions:", error);
+      }
+    };
+
+    loadFlaggedQuestions();
+  }, []);
+
   // Timer effect
   useEffect(() => {
     if (!sessionId || questions.length === 0 || timeLeft === 0) return;

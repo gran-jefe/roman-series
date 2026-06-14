@@ -24,7 +24,10 @@ export default function ForgotPasswordPage() {
         toast.success("Check your email for password reset instructions");
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to send reset email";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to send reset email";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -41,16 +44,19 @@ export default function ForgotPasswordPage() {
             RS
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
-          <p className="text-gray-400">Master Post-UTME Exams</p>
+          <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
 
         {/* Forgot Password Card */}
         <div className="bg-white rounded-xl shadow-2xl p-8">
           {!submitted ? (
             <>
-              <h2 className="text-2xl font-bold text-navy mb-2">Reset Password</h2>
+              <h2 className="text-2xl font-bold text-navy mb-2">
+                Reset Password
+              </h2>
               <p className="text-gray-600 text-sm mb-6">
-                Enter your email address and we'll send you a link to reset your password.
+                Enter your email address and we'll send you a link to reset your
+                password.
               </p>
 
               {error && (
@@ -61,7 +67,10 @@ export default function ForgotPasswordPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Email Address
                   </label>
                   <input
@@ -88,7 +97,10 @@ export default function ForgotPasswordPage() {
               <div className="mt-6 border-t border-gray-200 pt-6">
                 <p className="text-center text-gray-600 text-sm">
                   Remember your password?{" "}
-                  <Link href="/login" className="text-forest font-semibold hover:underline">
+                  <Link
+                    href="/login"
+                    className="text-forest font-semibold hover:underline"
+                  >
                     Sign in
                   </Link>
                 </p>
@@ -98,13 +110,26 @@ export default function ForgotPasswordPage() {
             <>
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-8 h-8 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-navy mb-2">Check Your Email</h2>
+                <h2 className="text-2xl font-bold text-navy mb-2">
+                  Check Your Email
+                </h2>
                 <p className="text-gray-600 text-sm mb-6">
-                  We've sent a password reset link to <strong>{email}</strong>. Click the link in the email to create a new password.
+                  We've sent a password reset link to <strong>{email}</strong>.
+                  Click the link in the email to create a new password.
                 </p>
                 <p className="text-gray-600 text-sm mb-6">
                   Didn't receive the email? Check your spam folder or{" "}
@@ -123,7 +148,10 @@ export default function ForgotPasswordPage() {
 
               <div className="mt-6 border-t border-gray-200 pt-6">
                 <p className="text-center text-gray-600 text-sm">
-                  <Link href="/login" className="text-forest font-semibold hover:underline">
+                  <Link
+                    href="/login"
+                    className="text-forest font-semibold hover:underline"
+                  >
                     Back to sign in
                   </Link>
                 </p>

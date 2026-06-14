@@ -13,9 +13,11 @@ import {
   LogOut,
   Menu,
   X,
+  Zap,
+  Archive,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import { canAccessAnalytics, canAccessErrorBank, canAccessMockExam, getSubscriptionName } from "@/lib/subscription";
+import { canAccessAnalytics, canAccessErrorBank, canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions, getSubscriptionName } from "@/lib/subscription";
 
 interface NavItem {
   label: string;
@@ -38,6 +40,8 @@ export function Navbar() {
   const hasMockExamAccess = canAccessMockExam(profile.subscription_status);
   const hasErrorBankAccess = canAccessErrorBank(profile.subscription_status);
   const hasAnalyticsAccess = canAccessAnalytics(profile.subscription_status);
+  const hasHardModeAccess = canAccessHardMode(profile.subscription_status);
+  const hasRecalledQuestionsAccess = canAccessRecalledQuestions(profile.subscription_status);
 
   const navItems: NavItem[] = [
     {
@@ -51,6 +55,20 @@ export function Navbar() {
       icon: <Clipboard size={20} />,
       requiresUpgrade: !hasMockExamAccess,
       upgradeTooltip: "Upgrade to Scholar to unlock mock exams",
+    },
+    {
+      label: "Hard Mode",
+      href: "/practice/mock/session?mode=hard",
+      icon: <Zap size={20} />,
+      requiresUpgrade: !hasHardModeAccess,
+      upgradeTooltip: "Upgrade to Elite to unlock hard mode exams",
+    },
+    {
+      label: "Recalled Questions",
+      href: "/practice/recalled-questions",
+      icon: <Archive size={20} />,
+      requiresUpgrade: !hasRecalledQuestionsAccess,
+      upgradeTooltip: "Upgrade to Elite to unlock recalled questions",
     },
     {
       label: "Subjects",

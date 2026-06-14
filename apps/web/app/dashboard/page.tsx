@@ -429,7 +429,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-center md:text-left">
                         <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Duration</p>
-                        <p className="text-2xl md:text-3xl font-bold text-navy">90</p>
+                        <p className="text-2xl md:text-3xl font-bold text-navy">60</p>
                         <p className="text-xs text-gray-500">minutes</p>
                       </div>
                     </div>

@@ -22,7 +22,9 @@ export default function ResetPasswordPage() {
     // Check if we have the required token from Supabase
     if (!token) {
       setIsValidToken(false);
-      setError("Invalid or missing reset token. Please request a new password reset.");
+      setError(
+        "Invalid or missing reset token. Please request a new password reset.",
+      );
     }
   }, [token]);
 
@@ -53,10 +55,13 @@ export default function ResetPasswordPage() {
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
       // Exchange the code for a session
-      const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(token!);
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(token!);
 
       if (sessionError || !sessionData.session) {
-        setError("Invalid or expired reset link. Please request a new password reset.");
+        setError(
+          "Invalid or expired reset link. Please request a new password reset.",
+        );
         setIsValidToken(false);
         return;
       }
@@ -96,7 +101,7 @@ export default function ResetPasswordPage() {
             RS
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
-          <p className="text-gray-400">Master Post-UTME Exams</p>
+          <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
 
         {/* Reset Password Card */}
@@ -105,13 +110,26 @@ export default function ResetPasswordPage() {
             <>
               <div className="text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-8 h-8 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-navy mb-2">Invalid Reset Link</h2>
+                <h2 className="text-2xl font-bold text-navy mb-2">
+                  Invalid Reset Link
+                </h2>
                 <p className="text-gray-600 text-sm mb-6">
-                  The password reset link is invalid or has expired. Please request a new one.
+                  The password reset link is invalid or has expired. Please
+                  request a new one.
                 </p>
               </div>
 
@@ -134,19 +152,34 @@ export default function ResetPasswordPage() {
             <>
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-8 h-8 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-navy mb-2">Password Reset Successful</h2>
+                <h2 className="text-2xl font-bold text-navy mb-2">
+                  Password Reset Successful
+                </h2>
                 <p className="text-gray-600 text-sm mb-6">
-                  Your password has been reset successfully. Redirecting to login...
+                  Your password has been reset successfully. Redirecting to
+                  login...
                 </p>
               </div>
             </>
           ) : (
             <>
-              <h2 className="text-2xl font-bold text-navy mb-6">Create New Password</h2>
+              <h2 className="text-2xl font-bold text-navy mb-6">
+                Create New Password
+              </h2>
 
               {error && (
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -156,7 +189,10 @@ export default function ResetPasswordPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     New Password
                   </label>
                   <input
@@ -172,7 +208,10 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Confirm Password
                   </label>
                   <input
@@ -198,7 +237,10 @@ export default function ResetPasswordPage() {
 
               <div className="mt-6 border-t border-gray-200 pt-6">
                 <p className="text-center text-gray-600 text-sm">
-                  <Link href="/login" className="text-forest font-semibold hover:underline">
+                  <Link
+                    href="/login"
+                    className="text-forest font-semibold hover:underline"
+                  >
                     Back to sign in
                   </Link>
                 </p>

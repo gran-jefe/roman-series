@@ -15,6 +15,7 @@ interface LeaderboardEntry {
   total_sessions: number;
   university_code: string | null;
   user_id: string;
+  subscription_status: string | null;
 }
 
 export default function LeaderboardPage() {
@@ -211,8 +212,13 @@ export default function LeaderboardPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
                           {entry.full_name}
+                          {entry.subscription_status === "elite" && (
+                            <span className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                              ⭐ Elite
+                            </span>
+                          )}
                         </div>
                         {isCurrentUser(entry.user_id) && (
                           <div className="text-xs text-forest font-semibold">

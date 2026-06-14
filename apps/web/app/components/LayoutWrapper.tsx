@@ -2,8 +2,10 @@
 
 import { useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import api from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
+import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions } from "@/lib/subscription";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"];
 const EXCLUDE_NAVBAR_ROUTES = ["/practice/session", "/practice/mock/session"];
@@ -51,6 +53,10 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const subscriptionBadge = planLabels[subscription?.subscription_status || "explorer"] ||
     { label: "Explorer", colour: "bg-amber-100 text-amber-800" };
 
+  const hasMockExamAccess = canAccessMockExam(subscription?.subscription_status);
+  const hasHardModeAccess = canAccessHardMode(subscription?.subscription_status);
+  const hasRecalledQuestionsAccess = canAccessRecalledQuestions(subscription?.subscription_status);
+
   return (
     <>
       {shouldShowNavbar && (
@@ -63,7 +69,12 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
               <h1 className="text-lg font-bold">Roman Series</h1>
             </div>
             <div className="flex items-center gap-6 relative">
-              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${subscriptionBadge.colour}`}>
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5 ${
+                subscription?.subscription_status === "elite"
+                  ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                  : subscriptionBadge.colour
+              }`}>
+                {subscription?.subscription_status === "elite" && <span>⭐</span>}
                 {subscriptionBadge.label}
               </span>
               <div className="flex items-center gap-3">
@@ -94,6 +105,43 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                     </svg>
                     Dashboard
                   </a>
+                  {hasMockExamAccess && (
+                    <a
+                      href="/practice/mock/session"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Mock Exam
+                    </a>
+                  )}
+                  {hasHardModeAccess && (
+                    <a
+                      href="/practice/mock/session?mode=hard"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
+                        <polyline points="13 2 13 9 20 9" />
+                      </svg>
+                      Hard Mode
+                    </a>
+                  )}
+                  {hasRecalledQuestionsAccess && (
+                    <a
+                      href="/practice/recalled-questions"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Recalled Questions
+                    </a>
+                  )}
                   <a
                     href="/analytics"
                     className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"

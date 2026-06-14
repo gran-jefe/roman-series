@@ -272,9 +272,16 @@ export default function ProfilePage() {
             <p className="text-sm font-medium text-gray-500 mb-2">Subscription</p>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg text-navy font-semibold capitalize">
-                  {profile.subscription_status}
-                </p>
+                <div className="flex items-center gap-3 mb-2">
+                  <p className="text-lg text-navy font-semibold capitalize">
+                    {profile.subscription_status}
+                  </p>
+                  {profile.subscription_status === "elite" && (
+                    <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
+                      ⭐ Elite Badge
+                    </span>
+                  )}
+                </div>
                 {profile.subscription_expires_at && (
                   <p className="text-sm text-gray-600">
                     Expires: {new Date(profile.subscription_expires_at).toLocaleDateString()}

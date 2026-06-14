@@ -153,7 +153,7 @@ export default function RecalledQuestionsPage() {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 text-gray-800 focus:ring-forest focus:border-transparent"
               >
                 <option value="">All Subjects</option>
                 {subjects.map((subject) => (
@@ -172,7 +172,7 @@ export default function RecalledQuestionsPage() {
               <select
                 value={selectedUniversity}
                 onChange={(e) => setSelectedUniversity(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest text-gray-800 focus:border-transparent"
               >
                 <option value="">All Universities</option>
                 {universities.map((uni) => (
@@ -191,7 +191,7 @@ export default function RecalledQuestionsPage() {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 text-gray-800 focus:ring-forest focus:border-transparent"
               >
                 <option value="">All Years</option>
                 {Array.from({ length: 10 }, (_, i) => {

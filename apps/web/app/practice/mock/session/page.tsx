@@ -46,6 +46,7 @@ export default function MockSessionPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hardMode, setHardMode] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const hasSubmittedRef = useRef(false);
 
   // Initialize hard mode from URL params early
@@ -563,7 +564,7 @@ export default function MockSessionPage() {
           </button>
 
           <button
-            onClick={handleSubmitSession}
+            onClick={() => setShowSubmitDialog(true)}
             disabled={isSubmitting}
             className="px-4 md:px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -594,6 +595,52 @@ export default function MockSessionPage() {
 
       {/* Mobile spacing for fixed bottom nav */}
       <div className="h-16 md:h-0" />
+
+      {/* Submit Confirmation Dialog */}
+      {showSubmitDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-xl font-bold text-navy mb-4">
+              Submit Mock Exam?
+            </h3>
+
+            <div className="space-y-2 mb-6 text-sm text-gray-700">
+              <p>
+                <strong>Answered:</strong> {answers.filter(a => a.selected_option_id !== null).length} of {questions.length} questions
+              </p>
+              <p>
+                <strong>Unanswered:</strong> {questions.length - answers.filter(a => a.selected_option_id !== null).length} questions
+              </p>
+              <p>
+                <strong>Flagged:</strong> {flaggedQuestions.size} questions
+              </p>
+              <p>
+                <strong>Time taken:</strong> {formatTime(timeLimitSeconds - timeRemaining)}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubmitDialog(false)}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Continue
+              </button>
+              <button
+                onClick={() => {
+                  setShowSubmitDialog(false);
+                  handleSubmitSession();
+                }}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
