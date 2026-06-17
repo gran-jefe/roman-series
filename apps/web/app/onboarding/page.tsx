@@ -504,13 +504,16 @@ export default function OnboardingPage() {
                     Target University
                   </p>
                   <p className="text-lg font-semibold text-navy">
-                    {universityName || profile?.target_university_id}
+                    {universityName ||
+                      universities.find(u => u.id === profile?.target_university_id)?.name ||
+                      profile?.target_university_id ||
+                      "—"}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Course of Study</p>
                   <p className="text-lg font-semibold text-navy">
-                    {profile?.target_course}
+                    {profile?.target_course || "—"}
                   </p>
                 </div>
               </div>

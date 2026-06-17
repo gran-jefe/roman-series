@@ -479,6 +479,23 @@ export default function DashboardPage() {
             </div>
 
             {/* Subjects Section */}
+            {!selectedUniversity && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8 text-center">
+                <h3 className="text-xl font-bold text-navy mb-3">
+                  📚 Set Up Your Learning Path
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Select your target university and course to unlock personalized subject practice. This helps us recommend the right topics and resources for your exam.
+                </p>
+                <button
+                  onClick={() => router.push("/onboarding")}
+                  className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                >
+                  Complete Setup
+                </button>
+              </div>
+            )}
+
             {selectedUniversity && (
               <div id="subjects-section" className="animate-fadeIn">
                 <h3 className="text-xl font-bold text-navy mb-4">
