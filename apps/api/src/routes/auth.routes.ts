@@ -593,7 +593,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      const { full_name, target_course, utme_score } = req.body;
+      const { full_name, target_university_id, target_course, utme_score } = req.body;
 
       const updateData: any = {};
 
@@ -607,6 +607,18 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
           return;
         }
         updateData.full_name = full_name;
+      }
+
+      if (target_university_id !== undefined) {
+        if (typeof target_university_id !== "string" || target_university_id.trim().length === 0) {
+          res.status(400).json({
+            status: "error",
+            message: "Target university ID must be a non-empty string",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+        updateData.target_university_id = target_university_id;
       }
 
       if (target_course !== undefined) {

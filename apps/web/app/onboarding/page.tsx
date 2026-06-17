@@ -125,9 +125,9 @@ export default function OnboardingPage() {
     setSubmitting(true);
     try {
       await api.patch("/api/profiles/me", {
+        target_university_id: selectedUniversity,
         target_course: selectedCourse,
       });
-      // Update university_id is handled by profile context
       toast.success("University and course saved!");
       setStep(1);
       setSubmitting(false);
