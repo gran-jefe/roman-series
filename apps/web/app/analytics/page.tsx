@@ -79,9 +79,7 @@ export default function AnalyticsPage() {
   const [leaderboardWindow, setLeaderboardWindow] = useState<"weekly" | "overall">("overall");
   const [leaderboardScope, setLeaderboardScope] = useState<"global" | "cohort">("global");
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-  const [speedData, setSpeedData] = useState<Array<{ topic_id: string; topic_name: string; subject_name: string; avg_seconds: number; total_answered: number }> | null>(null);
-  const [speedLoading, setSpeedLoading] = useState(false);
+  const [speedData] = useState<Array<{ topic_id: string; topic_name: string; subject_name: string; avg_seconds: number; total_answered: number }> | null>(null);
   const [studyPlan, setStudyPlan] = useState<Array<{ priority: number; topic_name: string; subject_name: string; reason: string; urgency: string }> | null>(null);
   const [studyPlanLoading, setStudyPlanLoading] = useState(false);
 
@@ -122,23 +120,12 @@ export default function AnalyticsPage() {
     const fetchLeaderboard = async () => {
       if (!user || !profile) return;
 
-      setLeaderboardLoading(true);
       try {
-        const url = new URL(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/leaderboard/top-students`
-        );
-        url.searchParams.append("window", leaderboardWindow);
-        if (profile.subscription_status === "elite") {
-          url.searchParams.append("scope", leaderboardScope);
-        }
-
         const response = await api.get(`/api/leaderboard/top-students?window=${leaderboardWindow}${profile.subscription_status === "elite" ? `&scope=${leaderboardScope}` : ""}`);
         setLeaderboard(response.data.data);
       } catch (error) {
         console.error("Failed to fetch leaderboard:", error);
         toast.error("Failed to load leaderboard");
-      } finally {
-        setLeaderboardLoading(false);
       }
     };
 
@@ -556,7 +543,6 @@ export default function AnalyticsPage() {
                   </button>
                   {uniqueSubjects.map(subject => {
                     const subjectTopics = topics.filter(t => t.subject_name === subject);
-                    const sampleTopic = subjectTopics[0];
                     return (
                       <button
                         key={subject}
@@ -630,16 +616,12 @@ export default function AnalyticsPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              {profile?.subscription_status === "explorer" ? (
-                                <div className="blur-sm">
-                                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getMasteryLabel(topic.avg_percentage).color}`}>
-                                    {getMasteryLabel(topic.avg_percentage).label}
-                                  </span>
-                                </div>
-                              ) : (
+                              {profile?.subscription_status !== "explorer" ? (
                                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getMasteryLabel(topic.avg_percentage).color}`}>
                                   {getMasteryLabel(topic.avg_percentage).label}
                                 </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
                               )}
                             </td>
                           </tr>
@@ -653,68 +635,93 @@ export default function AnalyticsPage() {
                   <p className="text-gray-500">No topic data available yet</p>
                 </div>
               )}
+
+              {/* Locked Features for Explorer Users */}
+              {profile?.subscription_status === "explorer" && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md border-2 border-blue-200 p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="text-3xl">🔒</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-navy mb-2">Unlock Detailed Analytics</h3>
+                      <p className="text-sm text-gray-700 mb-4">
+                        Upgrade to Scholar to access Speed Analysis, Topic Mastery Tracking, Performance History, and more insights to boost your preparation.
+                      </p>
+                      <button
+                        onClick={() => router.push("/pricing")}
+                        className="px-4 py-2 bg-forest text-white rounded-lg text-sm font-medium hover:shadow-md transition"
+                      >
+                        View Plans
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Speed & Time Section */}
-            <div>
-              <h2 className="text-2xl font-bold text-navy mb-4">Speed & Time Analysis</h2>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Avg Time per Question</p>
-                  <p className="text-3xl font-bold text-navy">{overview.avg_time_per_question_seconds}s</p>
+            {/* Speed & Time Section - Scholar+ only */}
+            {profile?.subscription_status !== "explorer" && (
+              <div>
+                <h2 className="text-2xl font-bold text-navy mb-4">Speed & Time Analysis</h2>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Avg Time per Question</p>
+                    <p className="text-3xl font-bold text-navy">{overview.avg_time_per_question_seconds}s</p>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Total Practice Time</p>
+                    <p className="text-3xl font-bold text-navy">{formatTime(overview.total_time_practiced_seconds)}</p>
+                  </div>
                 </div>
-                <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Total Practice Time</p>
-                  <p className="text-3xl font-bold text-navy">{formatTime(overview.total_time_practiced_seconds)}</p>
-                </div>
+
+                {/* Speed by Subject */}
+                {overview?.speed_by_subject && overview.speed_by_subject.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="font-semibold text-navy mb-4">Speed by Subject</h3>
+                    <div className="space-y-4">
+                      {overview.speed_by_subject.map((subject) => {
+                        const color = subject.avg_time_per_question_seconds < 30 ? "bg-green-500" : subject.avg_time_per_question_seconds < 60 ? "bg-amber-500" : "bg-red-500";
+                        return (
+                          <div key={subject.subject_id}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-navy">{subject.subject_name}</span>
+                              <span className="text-sm font-semibold text-navy">{subject.avg_time_per_question_seconds}s/q</span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className={`h-full ${color} transition-all`} style={{ width: `${Math.min((subject.avg_time_per_question_seconds / 90) * 100, 100)}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Slowest Topics */}
+                {speedData && speedData.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="font-semibold text-navy mb-4">Slowest Topics</h3>
+                    <div className="space-y-3">
+                      {speedData.slice(0, 3).map((topic, idx) => (
+                        <div key={idx} className="flex items-start gap-3 pb-3 border-b last:border-b-0">
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                            style={{ backgroundColor: getSubjectColor(topic.subject_name) }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-navy truncate">{topic.topic_name}</p>
+                            <p className="text-xs text-gray-500">{topic.subject_name}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-navy flex-shrink-0">{topic.avg_seconds}s</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Speed by Subject - Scholar+ only */}
-              {profile?.subscription_status !== "explorer" && overview?.speed_by_subject && overview.speed_by_subject.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="font-semibold text-navy mb-4">Speed by Subject</h3>
-                  <div className="space-y-4">
-                    {overview.speed_by_subject.map((subject) => {
-                      const color = subject.avg_time_per_question_seconds < 30 ? "bg-green-500" : subject.avg_time_per_question_seconds < 60 ? "bg-amber-500" : "bg-red-500";
-                      return (
-                        <div key={subject.subject_id}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-navy">{subject.subject_name}</span>
-                            <span className="text-sm font-semibold text-navy">{subject.avg_time_per_question_seconds}s/q</span>
-                          </div>
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className={`h-full ${color} transition-all`} style={{ width: `${Math.min((subject.avg_time_per_question_seconds / 90) * 100, 100)}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Slowest Topics - Scholar+ only */}
-              {profile?.subscription_status !== "explorer" && speedData && speedData.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="font-semibold text-navy mb-4">Slowest Topics</h3>
-                  <div className="space-y-3">
-                    {speedData.slice(0, 3).map((topic, idx) => (
-                      <div key={idx} className="flex items-start gap-3 pb-3 border-b last:border-b-0">
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
-                          style={{ backgroundColor: getSubjectColor(topic.subject_name) }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-navy truncate">{topic.topic_name}</p>
-                          <p className="text-xs text-gray-500">{topic.subject_name}</p>
-                        </div>
-                        <span className="text-sm font-semibold text-navy flex-shrink-0">{topic.avg_seconds}s</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recent Sessions */}
+            {/* Performance History - Scholar+ only */}
+            {profile?.subscription_status !== "explorer" && (
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="border-b px-6 py-4">
                   <h3 className="font-semibold text-navy">Recent Sessions</h3>
@@ -747,100 +754,141 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Study Plan Section - Elite only */}
-              {profile?.subscription_status === "elite" && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-navy mb-1">Your AI Study Plan</h3>
-                      <p className="text-xs text-gray-500">Personalized topic study order based on your weakest areas</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        setStudyPlanLoading(true);
-                        try {
-                          const res = await api.get("/api/analytics/study-plan");
-                          setStudyPlan(res.data.data);
-                        } catch {
-                          toast.error("Failed to generate study plan");
-                        } finally {
-                          setStudyPlanLoading(false);
-                        }
-                      }}
-                      disabled={studyPlanLoading}
-                      className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
-                    >
-                      {studyPlanLoading ? "Generating..." : "Generate Plan"}
-                    </button>
+            {/* Study Plan Section - Elite only */}
+            {profile?.subscription_status === "elite" && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-navy mb-1">Your AI Study Plan</h3>
+                    <p className="text-xs text-gray-500">Personalized topic study order based on your weakest areas</p>
                   </div>
-                  {studyPlan && studyPlan.length > 0 ? (
-                    <div className="space-y-3">
-                      {studyPlan.map((item) => (
-                        <div key={item.priority} className="p-3 bg-gray-50 rounded border-l-4" style={{ borderLeftColor: getSubjectColor(item.subject_name) }}>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <span className="text-lg font-bold text-navy">#{item.priority}</span>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold ${item.urgency === "high" ? "bg-red-100 text-red-700" : item.urgency === "medium" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
-                              {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
-                            </span>
-                          </div>
-                          <p className="font-medium text-navy">{item.topic_name}</p>
-                          <p className="text-xs text-gray-500 mb-2">{item.subject_name}</p>
-                          <p className="text-sm text-gray-600">{item.reason}</p>
+                  <button
+                    onClick={async () => {
+                      setStudyPlanLoading(true);
+                      try {
+                        const res = await api.get("/api/analytics/study-plan");
+                        setStudyPlan(res.data.data);
+                      } catch {
+                        toast.error("Failed to generate study plan");
+                      } finally {
+                        setStudyPlanLoading(false);
+                      }
+                    }}
+                    disabled={studyPlanLoading}
+                    className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
+                  >
+                    {studyPlanLoading ? "Generating..." : "Generate Plan"}
+                  </button>
+                </div>
+                {studyPlan && studyPlan.length > 0 ? (
+                  <div className="space-y-3">
+                    {studyPlan.map((item) => (
+                      <div key={item.priority} className="p-3 bg-gray-50 rounded border-l-4" style={{ borderLeftColor: getSubjectColor(item.subject_name) }}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <span className="text-lg font-bold text-navy">#{item.priority}</span>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${item.urgency === "high" ? "bg-red-100 text-red-700" : item.urgency === "medium" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                            {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Generate a study plan to see your personalized learning roadmap</p>
-                  )}
-                </div>
-              )}
-
-              {/* Time-Pressure Diagnostics - Elite only */}
-              {profile?.subscription_status === "elite" && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="font-semibold text-navy mb-4">Speed vs Accuracy</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Session</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Speed</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Accuracy</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {sessions.slice(0, 10).map((session, idx) => {
-                          const speed = session.time_taken_seconds ? Math.round(session.time_taken_seconds / session.total_questions) : 0;
-                          const accuracy = Math.round((session.score / session.total_questions) * 100);
-                          const isTimePressure = speed < 30 && accuracy < 60;
-                          return (
-                            <tr key={idx} className={isTimePressure ? "bg-red-50" : ""}>
-                              <td className="px-4 py-2 text-navy font-medium">#{idx + 1}</td>
-                              <td className="px-4 py-2 text-navy">{speed}s/q</td>
-                              <td className="px-4 py-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-navy font-medium">{accuracy}%</span>
-                                  {isTimePressure && <span className="text-xs text-red-600 font-semibold">⚠ Time Pressure</span>}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                        <p className="font-medium text-navy">{item.topic_name}</p>
+                        <p className="text-xs text-gray-500 mb-2">{item.subject_name}</p>
+                        <p className="text-sm text-gray-600">{item.reason}</p>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Generate a study plan to see your personalized learning roadmap</p>
+                )}
+              </div>
+            )}
+
+            {/* Time-Pressure Diagnostics - Elite only */}
+            {profile?.subscription_status === "elite" && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="font-semibold text-navy mb-4">Speed vs Accuracy</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Session</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Speed</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Accuracy</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {sessions.slice(0, 10).map((session, idx) => {
+                        const speed = session.time_taken_seconds ? Math.round(session.time_taken_seconds / session.total_questions) : 0;
+                        const accuracy = Math.round((session.score / session.total_questions) * 100);
+                        const isTimePressure = speed < 30 && accuracy < 60;
+                        return (
+                          <tr key={idx} className={isTimePressure ? "bg-red-50" : ""}>
+                            <td className="px-4 py-2 text-navy font-medium">#{idx + 1}</td>
+                            <td className="px-4 py-2 text-navy">{speed}s/q</td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-navy font-medium">{accuracy}%</span>
+                                {isTimePressure && <span className="text-xs text-red-600 font-semibold">⚠ Time Pressure</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column - Leaderboard & Insights */}
           <div className="lg:col-span-1 space-y-6">
             {/* Leaderboard Section */}
-            {leaderboard && (
+            {leaderboard && profile?.subscription_status === "explorer" && (
+              <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6 relative">
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-white font-semibold mb-3 text-lg">🏆 See Your Ranking</p>
+                    <p className="text-gray-300 text-sm mb-4">Unlock the full leaderboard and see where you rank among all aspirants.</p>
+                    <button
+                      onClick={() => router.push("/pricing")}
+                      className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                    >
+                      Upgrade Now
+                    </button>
+                  </div>
+                </div>
+                <div className="blur-sm pointer-events-none">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-navy">Top Performers</h3>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1 rounded text-sm font-medium bg-forest text-white">All Time</button>
+                      <button className="px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-700">This Week</button>
+                    </div>
+                  </div>
+                  <div className="text-center mb-6 p-4 bg-blush rounded-lg">
+                    <p className="text-4xl font-bold text-navy mb-1">—</p>
+                    <p className="text-sm text-gray-600">of 1000+ participants</p>
+                  </div>
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4, 5].map((idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-500">#{idx}</span>
+                          <span className="text-sm font-medium text-navy">User</span>
+                        </div>
+                        <span className="text-sm font-semibold text-navy">90%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {leaderboard && profile?.subscription_status !== "explorer" && (
               <div className="relative">
-                <div className={`bg-white rounded-lg shadow-md border-t-4 border-forest p-6 ${profile?.subscription_status === "explorer" ? "blur-sm" : ""}`}>
+                <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-navy">
                       {leaderboardScope === "cohort" && profile?.target_course
@@ -906,8 +954,8 @@ export default function AnalyticsPage() {
                           ? `among ${profile.target_course} aspirants`
                           : `of ${leaderboard.total_participants} participants`}
                       </p>
-                      {leaderboard.percentile && (
-                        <p className="text-xs text-forest font-semibold mt-2">{leaderboard.percentile.message}</p>
+                      {profile?.subscription_status === "elite" && leaderboard.percentile && (
+                        <p className="text-xs text-forest font-semibold mt-2">📊 {leaderboard.percentile.message}</p>
                       )}
                     </div>
                   )}
@@ -933,30 +981,8 @@ export default function AnalyticsPage() {
                         <span className="text-sm font-semibold text-navy">{entry.avg_score}%</span>
                       </div>
                     ))}
-
-                    {/* Explorer: Show "See full leaderboard" overlay */}
-                    {profile?.subscription_status === "explorer" && leaderboard.is_truncated && (
-                      <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center border-2 border-dashed border-gray-300">
-                        <p className="text-sm text-gray-600 font-medium">See your full ranking — Upgrade to Scholar</p>
-                      </div>
-                    )}
                   </div>
                 </div>
-
-                {/* Explorer Lock Overlay */}
-                {profile?.subscription_status === "explorer" && (
-                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-white font-semibold mb-3">See the full leaderboard. Upgrade to unlock.</p>
-                      <button
-                        onClick={() => router.push("/pricing")}
-                        className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
-                      >
-                        Upgrade
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

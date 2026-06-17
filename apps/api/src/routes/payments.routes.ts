@@ -50,8 +50,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       }
 
       const pricing = {
-        scholar: 350000, // ₦3,500
-        elite: 500000,   // ₦5,000
+        scholar: 250000, // ₦2,500 (promo price, was ₦3,500)
+        elite: 350000,   // ₦3,500 (promo price, was ₦5,000)
       };
 
       const amount = pricing[plan as keyof typeof pricing];

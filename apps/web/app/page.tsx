@@ -91,46 +91,63 @@ export default function LandingPage() {
       description: "Get started with limited practice",
       features: [
         "1–2 subjects",
-        "20 questions per day",
+        "20 questions/day",
         "2 mock exams (lifetime)",
+        "Timer simulation",
+        "Last 10 errors in error bank",
         "Basic analytics",
-        "Daily streak tracking",
+        "Daily streak",
         "Top 20 leaderboard",
       ],
       highlighted: false,
     },
     {
       name: "Scholar",
-      price: "₦3,500",
+      price: "₦2,500",
+      originalPrice: "₦3,500",
       duration: "6 months",
       description: "Most students choose this",
       features: [
-        "All subjects & universities",
-        "Unlimited practice questions",
+        "Unlimited practice",
+        "All subjects",
+        "Topic-by-topic drilling",
         "3 mock exams per week",
-        "Full error bank & analytics",
-        "Full leaderboard with your rank",
-        "Predicted admission score",
+        "Full error bank",
+        "Detailed analytics",
+        "Topic mastery tracking",
+        "Speed analysis",
+        "Daily streak",
+        "Full leaderboard + your rank",
+        "Predicted score (basic)",
         "Weak topic recommendations",
+        "Performance history",
+        "Exam simulation mode",
       ],
       highlighted: true,
       badge: "Most Popular",
     },
     {
       name: "Elite",
-      price: "₦5,000",
+      price: "₦3,500",
+      originalPrice: "₦5,000",
       duration: "6 months",
       description: "For serious, dedicated students",
       features: [
         "Everything in Scholar",
+        "Unlimited mock exams",
+        "Hard-mode mock exams",
+        "Access to authentic UI POST-UTME questions from 2019-2025",
         "Advanced predictive scoring",
         "Admission probability meter",
-        "Hard-mode mock exams (60 min)",
-        "Recalled UI-POSTUTME questions",
-        "Percentile ranking & cohort insights",
-        "Course-specific leaderboard",
+        "Course-specific ranking",
+        "Percentile ranking (You're ahead of X%)",
+        "Smart weak-topic prioritisation",
+        "Advanced analytics dashboard",
+        "Time-pressure diagnostics",
+        "Likely UI-standard challenge sets",
+        "Extended leaderboard",
+        "Elite badge (blue tick on profile)",
         "Performance trend forecasting",
-        "Elite badge on your profile",
       ],
       highlighted: false,
       badge: "Best Value",
@@ -416,10 +433,17 @@ export default function LandingPage() {
                     {plan.description}
                   </p>
                   <div className="mb-8">
-                    <span className="text-5xl font-bold text-forest">
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-600 ml-2">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-5xl font-bold text-forest">
+                        {plan.price}
+                      </span>
+                      {plan.originalPrice && (
+                        <span className="text-xl text-gray-400 line-through">
+                          {plan.originalPrice}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-gray-600">
                       / {plan.duration}
                     </span>
                   </div>

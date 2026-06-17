@@ -83,7 +83,8 @@ export default function PricingPage() {
     },
     {
       name: "Scholar",
-      price: "₦3,500",
+      price: "₦2,500",
+      originalPrice: "₦3,500",
       subheading: "Most students choose this",
       badge: "Most Popular",
       cta: "Get Scholar",
@@ -108,15 +109,19 @@ export default function PricingPage() {
     },
     {
       name: "Elite",
-      price: "₦5,000",
+      price: "₦3,500",
+      originalPrice: "₦5,000",
       subheading: "For the top 1%",
       badge: "Best Value",
-      cta: isOnScholar ? "Upgrade for ₦1,500" : "Get Elite",
+      cta: isOnScholar ? "Upgrade for ₦1,000" : "Get Elite",
       ctaPlan: "elite" as const,
       highlighted: false,
-      upgradeNote: isOnScholar ? "Already on Scholar? Just pay ₦1,500 to upgrade." : null,
+      upgradeNote: isOnScholar ? "Already on Scholar? Just pay ₦1,000 to upgrade." : null,
       features: [
         { name: "Everything in Scholar", included: true },
+        { name: "Unlimited mock exams", included: true },
+        { name: "Hard-mode mock exams", included: true },
+        { name: "Access to authentic UI POST-UTME questions from 2019-2025", included: true },
         { name: "Advanced predictive scoring", included: true },
         { name: "Admission probability meter", included: true },
         { name: "Course-specific ranking", included: true },
@@ -124,7 +129,6 @@ export default function PricingPage() {
         { name: "Smart weak-topic prioritisation", included: true },
         { name: "Advanced analytics dashboard", included: true },
         { name: "Time-pressure diagnostics", included: true },
-        { name: "Hard-mode mock exams", included: true },
         { name: "Likely UI-standard challenge sets", included: true },
         { name: "Extended leaderboard", included: true },
         { name: "Elite badge (blue tick on profile)", included: true },
@@ -174,14 +178,21 @@ export default function PricingPage() {
                 <p className="text-gray-600 text-sm mb-6">{plan.subheading}</p>
 
                 <div className="mb-6">
-                  <span className="text-4xl font-bold text-[#1A7A4A]">{plan.price}</span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-4xl font-bold text-[#1A7A4A]">{plan.price}</span>
+                    {plan.originalPrice && (
+                      <span className="text-xl text-gray-400 line-through">
+                        {plan.originalPrice}
+                      </span>
+                    )}
+                  </div>
                   {plan.price !== "Free" && (
-                    <span className="text-gray-600 ml-2">/ 6 months</span>
+                    <span className="text-gray-600">/ 6 months</span>
                   )}
                   {plan.upgradeNote && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <p className="text-sm font-semibold text-forest mb-1">Coming from Scholar?</p>
-                      <p className="text-lg font-bold text-forest">Pay ₦1,500 only</p>
+                      <p className="text-lg font-bold text-forest">{plan.upgradeNote}</p>
                     </div>
                   )}
                 </div>
