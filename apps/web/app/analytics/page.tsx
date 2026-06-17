@@ -921,27 +921,37 @@ export default function AnalyticsPage() {
 
                   {/* Elite User Scope Toggle */}
                   {profile?.subscription_status === "elite" && (
-                    <div className="flex gap-2 mb-6 pb-6 border-b">
-                      <button
-                        onClick={() => setLeaderboardScope("global")}
-                        className={`px-3 py-1 rounded text-sm font-medium transition ${
-                          leaderboardScope === "global"
-                            ? "bg-forest text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        All Aspirants
-                      </button>
-                      <button
-                        onClick={() => setLeaderboardScope("cohort")}
-                        className={`px-3 py-1 rounded text-sm font-medium transition ${
-                          leaderboardScope === "cohort"
-                            ? "bg-forest text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        My Course
-                      </button>
+                    <div className="mb-6 pb-6 border-b">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Ranking Scope</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setLeaderboardScope("global")}
+                          className={`px-3 py-1 rounded text-sm font-medium transition ${
+                            leaderboardScope === "global"
+                              ? "bg-forest text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                          title="Compare your score with all students platform-wide"
+                        >
+                          All Aspirants
+                        </button>
+                        <button
+                          onClick={() => setLeaderboardScope("cohort")}
+                          className={`px-3 py-1 rounded text-sm font-medium transition ${
+                            leaderboardScope === "cohort"
+                              ? "bg-forest text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                          title={`Compare your score with other ${profile?.target_course} applicants`}
+                        >
+                          My Course
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {leaderboardScope === "cohort" && profile?.target_course
+                          ? `📍 Comparing with other ${profile.target_course} applicants`
+                          : "📍 Comparing with all students platform-wide"}
+                      </p>
                     </div>
                   )}
 
