@@ -128,6 +128,13 @@ export default function OnboardingPage() {
         target_university_id: selectedUniversity,
         target_course: selectedCourse,
       });
+
+      // Set university name from the selected university object
+      const selected = universities.find(u => u.id === selectedUniversity);
+      if (selected) {
+        setUniversityName(selected.name);
+      }
+
       toast.success("University and course saved!");
       setStep(1);
       setSubmitting(false);
@@ -513,7 +520,7 @@ export default function OnboardingPage() {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Course of Study</p>
                   <p className="text-lg font-semibold text-navy">
-                    {profile?.target_course || "—"}
+                    {selectedCourse || profile?.target_course || "—"}
                   </p>
                 </div>
               </div>
