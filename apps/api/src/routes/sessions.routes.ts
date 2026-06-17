@@ -74,48 +74,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Plan-based gating checks
       const planId = profile.subscription_status;
 
-      // Explorer: max 2 mock exams lifetime
-      if (planId === "explorer") {
-        const { data: completedMocks, error: mockError } = await supabaseAdmin
-          .from("sessions")
-          .select("id", { count: "exact" })
-          .eq("user_id", user.id)
-          .eq("is_mock", true)
-          .eq("completed", true);
-
-        if (!mockError && completedMocks && completedMocks.length >= 2) {
-          res.status(402).json({
-            status: "error",
-            message: "Mock exam limit reached. You've used your 2 free mock exams. Upgrade to Scholar or Elite to practice more mocks.",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
-      }
-
-      // Scholar: max 3 mocks per 7-day rolling window
-      if (planId === "scholar") {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const { data: recentMocks, error: mockError } = await supabaseAdmin
-          .from("sessions")
-          .select("id", { count: "exact" })
-          .eq("user_id", user.id)
-          .eq("is_mock", true)
-          .eq("completed", true)
-          .gte("started_at", sevenDaysAgo.toISOString());
-
-        if (!mockError && recentMocks && recentMocks.length >= 3) {
-          res.status(402).json({
-            status: "error",
-            message: "Mock exam limit reached. You can take 3 mocks per week. Try again in 7 days.",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
-      }
-
       let {
         subject_id,
         university_id,
