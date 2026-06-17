@@ -658,9 +658,9 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Speed & Time Section */}
-            <div className="relative">
-              <div className={profile?.subscription_status === "explorer" ? "blur-sm pointer-events-none" : ""}>
+            {/* Speed & Time Section - Scholar+ only */}
+            {profile?.subscription_status !== "explorer" && (
+              <div>
                 <h2 className="text-2xl font-bold text-navy mb-4">Speed & Time Analysis</h2>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
@@ -718,26 +718,11 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Lock Overlay for Explorer */}
-              {profile?.subscription_status === "explorer" && (
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-white font-semibold mb-3">Speed Analysis locked for Explorer</p>
-                    <button
-                      onClick={() => router.push("/pricing")}
-                      className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
-                    >
-                      Upgrade to Scholar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Performance History */}
-            <div className="relative">
-              <div className={`bg-white rounded-lg shadow-md overflow-hidden ${profile?.subscription_status === "explorer" ? "blur-sm pointer-events-none" : ""}`}>
+            {/* Performance History - Scholar+ only */}
+            {profile?.subscription_status !== "explorer" && (
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="border-b px-6 py-4">
                   <h3 className="font-semibold text-navy">Recent Sessions</h3>
                 </div>
@@ -769,22 +754,7 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Lock Overlay for Explorer */}
-              {profile?.subscription_status === "explorer" && (
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-white font-semibold mb-3">Performance History locked for Explorer</p>
-                    <button
-                      onClick={() => router.push("/pricing")}
-                      className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
-                    >
-                      Upgrade to Scholar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Study Plan Section - Elite only */}
             {profile?.subscription_status === "elite" && (
