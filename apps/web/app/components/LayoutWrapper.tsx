@@ -3,6 +3,7 @@
 import { useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import api from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
 import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions } from "@/lib/subscription";
@@ -62,12 +63,16 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       {shouldShowNavbar && (
         <nav className="sticky top-0 z-50 bg-navy text-white shadow-lg">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-forest flex items-center justify-center font-bold text-white text-sm">
-                RS
-              </div>
-              <h1 className="text-lg font-bold">Roman Series</h1>
-            </div>
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+              <Image
+                src="/assets/logos/rs-logo.png"
+                alt="Roman Series"
+                width={40}
+                height={32}
+                className="h-8 w-auto"
+              />
+              <h1 className="text-lg font-bold hidden sm:inline">Roman Series</h1>
+            </Link>
             <div className="flex items-center gap-6 relative">
               <span className={`text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5 ${
                 subscription?.subscription_status === "elite"

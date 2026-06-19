@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 
@@ -187,11 +188,15 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-forest rounded-full flex items-center justify-center font-bold">
-              RS
-            </div>
-            <h1 className="text-xl font-bold">Roman Series</h1>
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+            <Image
+              src="/assets/logos/rs-logo.png"
+              alt="Roman Series"
+              width={40}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <h1 className="text-xl font-bold hidden sm:inline">Roman Series</h1>
           </Link>
           <div className="flex gap-4">
             {!user ? (
@@ -224,6 +229,16 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-navy via-deep-blue to-navy text-white py-24 px-6">
         <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-block mb-8">
+            <Image
+              src="/assets/logos/roman-series-full.png"
+              alt="Roman Series"
+              width={300}
+              height={120}
+              className="h-24 w-auto mx-auto"
+              priority
+            />
+          </div>
           <div className="inline-block mb-6 px-4 py-2 bg-forest/20 rounded-full border border-forest/40">
             <p className="text-sm font-semibold text-forest">
               ✨ Trusted by 5000+ students
