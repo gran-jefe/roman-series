@@ -36,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ colorScheme: 'light' }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased text-navy`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-navy bg-blush`}
         style={{ colorScheme: 'light' }}
       >
         <AuthProvider>

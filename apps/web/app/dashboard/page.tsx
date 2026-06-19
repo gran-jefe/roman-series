@@ -305,14 +305,14 @@ export default function DashboardPage() {
                       {subscription?.subscription_status === "explorer" && mockExamLimit.hasExhausted && (
                         <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-red-900">🔒 Mock Exam Limit Reached</p>
-                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar (₦2,500 - 3 per week) or Elite (₦3,500 - unlimited) for more attempts.</p>
+                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar (₦2,500 - 3 mock exams per week) or Elite (₦3,500 - unlimited mock exams) for more attempts.</p>
                         </div>
                       )}
 
                       {subscription?.subscription_status === "explorer" && !mockExamLimit.hasExhausted && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 2 mock exams (lifetime)</p>
-                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 per week) or Elite (₦3,500 - unlimited) for more attempts.</p>
+                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 mocks per week) or Elite (₦3,500 - unlimited mocks) for more attempts.</p>
                         </div>
                       )}
 

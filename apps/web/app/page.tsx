@@ -214,7 +214,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white" style={{ colorScheme: 'light' }}>
       <style>{floatingStyle}</style>
       {/* Navbar */}
-      <nav className="bg-[#F7F9FC] text-navy shadow-sm sticky top-0 z-50 border-b border-gray-100">
+      <nav className="bg-blush text-navy shadow-sm sticky top-0 z-50 border-b border-rose-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="hover:opacity-90 transition flex items-center">
             <Image
@@ -432,7 +432,7 @@ export default function LandingPage() {
       </section>
 
       {/* Universities Section */}
-      <section className="bg-gray-50 py-24 px-6">
+      <section className="bg-blush py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-navy mb-4">
@@ -457,7 +457,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials - Social Proof */}
-      <section className="bg-gradient-to-br from-white via-blue-50/30 to-white py-32 px-6 relative">
+      <section className="bg-gradient-to-br from-blush via-pink-50/40 to-blush py-32 px-6 relative">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-20 right-20 w-72 h-72 bg-forest rounded-full filter blur-3xl"></div>
         </div>
