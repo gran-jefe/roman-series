@@ -5,6 +5,20 @@ import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 
+const floatingStyle = `
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+`;
+
 export default function LandingPage() {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -185,6 +199,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <style>{floatingStyle}</style>
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -232,7 +247,7 @@ export default function LandingPage() {
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl"></div>
         </div>
         <div className="max-w-6xl mx-auto text-center relative z-10">
-          <div className="inline-block mb-8 animate-fade-in">
+          <div className="inline-block mb-8 animate-float">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
