@@ -305,21 +305,21 @@ export default function DashboardPage() {
                       {subscription?.subscription_status === "explorer" && mockExamLimit.hasExhausted && (
                         <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-red-900">🔒 Mock Exam Limit Reached</p>
-                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar (₦2,500 - 3 per 7 days) or Elite (₦3,500 - unlimited) for more attempts.</p>
+                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar (₦2,500 - 3 per week) or Elite (₦3,500 - unlimited) for more attempts.</p>
                         </div>
                       )}
 
                       {subscription?.subscription_status === "explorer" && !mockExamLimit.hasExhausted && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
                           <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 2 mock exams (lifetime)</p>
-                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 per 7 days) or Elite (₦3,500 - unlimited) for more attempts.</p>
+                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 per week) or Elite (₦3,500 - unlimited) for more attempts.</p>
                         </div>
                       )}
 
                       {subscription?.subscription_status === "scholar" && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-blue-900">📅 Scholar Plan: Strictly 3 mock exams per 7 days</p>
-                          <p className="text-xs text-blue-800 mt-1">You can take 3 mock exams every 7 days (rolling window). Upgrade to Elite (₦3,500) for unlimited anytime, plus hard mode and advanced analytics.</p>
+                          <p className="text-sm font-semibold text-blue-900">📅 Scholar Plan: 3 mock exams per week</p>
+                          <p className="text-xs text-blue-800 mt-1">You have 3 mock exams available each week. Upgrade to Elite (₦3,500) for unlimited anytime, plus hard mode and advanced analytics.</p>
                         </div>
                       )}
 
