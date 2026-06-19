@@ -110,6 +110,16 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                     </svg>
                     Dashboard
                   </a>
+                  <a
+                    href="/dashboard#subjects-section"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C6.228 6.253 2 10.541 2 15.75c0 5.209 4.228 9.5 10 9.5s10-4.291 10-9.5C22 10.541 17.772 6.253 12 6.253z" />
+                    </svg>
+                    Practice Subject
+                  </a>
                   {hasMockExamAccess && (
                     <a
                       href="/practice/mock/session"
