@@ -14,6 +14,7 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
+  const [isLaunch, setIsLaunch] = useState(true);
 
   // Countdown to launch (June 27, 2026) or promo (7 days after launch)
   useEffect(() => {
@@ -24,16 +25,16 @@ export default function PricingPage() {
       promoEnd.setHours(23, 59, 59, 999);
 
       let targetDate: Date;
-      let isLaunch: boolean;
+      let launchMode: boolean;
 
       if (now < launchDate) {
         // Still countdown to launch
         targetDate = launchDate;
-        isLaunch = true;
+        launchMode = true;
       } else if (now < promoEnd) {
         // Countdown to end of promo
         targetDate = promoEnd;
-        isLaunch = false;
+        launchMode = false;
       } else {
         // Promo ended
         setTimeLeft("");
@@ -45,11 +46,8 @@ export default function PricingPage() {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        if (isLaunch) {
-          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
-        } else {
-          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
-        }
+        setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+        setIsLaunch(launchMode);
       }
     };
 
@@ -191,8 +189,8 @@ export default function PricingPage() {
         {/* Launch/Promo Banner */}
         {timeLeft && (
           <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
-            <p className="font-semibold">⏰ {timeLeft.includes("Launching") ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time promo pricing available"}</p>
-            <p className="text-sm mt-1">{timeLeft}</p>
+            <p className="font-semibold">{isLaunch ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time promo pricing available"}</p>
+            <p className="text-sm mt-1">{isLaunch ? "Launching in: " : "Ends in: "}{timeLeft}</p>
           </div>
         )}
 
