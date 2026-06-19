@@ -188,15 +188,14 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+          <Link href="/" className="hover:opacity-80 transition">
             <Image
-              src="/assets/logos/rs-logo.png"
+              src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
-              width={40}
-              height={32}
-              className="h-8 w-auto"
+              width={150}
+              height={60}
+              className="h-10 w-auto"
             />
-            <h1 className="text-xl font-bold hidden sm:inline">Roman Series</h1>
           </Link>
           <div className="flex gap-4">
             {!user ? (
