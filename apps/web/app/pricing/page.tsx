@@ -15,24 +15,41 @@ export default function PricingPage() {
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Promo ends next Friday (8 days from today)
+  // Countdown to launch (June 27, 2026) or promo (8 days after launch)
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
-      const launchDate = new Date();
-      // Set to next Friday at midnight
-      const daysUntilFriday = (5 - launchDate.getDay() + 7) % 7 || 7;
-      const promoEnd = new Date(launchDate.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
+      const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
+      const promoEnd = new Date(launchDate.getTime() + 8 * 24 * 60 * 60 * 1000); // 8 days after launch
       promoEnd.setHours(23, 59, 59, 999);
 
-      const diff = promoEnd.getTime() - now.getTime();
+      let targetDate: Date;
+      let isLaunch: boolean;
+
+      if (now < launchDate) {
+        // Still countdown to launch
+        targetDate = launchDate;
+        isLaunch = true;
+      } else if (now < promoEnd) {
+        // Countdown to end of promo
+        targetDate = promoEnd;
+        isLaunch = false;
+      } else {
+        // Promo ended
+        setTimeLeft("");
+        return;
+      }
+
+      const diff = targetDate.getTime() - now.getTime();
       if (diff > 0) {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setTimeLeft(`${days}d ${hours}h ${minutes}m`);
-      } else {
-        setTimeLeft("Promo ended");
+        if (isLaunch) {
+          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+        } else {
+          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+        }
       }
     };
 
@@ -171,11 +188,13 @@ export default function PricingPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
-        {/* Promo Banner */}
-        <div className="mb-8 p-4 bg-ember text-white rounded-lg text-center">
-          <p className="font-semibold">🎉 Launch Week Special! Limited-time promo pricing available</p>
-          {timeLeft && <p className="text-sm mt-1">Ends in: {timeLeft}</p>}
-        </div>
+        {/* Launch/Promo Banner */}
+        {timeLeft && (
+          <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
+            <p className="font-semibold">⏰ {timeLeft.includes("Launching") ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time promo pricing available"}</p>
+            <p className="text-sm mt-1">{timeLeft}</p>
+          </div>
+        )}
 
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-[#0D1B2A] mb-4">Simple, Transparent Pricing</h1>

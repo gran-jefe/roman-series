@@ -23,24 +23,37 @@ export default function LandingPage() {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Promo ends next Friday (8 days from today)
+  // Countdown to launch (June 27, 2026) or promo (8 days after launch)
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
-      const launchDate = new Date();
-      // Set to next Friday at midnight
-      const daysUntilFriday = (5 - launchDate.getDay() + 7) % 7 || 7;
-      const promoEnd = new Date(launchDate.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
+      const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
+      const promoEnd = new Date(launchDate.getTime() + 8 * 24 * 60 * 60 * 1000); // 8 days after launch
       promoEnd.setHours(23, 59, 59, 999);
 
-      const diff = promoEnd.getTime() - now.getTime();
+      let targetDate: Date;
+      let label: string;
+
+      if (now < launchDate) {
+        // Still countdown to launch
+        targetDate = launchDate;
+        label = "launch";
+      } else if (now < promoEnd) {
+        // Countdown to end of promo
+        targetDate = promoEnd;
+        label = "promo";
+      } else {
+        // Promo ended
+        setTimeLeft(""); // Don't show countdown banner after promo ends
+        return;
+      }
+
+      const diff = targetDate.getTime() - now.getTime();
       if (diff > 0) {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setTimeLeft(`${days}d ${hours}h ${minutes}m`);
-      } else {
-        setTimeLeft("Promo ended");
+        setTimeLeft(`${label === "launch" ? "Launching in" : "Promo ends in"}: ${days}d ${hours}h ${minutes}m`);
       }
     };
 
@@ -258,6 +271,14 @@ export default function LandingPage() {
             />
           </div>
 
+          {timeLeft && (
+            <div className="inline-block mb-8 px-6 py-3 bg-gradient-to-r from-ember to-amber-600 rounded-full border border-amber-400 backdrop-blur-sm">
+              <p className="text-sm font-bold tracking-wide text-white">
+                ⏰ {timeLeft}
+              </p>
+            </div>
+          )}
+
           <div className="inline-block mb-8 px-6 py-3 bg-gradient-to-r from-forest/30 to-blue-500/30 rounded-full border border-forest/60 backdrop-blur-sm">
             <p className="text-sm font-bold tracking-wide">
               🎯 5000+ STUDENTS PREPARING FOR SUCCESS
@@ -390,7 +411,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-navy mb-4">
-              Master All Subjects
+              Practice All Subjects
             </h2>
             <p className="text-gray-600 text-lg">
               Comprehensive coverage of all Post-UTME subjects
