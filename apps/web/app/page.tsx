@@ -198,10 +198,10 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" style={{ colorScheme: 'light' }}>
       <style>{floatingStyle}</style>
       {/* Navbar */}
-      <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
+      <nav className="bg-white text-navy shadow-md sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="hover:opacity-90 transition flex items-center">
             <Image
@@ -217,7 +217,7 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="text-sm hover:text-gray-300 transition-colors font-medium"
+                  className="text-sm text-navy hover:text-forest transition-colors font-medium"
                 >
                   Sign In
                 </Link>
