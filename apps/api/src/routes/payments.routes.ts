@@ -401,11 +401,11 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      // Define plan pricing (in kobo: 1 naira = 100 kobo)
+      // Define plan pricing (in kobo: 1 naira = 100 kobo) - PROMO PRICING
       const planPricing: Record<string, number> = {
         explorer: 0,         // Free
-        scholar: 350000,     // ₦3,500 (6 months)
-        elite: 500000,       // ₦5,000 (6 months)
+        scholar: 250000,     // ₦2,500 (promo price, was ₦3,500)
+        elite: 350000,       // ₦3,500 (promo price, was ₦5,000)
       };
 
       const currentPlanPrice = planPricing[profile.subscription_status];

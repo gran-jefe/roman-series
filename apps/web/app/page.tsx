@@ -2,9 +2,37 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
 
 export default function LandingPage() {
   const { user } = useAuth();
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  // Promo ends next Friday (8 days from today)
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const launchDate = new Date();
+      // Set to next Friday at midnight
+      const daysUntilFriday = (5 - launchDate.getDay() + 7) % 7 || 7;
+      const promoEnd = new Date(launchDate.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
+      promoEnd.setHours(23, 59, 59, 999);
+
+      const diff = promoEnd.getTime() - now.getTime();
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        setTimeLeft(`${days}d ${hours}h ${minutes}m`);
+      } else {
+        setTimeLeft("Promo ended");
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 60000); // Update every minute
+    return () => clearInterval(timer);
+  }, []);
 
   const SUBJECTS = [
     { name: "Biology", color: "bg-biology" },
@@ -404,6 +432,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-12 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
             <p className="text-amber-900 font-semibold">🎉 Launch Week Special! Limited-time promo pricing available</p>
+            {timeLeft && <p className="text-sm text-amber-800 mt-1">Ends in: {timeLeft}</p>}
           </div>
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-navy mb-4">
