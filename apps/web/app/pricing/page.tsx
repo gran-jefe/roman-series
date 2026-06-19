@@ -144,6 +144,11 @@ export default function PricingPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
+        {/* Promo Banner */}
+        <div className="mb-8 p-4 bg-ember text-white rounded-lg text-center">
+          <p className="font-semibold">🎉 Launch Week Special! Limited-time promo pricing available</p>
+        </div>
+
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-[#0D1B2A] mb-4">Simple, Transparent Pricing</h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
@@ -181,9 +186,14 @@ export default function PricingPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-4xl font-bold text-[#1A7A4A]">{plan.price}</span>
                     {plan.originalPrice && (
-                      <span className="text-xl text-gray-400 line-through">
-                        {plan.originalPrice}
-                      </span>
+                      <>
+                        <span className="text-xl text-gray-400 line-through">
+                          {plan.originalPrice}
+                        </span>
+                        <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
+                          PROMO
+                        </span>
+                      </>
                     )}
                   </div>
                   {plan.price !== "Free" && (

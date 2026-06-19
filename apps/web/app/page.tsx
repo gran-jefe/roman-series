@@ -402,6 +402,9 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="bg-gray-50 py-24 px-6">
         <div className="max-w-6xl mx-auto">
+          <div className="mb-12 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
+            <p className="text-amber-900 font-semibold">🎉 Launch Week Special! Limited-time promo pricing available</p>
+          </div>
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-navy mb-4">
               Simple, Transparent Pricing
@@ -438,9 +441,14 @@ export default function LandingPage() {
                         {plan.price}
                       </span>
                       {plan.originalPrice && (
-                        <span className="text-xl text-gray-400 line-through">
-                          {plan.originalPrice}
-                        </span>
+                        <>
+                          <span className="text-xl text-gray-400 line-through">
+                            {plan.originalPrice}
+                          </span>
+                          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
+                            PROMO
+                          </span>
+                        </>
                       )}
                     </div>
                     <span className="text-gray-600">
