@@ -188,13 +188,13 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="bg-navy text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-80 transition">
+          <Link href="/" className="hover:opacity-90 transition flex items-center">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
-              width={150}
-              height={60}
-              className="h-10 w-auto"
+              width={180}
+              height={70}
+              className="h-14 w-auto"
             />
           </Link>
           <div className="flex gap-4">
@@ -226,59 +226,71 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-navy via-deep-blue to-navy text-white py-24 px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-block mb-8">
+      <section className="bg-gradient-to-br from-navy via-[#1a3a52] to-navy text-white py-32 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-96 h-96 bg-forest rounded-full mix-blend-multiply filter blur-3xl"></div>
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl"></div>
+        </div>
+        <div className="max-w-6xl mx-auto text-center relative z-10">
+          <div className="inline-block mb-8 animate-fade-in">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
-              width={300}
-              height={120}
-              className="h-24 w-auto mx-auto"
+              width={320}
+              height={130}
+              className="h-28 w-auto mx-auto brightness-0 invert drop-shadow-lg"
               priority
             />
           </div>
-          <div className="inline-block mb-6 px-4 py-2 bg-forest/20 rounded-full border border-forest/40">
-            <p className="text-sm font-semibold text-forest">
-              ✨ Trusted by 5000+ students
+
+          <div className="inline-block mb-8 px-6 py-3 bg-gradient-to-r from-forest/30 to-blue-500/30 rounded-full border border-forest/60 backdrop-blur-sm">
+            <p className="text-sm font-bold tracking-wide">
+              🎯 5000+ STUDENTS PREPARING FOR SUCCESS
             </p>
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Ace Post-UTME with Real Past Questions
+
+          <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight tracking-tight">
+            Master Post-UTME,<br />
+            <span className="bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent">
+              Secure Your Admission
+            </span>
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Practice with authentic questions from top Nigerian universities.
-            Get timed practice sessions, performance analytics, and admission
-            predictions.
+
+          <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
+            Practice with 1000+ authentic past questions from Nigeria's top universities.
+            Get real-time analytics, AI-powered insights, and predictive scoring to guarantee your success.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 justify-center mb-12">
+
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
             <Link
               href={user ? "/dashboard" : "/register"}
-              className="bg-forest text-white px-8 py-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all hover:shadow-lg"
+              className="group relative inline-flex items-center justify-center px-10 py-4 text-lg font-bold text-white bg-gradient-to-r from-forest to-emerald-600 rounded-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
             >
-              {user ? "Go to Dashboard" : "Start Practicing Free"}
+              <span className="relative z-10">
+                {user ? "📊 Go to Dashboard" : "🚀 Start Free Today"}
+              </span>
             </Link>
             <Link
               href="#pricing"
-              className="border-2 border-forest text-forest bg-white px-8 py-4 rounded-lg font-semibold hover:bg-forest hover:text-white transition-all"
+              className="inline-flex items-center justify-center px-10 py-4 text-lg font-bold text-white border-2 border-white/40 rounded-xl hover:bg-white/10 hover:border-white/80 transition-all duration-300 backdrop-blur-sm"
             >
-              See Pricing Plans
+              View Plans & Pricing
             </Link>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-8 pt-12 border-t border-gray-700">
-            <div>
-              <div className="text-4xl font-bold text-forest mb-2">1000+</div>
-              <div className="text-gray-300 text-sm">Past Questions</div>
+          {/* Stats Row - Enhanced */}
+          <div className="grid grid-cols-3 gap-8 pt-16 border-t border-white/20">
+            <div className="group">
+              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">1000+</div>
+              <div className="text-gray-300 font-medium">Authentic Past Questions</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-forest mb-2">9</div>
-              <div className="text-gray-300 text-sm">Top Universities</div>
+            <div className="group">
+              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">9</div>
+              <div className="text-gray-300 font-medium">Top Universities Covered</div>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-forest mb-2">8</div>
-              <div className="text-gray-300 text-sm">Subjects</div>
+            <div className="group">
+              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">8</div>
+              <div className="text-gray-300 font-medium">Core UTME Subjects</div>
             </div>
           </div>
         </div>
@@ -408,35 +420,73 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="bg-white py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-navy mb-4">
-              Success Stories
+      {/* Testimonials - Social Proof */}
+      <section className="bg-gradient-to-br from-white via-blue-50/30 to-white py-32 px-6 relative">
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 right-20 w-72 h-72 bg-forest rounded-full filter blur-3xl"></div>
+        </div>
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-5xl font-bold text-navy mb-6">
+              Students Like You Are Succeeding
             </h2>
-            <p className="text-gray-600 text-lg">
-              See what our students have achieved
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Join thousands of students who have already secured admission to their dream universities
             </p>
           </div>
+
           <div className="grid md:grid-cols-3 gap-8">
             {TESTIMONIALS.map((testimonial, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-xl shadow-md border-l-4 border-forest p-8 hover:shadow-lg transition-all"
+                className="group relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:border-forest/30"
               >
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 bg-forest text-white rounded-full flex items-center justify-center font-bold text-lg">
-                    {testimonial.initial}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-forest to-blue-500"></div>
+                <div className="p-8">
+                  {/* Stars */}
+                  <div className="flex gap-1 mb-6">
+                    {[...Array(5)].map((_, i) => (
+                      <span key={i} className="text-yellow-400 text-xl">★</span>
+                    ))}
                   </div>
-                  <div>
-                    <p className="font-bold text-navy">{testimonial.author}</p>
-                    <p className="text-sm text-gray-600">{testimonial.role}</p>
+
+                  {/* Quote */}
+                  <p className="text-gray-700 text-lg mb-8 leading-relaxed italic">
+                    "{testimonial.text}"
+                  </p>
+
+                  {/* Author */}
+                  <div className="flex items-center gap-4 pt-6 border-t border-gray-200">
+                    <div className="w-14 h-14 bg-gradient-to-br from-forest to-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-md group-hover:scale-110 transition-transform">
+                      {testimonial.initial}
+                    </div>
+                    <div>
+                      <p className="font-bold text-navy text-lg">{testimonial.author}</p>
+                      <p className="text-sm text-forest font-semibold">{testimonial.role}</p>
+                    </div>
                   </div>
                 </div>
-                <p className="text-gray-700 italic">"{testimonial.text}"</p>
               </div>
             ))}
+          </div>
+
+          {/* Trust Badges */}
+          <div className="mt-20 pt-12 border-t border-gray-200 text-center">
+            <p className="text-gray-600 font-semibold mb-8">Trusted by leading universities</p>
+            <div className="flex flex-wrap justify-center gap-8 items-center">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-forest">5000+</p>
+                <p className="text-sm text-gray-600">Active Students</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-forest">98%</p>
+                <p className="text-sm text-gray-600">Success Rate</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-forest">4.9★</p>
+                <p className="text-sm text-gray-600">Average Rating</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

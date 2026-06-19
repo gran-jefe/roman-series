@@ -63,13 +63,13 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       {shouldShowNavbar && (
         <nav className="sticky top-0 z-50 bg-navy text-white shadow-lg">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="hover:opacity-80 transition">
+            <Link href="/" className="hover:opacity-90 transition flex items-center">
               <Image
                 src="/assets/logos/roman-series-full.png"
                 alt="Roman Series"
-                width={150}
-                height={60}
-                className="h-10 w-auto"
+                width={180}
+                height={70}
+                className="h-14 w-auto brightness-0 invert"
               />
             </Link>
             <div className="flex items-center gap-6 relative">
