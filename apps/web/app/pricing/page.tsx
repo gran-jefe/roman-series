@@ -15,12 +15,12 @@ export default function PricingPage() {
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Countdown to launch (June 27, 2026) or promo (8 days after launch)
+  // Countdown to launch (June 27, 2026) or promo (7 days after launch)
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
       const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
-      const promoEnd = new Date(launchDate.getTime() + 8 * 24 * 60 * 60 * 1000); // 8 days after launch
+      const promoEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
       promoEnd.setHours(23, 59, 59, 999);
 
       let targetDate: Date;
