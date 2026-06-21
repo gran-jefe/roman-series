@@ -1153,12 +1153,13 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
   // GET /api/analytics/report/download - Download report as PDF
   app.get("/api/analytics/report/download", async (req: Request, res: Response) => {
     try {
-      // Check Bearer token or query param token
+      // Check Bearer token in Authorization header (preferred) or query param token (fallback)
       let token: string | null = null;
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith("Bearer ")) {
         token = authHeader.substring(7);
       } else if (typeof req.query.token === "string") {
+        console.warn("[analytics/report/download] Token passed via query param - consider using Authorization header for security");
         token = req.query.token;
       }
 

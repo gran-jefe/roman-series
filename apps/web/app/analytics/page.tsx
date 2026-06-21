@@ -233,11 +233,36 @@ export default function AnalyticsPage() {
     }
   };
 
-  const handleDownloadPDF = () => {
-    const token = localStorage.getItem("access_token");
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-    const url = `${apiUrl}/api/analytics/report/download?token=${token}`;
-    window.open(url, "_blank");
+  const handleDownloadPDF = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+      const response = await fetch(`${apiUrl}/api/analytics/report/download`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `roman-series-report-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download PDF:", error);
+      toast.error("Failed to download report. Please try again.");
+    }
   };
 
   const canGenerateReport = !nextGenerationAt || new Date(nextGenerationAt) <= new Date();
@@ -249,9 +274,9 @@ export default function AnalyticsPage() {
      
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <div className="mb-12 flex items-start justify-between">
+        <div className="mb-12 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-navy mb-2">Performance Analytics</h1>
             <p className="text-gray-600 text-sm">Your detailed performance insights and progress tracking</p>
@@ -259,7 +284,7 @@ export default function AnalyticsPage() {
           <button
             onClick={handleGenerateReport}
             disabled={reportLoading || !canGenerateReport}
-            className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap sm:flex-shrink-0"
           >
             {reportLoading ? "Generating..." : canGenerateReport ? "Generate Report" : `Available in ${cooldownRemaining}`}
           </button>
@@ -267,12 +292,12 @@ export default function AnalyticsPage() {
 
         {/* Report Panel */}
         {showReport && report && (
-          <div className="mb-12 bg-white rounded-lg shadow-md border-t-4 border-forest p-8">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
+          <div className="mb-12 bg-white rounded-lg shadow-md border-t-4 border-forest p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+              <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-navy">Your Personalised Study Report</h2>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${
                     fromCache
                       ? "bg-gray-200 text-gray-700"
                       : "bg-green-100 text-green-700"
@@ -284,13 +309,13 @@ export default function AnalyticsPage() {
               </div>
               <button
                 onClick={() => setShowReport(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="text-gray-400 hover:text-gray-600 text-2xl sm:flex-shrink-0"
               >
                 ✕
               </button>
             </div>
 
-            <div className="mb-6 p-6 bg-blush rounded-lg max-h-96 overflow-y-auto">
+            <div className="mb-6 p-4 sm:p-6 bg-blush rounded-lg max-h-96 overflow-y-auto">
               {report.split("\n\n").map((paragraph: string, idx: number) => (
                 <p key={idx} className="text-gray-700 leading-relaxed mb-4">
                   {paragraph}
@@ -298,7 +323,7 @@ export default function AnalyticsPage() {
               ))}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={handleDownloadPDF}
                 className="flex-1 px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all"
@@ -316,7 +341,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* Overview Cards */}
-        <div className="mb-12 grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
           {/* Streak */}
           <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Streak</p>
@@ -355,173 +380,145 @@ export default function AnalyticsPage() {
 
         {/* Admission Prediction Section */}
         {prediction && prediction.status !== "no_data" && prediction.cutoff && (
-          <div className="mb-12 bg-white rounded-lg shadow-md border-t-4 border-forest p-8">
-            <h2 className="text-2xl font-bold text-navy mb-6">Admission Prediction</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              {/* University & Course */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Target Course</p>
-                <p className="text-lg font-bold text-navy">{prediction.cutoff.course}</p>
-                <p className="text-xs text-gray-500 mt-1">Year {prediction.cutoff.year}</p>
-              </div>
-
-              {/* UTME Score */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Your UTME Score</p>
-                <p className="text-2xl font-bold text-navy">{prediction.utme_score}/400</p>
-                <p className={`text-xs font-semibold mt-1 ${
-                  prediction.utme_qualifies ? "text-green-600" : "text-amber-600"
-                }`}>
-                  {prediction.utme_qualifies ? "✓ Qualifies" : "Below Cutoff"}
+          <div className="mb-12">
+            <div className="bg-gradient-to-br from-forest/5 to-blue-50 rounded-lg shadow-lg border border-forest/10 p-6 sm:p-8">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-navy mb-2">🎓 Admission Prediction</h2>
+                <p className="text-xs text-gray-600">
+                  Based on <span className="font-semibold">{prediction.cutoff.year} admission cutoff</span> for <span className="font-semibold">{prediction.cutoff.course}</span>
                 </p>
               </div>
 
-              {/* Post-UTME Target */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Post-UTME Target</p>
-                <p className="text-2xl font-bold text-navy">{prediction.required_putme_score}%</p>
-                <p className="text-xs text-gray-500 mt-1">to reach cutoff</p>
+              {/* Key Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                {/* Your UTME Score */}
+                <div className={`p-5 rounded-lg border-l-4 ${prediction.utme_qualifies ? "bg-green-50 border-green-400" : "bg-amber-50 border-amber-400"}`}>
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Your UTME Score</p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-navy">{prediction.utme_score}</p>
+                      <p className="text-xs text-gray-600">/400</p>
+                    </div>
+                    <span className={`text-lg font-bold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
+                      {prediction.utme_qualifies ? "✓" : "✗"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Your Practice Score */}
+                <div className={`p-5 rounded-lg border-l-4 ${(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "bg-green-50 border-green-400" : "bg-blue-50 border-blue-400"}`}>
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Your Practice Average</p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-navy">{prediction.current_practice_avg ?? 0}</p>
+                      <p className="text-xs text-gray-600">%</p>
+                    </div>
+                    <span className={`text-lg font-bold ${(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "text-green-600" : "text-blue-600"}`}>
+                      {(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "✓" : "→"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Post-UTME Target */}
+                <div className="p-5 rounded-lg border-l-4 bg-indigo-50 border-indigo-400">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Post-UTME Target</p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-navy">{Math.max(prediction.required_putme_score ?? 50, 50)}</p>
+                      <p className="text-xs text-gray-600">% minimum</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Current Average */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Your Current Avg</p>
-                <p className={`text-2xl font-bold ${
-                  (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
-                    ? "text-green-600"
-                    : "text-amber-600"
-                }`}>
-                  {prediction.current_practice_avg ?? 0}%
-                </p>
-                <p className={`text-xs font-semibold mt-1 ${
-                  (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
-                    ? "text-green-600"
-                    : "text-amber-600"
-                }`}>
-                  {(prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
-                    ? "✓ On Track"
-                    : `⚠ ${(prediction.required_putme_score ?? 0) - (prediction.current_practice_avg ?? 0)}% gap`}
+              {/* Prediction Progress */}
+              <div className="relative">
+                <div className={`bg-white rounded-lg p-6 border-2 border-forest/10 ${profile?.subscription_status === "explorer" ? "blur-sm" : ""}`}>
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-navy">Your Predicted Score</p>
+                      <p className={`text-sm font-bold px-3 py-1 rounded-full ${
+                        (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0)
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0) ? "✓ On Track" : "⚠ Below Cutoff"}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-forest to-emerald-600 transition-all duration-500"
+                          style={{ width: `${Math.min(((prediction.predicted_total ?? 0) / (prediction.cutoff?.combined_cutoff ?? 100)) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-bold text-navy">{(prediction.predicted_total ?? 0).toFixed(1)}</span>
+                        <span className="text-sm font-bold text-gray-500">Target: {prediction.cutoff?.combined_cutoff ?? 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Explorer Lock Overlay */}
+                {profile?.subscription_status === "explorer" && (
+                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-white font-semibold mb-3">Full prediction unlocked in Scholar plan</p>
+                      <button
+                        onClick={() => router.push("/pricing")}
+                        className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                      >
+                        Upgrade
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Disclaimer */}
+              <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  <span className="font-semibold">ℹ️ Disclaimer:</span> This prediction uses the <span className="font-semibold">{prediction.cutoff.year} admission cutoff</span>. Actual cutoffs may vary annually. Use this as a guide, not a guarantee.
                 </p>
               </div>
             </div>
 
-            {/* Minimum Requirements */}
-            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">UTME Minimum (200)</p>
-                <div className="flex items-center gap-2">
-                  <p className={`text-lg font-bold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.utme_score ?? 0}
-                  </p>
-                  <span className={`text-sm font-semibold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.utme_qualifies ? "✓" : "✗"}
-                  </span>
+            {/* Alerts Section */}
+            <div className="mt-6 space-y-4">
+              {!prediction.utme_qualifies && prediction.utme_qualifies !== undefined && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-red-900">⚠ UTME Below Minimum (200)</p>
+                  <p className="text-sm text-red-800 mt-1">Your score of {prediction.utme_score} doesn't qualify. You need 200+ for admission eligibility.</p>
                 </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">PUTME Minimum (50%)</p>
-                <div className="flex items-center gap-2">
-                  <p className={`text-lg font-bold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.current_practice_avg ?? 0}%
-                  </p>
-                  <span className={`text-sm font-semibold ${prediction.putme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                    {prediction.putme_qualifies ? "✓" : "✗"}
-                  </span>
-                </div>
-              </div>
-            </div>
+              )}
 
-            {/* Prediction Card */}
-            <div className="relative">
-              <div className={`bg-gray-50 rounded-lg p-6 ${profile?.subscription_status === "explorer" ? "blur-sm" : ""}`}>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-lg font-bold text-navy">Predicted Score</p>
-                    {prediction && "post_utme_target" in prediction && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Post-UTME Target: <span className="font-semibold">{prediction.post_utme_target}%</span>
-                      </p>
-                    )}
-                  </div>
-                  {prediction && "gap_percentage" in prediction && (
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-red-500">
-                        {prediction.gap_percentage}% gap
-                      </p>
-                    </div>
-                  )}
+              {!prediction.putme_qualifies && prediction.putme_qualifies !== undefined && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-red-900">⚠ Practice Score Below Minimum (50%)</p>
+                  <p className="text-sm text-red-800 mt-1">Current practice score: {prediction.current_practice_avg ?? 0}%. You need 50%+ on Post-UTME to qualify.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="h-3 bg-gray-300 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-forest transition-all"
-                        style={{ width: `${Math.min(((prediction.predicted_total ?? 0) / (prediction.cutoff?.combined_cutoff ?? 100)) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-navy">
-                      {(prediction.predicted_total ?? 0).toFixed(1)}/{prediction.cutoff?.combined_cutoff ?? 0}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0)
-                        ? "✓ On track for admission"
-                        : "⚠ Below cutoff"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* Explorer Lock Overlay */}
-              {profile?.subscription_status === "explorer" && (
-                <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-white font-semibold mb-3">Your predicted UI aggregate is ready. Upgrade to unlock.</p>
-                    <button
-                      onClick={() => router.push("/pricing")}
-                      className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
-                    >
-                      Upgrade
-                    </button>
-                  </div>
+              {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-amber-900">📌 Improve Your Score</p>
+                  <p className="text-sm text-amber-800 mt-1">Increase your practice score from {prediction.current_practice_avg ?? 0}% to {prediction.required_putme_score}% to reach the cutoff.</p>
+                </div>
+              )}
+
+              {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0) && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-green-900">✓ On Track for Admission</p>
+                  <p className="text-sm text-green-800 mt-1">Your scores meet the requirements. Keep practicing to maintain your edge!</p>
                 </div>
               )}
             </div>
-
-            {/* Advice */}
-            {!prediction.utme_qualifies && prediction.utme_qualifies !== undefined && (
-              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-red-900 mb-1">⚠ UTME Score Below Minimum</p>
-                <p className="text-sm text-red-800">
-                  Your UTME score ({prediction.utme_score ?? 0}) is below the required minimum of 200. You will not be eligible for admission regardless of your Post-UTME performance.
-                </p>
-              </div>
-            )}
-
-            {!prediction.putme_qualifies && prediction.putme_qualifies !== undefined && (
-              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-red-900 mb-1">⚠ PUTME Score Below Minimum</p>
-                <p className="text-sm text-red-800">
-                  Your current practice score ({prediction.current_practice_avg ?? 0}%) is below the required minimum of 50%. You must score at least 50% on the Post-UTME exam to be eligible for admission.
-                </p>
-              </div>
-            )}
-
-            {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
-              <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-amber-900 mb-1">📌 Recommendation</p>
-                <p className="text-sm text-amber-800">
-                  You need to improve your practice score from {prediction.current_practice_avg ?? 0}% to {prediction.required_putme_score ?? 0}% to reach the admission cutoff of {prediction.cutoff?.combined_cutoff ?? 0}/100.
-                </p>
-              </div>
-            )}
           </div>
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-12">
           {/* Left Column - Topic Performance */}
           <div className="lg:col-span-2 space-y-8">
             {/* Topic Performance Table */}
@@ -572,38 +569,40 @@ export default function AnalyticsPage() {
 
               {/* Topics Table */}
               {filteredTopics.length > 0 ? (
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b">
+                <div className="bg-white rounded-lg shadow-md relative">
+                  <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
+                  <div className="absolute inset-x-0 top-0 pointer-events-none bg-gradient-to-b from-white to-transparent h-8 z-10" />
+                  <div className="overflow-x-auto overflow-y-auto max-h-96">
+                    <table className="w-full min-w-full">
+                      <thead className="bg-gray-50 border-b sticky top-0 z-20 h-16">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Topic</th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Questions</th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Correct</th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Score</th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Mastery</th>
+                          <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-xs md:text-sm font-semibold text-gray-500 uppercase">Topic</th>
+                          <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-xs md:text-sm font-semibold text-gray-500 uppercase whitespace-nowrap">Questions</th>
+                          <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-xs md:text-sm font-semibold text-gray-500 uppercase">Correct</th>
+                          <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-xs md:text-sm font-semibold text-gray-500 uppercase">Score</th>
+                          <th className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-xs sm:text-xs md:text-sm font-semibold text-gray-500 uppercase">Mastery</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredTopics.map((topic) => (
                           <tr key={topic.topic_id} className="border-b hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 max-w-xs">
+                              <div className="flex items-center gap-1 sm:gap-2">
                                 <div
-                                  className="w-3 h-3 rounded-full"
+                                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
                                   style={{ backgroundColor: getSubjectColor(topic.subject_name) }}
                                 />
-                                <div>
-                                  <p className="font-medium text-navy">{topic.topic_name}</p>
-                                  <p className="text-xs text-gray-500">{topic.sessions_count} sessions</p>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-navy text-xs sm:text-sm truncate">{topic.topic_name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{topic.sessions_count} sessions</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm font-semibold text-navy">{topic.total_answered}</td>
-                            <td className="px-6 py-4 text-sm text-navy">{topic.correct}</td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-navy whitespace-nowrap">{topic.total_answered}</td>
+                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-xs sm:text-sm text-navy whitespace-nowrap">{topic.correct}</td>
+                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4">
+                              <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden min-w-12">
                                   <div
                                     className="h-full transition-all"
                                     style={{
@@ -612,12 +611,12 @@ export default function AnalyticsPage() {
                                     }}
                                   />
                                 </div>
-                                <span className="w-12 text-right font-semibold text-navy">{topic.avg_percentage}%</span>
+                                <span className="w-8 sm:w-12 text-right font-semibold text-navy text-xs sm:text-sm flex-shrink-0">{topic.avg_percentage}%</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-xs">
                               {profile?.subscription_status !== "explorer" ? (
-                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getMasteryLabel(topic.avg_percentage).color}`}>
+                                <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${getMasteryLabel(topic.avg_percentage).color}`}>
                                   {getMasteryLabel(topic.avg_percentage).label}
                                 </span>
                               ) : (
@@ -662,7 +661,7 @@ export default function AnalyticsPage() {
             <div className="relative">
               <div className={profile?.subscription_status === "explorer" ? "blur-sm pointer-events-none" : ""}>
                 <h2 className="text-2xl font-bold text-navy mb-4">Speed & Time Analysis</h2>
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Avg Time per Question</p>
                     <p className="text-3xl font-bold text-navy">{overview.avg_time_per_question_seconds}s</p>

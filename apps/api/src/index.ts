@@ -62,7 +62,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean)
-  .concat(['http://localhost:3000']);
+  .concat(['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']);
 
 app.use(cors({
   origin: function(origin, callback) {

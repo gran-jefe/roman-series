@@ -387,7 +387,7 @@ export default function DashboardPage() {
                     {subscription?.subscription_status !== "elite" && (
                       <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4">
                         <p className="text-sm font-semibold text-purple-900">⭐ Elite Exclusive Feature</p>
-                        <p className="text-xs text-purple-800 mt-1">Upgrade to Elite (₦5,000/6 months) to unlock access to our database of recalled exam questions and gain advanced analytics.</p>
+                        <p className="text-xs text-purple-800 mt-1">Upgrade to Elite (₦3,500/6 months) to unlock access to our database of recalled exam questions and gain advanced analytics.</p>
                       </div>
                     )}
                     {subscription?.subscription_status === "elite" && (
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                     {subscription?.subscription_status !== "elite" && (
                       <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
                         <p className="text-sm font-semibold text-red-900">⭐ Elite Exclusive Feature</p>
-                        <p className="text-xs text-red-800 mt-1">Upgrade to Elite (₦5,000/6 months) to unlock hard mode exams with advanced difficulty filtering and time-pressure diagnostics.</p>
+                        <p className="text-xs text-red-800 mt-1">Upgrade to Elite (₦3,500/6 months) to unlock hard mode exams with advanced difficulty filtering and time-pressure diagnostics.</p>
                       </div>
                     )}
                   </div>
@@ -617,7 +617,18 @@ export default function DashboardPage() {
             )}
 
             {/* Prediction Card */}
-            {prediction && prediction.status !== "no_data" && (
+            {prediction && prediction.locked ? (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md border-2 border-blue-200 p-6">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Admission Target</h3>
+                <p className="text-sm text-gray-700 mb-4">{prediction.preview_message}</p>
+                <button
+                  onClick={() => router.push("/pricing")}
+                  className="w-full px-4 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                >
+                  Upgrade to Scholar
+                </button>
+              </div>
+            ) : prediction && prediction.status !== "no_data" && (
               <div className={`bg-white rounded-lg shadow-md border-t-4 p-6 ${
                 prediction.status === "on_track" ? "border-green-500" : "border-amber-500"
               }`}>
@@ -627,7 +638,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Your UTME Score</p>
                     <div className="flex items-baseline gap-1">
-                      <p className="text-2xl font-bold text-navy">{prediction.utme_score}</p>
+                      <p className="text-2xl font-bold text-navy">{prediction.utme_score ?? 0}</p>
                       <p className="text-sm text-gray-500">/400</p>
                       {prediction.utme_qualifies && (
                         <span className="text-xs font-semibold text-green-600 ml-auto">✓ Qualifies</span>
@@ -637,7 +648,7 @@ export default function DashboardPage() {
 
                   <div className="border-t pt-3">
                     <p className="text-xs text-gray-500 mb-1">Target Post-UTME Score</p>
-                    <p className="text-2xl font-bold text-navy">{prediction.required_putme_score}%</p>
+                    <p className="text-2xl font-bold text-navy">{prediction.required_putme_score ?? 0}%</p>
                   </div>
 
                   <div className="border-t pt-3">
@@ -689,15 +700,16 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+            <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
+              <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8" />
+              <table className="w-full min-w-full">
+                <thead className="bg-gray-50 border-b sticky top-0">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Subject</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Topic</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">University</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Score</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">University</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Score</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Questions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -714,49 +726,64 @@ export default function DashboardPage() {
               <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
               <span className="text-sm text-gray-500">{sessions.length} total</span>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+            <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
+              <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
+              <table className="w-full min-w-full">
+                <thead className="bg-gray-50 border-b sticky top-0 z-20">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Subject</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Topic</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">University</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Score</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">University</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Score</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Questions</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions.slice(0, 5).map(session => (
-                    <tr key={session.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex items-center text-gray-900 gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: session.subject_colour_token || "#666" }}
-                          />
-                          <span className="font-medium">{session.subject_name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {session.topic_name || "—"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {session.university_short_code}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`font-semibold ${
-                            session.percentage >= 50 ? "text-forest" : "text-red-600"
-                          }`}
-                        >
-                          {session.percentage}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(session.started_at).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
+                  {sessions.slice(0, 5).map(session => {
+                    const getSessionType = () => {
+                      if (session.is_mock) return "Mock";
+                      if (session.is_hard_mode) return "Hard Mode";
+                      if (session.is_recalled) return "Recalled";
+                      return session.subject_name || "Individual";
+                    };
+
+                    const sessionType = getSessionType();
+                    const isMock = session.is_mock;
+
+                    return (
+                      <tr key={session.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm">
+                          <div className="flex items-center text-gray-900 gap-2">
+                            {!isMock && (
+                              <div
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: session.subject_colour_token || "#666" }}
+                              />
+                            )}
+                            <span className="font-medium">{sessionType}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {session.university_short_code || "—"}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <span
+                            className={`font-semibold ${
+                              session.percentage >= 50 ? "text-forest" : "text-red-600"
+                            }`}
+                          >
+                            {session.percentage}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {session.total_questions || "—"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                          {new Date(session.started_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -112,6 +112,10 @@ export interface Session {
   ended_at?: string;
   created_at: string;
   updated_at: string;
+  is_mock?: boolean;
+  is_hard_mode?: boolean;
+  is_recalled?: boolean;
+  
 }
 
 /**
@@ -281,6 +285,9 @@ export interface SessionHistoryItem extends Session {
   university_short_code?: string;
   topic_name?: string;
   percentage: number;
+  is_mock?: boolean;
+  is_hard_mode?: boolean;
+  is_recalled?: boolean;
 }
 
 /**

@@ -45,11 +45,34 @@ export function clearAuth() {
   document.cookie = "auth_token=; path=/; max-age=0";
 }
 
-// Request interceptor - attach token to all requests
+// Request interceptor - attach token to all requests and proactive refresh
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     if (typeof window !== "undefined") {
       let token = localStorage.getItem("access_token");
+      const expiresAt = localStorage.getItem("token_expires_at");
+
+      // Check if token expires in less than 5 minutes - refresh proactively
+      if (expiresAt && Date.now() + 5 * 60 * 1000 > parseInt(expiresAt, 10)) {
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (refreshToken && !isRefreshing) {
+          isRefreshing = true;
+          try {
+            const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/auth/refresh`, {
+              refresh_token: refreshToken,
+            });
+            if (data.status === "success") {
+              const { access_token, refresh_token: newRefresh, expires_in } = data.data;
+              storeTokens(access_token, newRefresh, expires_in);
+              token = access_token;
+            }
+          } catch (err) {
+            console.warn("[api] Proactive refresh failed:", err);
+          } finally {
+            isRefreshing = false;
+          }
+        }
+      }
 
       // Fallback: read from cookie if localStorage is empty
       if (!token) {

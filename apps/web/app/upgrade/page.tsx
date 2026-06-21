@@ -95,11 +95,18 @@ export default function UpgradePage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-4xl mx-auto px-6 py-8">
-          <Link href="/pricing" className="text-forest text-sm font-medium hover:underline mb-4 inline-block">
+          <Link
+            href="/pricing"
+            className="text-forest text-sm font-medium hover:underline mb-4 inline-block"
+          >
             ← Back to Pricing
           </Link>
-          <h1 className="text-4xl font-bold text-[#0D1B2A] mb-2">Upgrade to Elite</h1>
-          <p className="text-gray-600">Unlock advanced features and boost your exam preparation</p>
+          <h1 className="text-4xl font-bold text-[#0D1B2A] mb-2">
+            Upgrade to Elite
+          </h1>
+          <p className="text-gray-600">
+            Unlock advanced features and boost your exam preparation
+          </p>
         </div>
       </div>
 
@@ -115,25 +122,41 @@ export default function UpgradePage() {
           {/* Left: Pricing */}
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-[#0D1B2A] mb-2">Elite Plan</h2>
-              <p className="text-gray-600">Full access to all premium features</p>
+              <h2 className="text-3xl font-bold text-[#0D1B2A] mb-2">
+                Elite Plan
+              </h2>
+              <p className="text-gray-600">
+                Full access to all premium features
+              </p>
             </div>
 
             {/* Pricing Display */}
             <div className="bg-gradient-to-br from-forest/5 to-transparent rounded-lg p-6 mb-8 border border-forest/20">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Your current plan: Scholar (₦3,500)</p>
-                <p className="text-sm text-gray-600 mb-1">Elite plan regular price: <span className="line-through">₦5,000</span></p>
+                <p className="text-sm text-gray-600 mb-2">
+                  Your current plan: Scholar (₦3,500)
+                </p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Elite plan regular price:{" "}
+                  <span className="line-through">₦5,000</span>
+                </p>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-gray-600">Elite plan promo price: <span className="font-bold text-forest">₦3,500</span></p>
-                  <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">PROMO</span>
+                  <p className="text-sm text-gray-600">
+                    Elite plan promo price:{" "}
+                    <span className="font-bold text-forest">₦3,500</span>
+                  </p>
+                  <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
+                    PROMO
+                  </span>
                 </div>
               </div>
 
               <div className="bg-white rounded-lg p-4 mb-4 border-2 border-forest">
-                <p className="text-sm text-gray-600 mb-1">You'll pay today:</p>
+                <p className="text-sm text-gray-600 mb-1">You&apos;ll pay today:</p>
                 <p className="text-5xl font-bold text-forest">₦0</p>
-                <p className="text-xs text-gray-500 mt-2">Same price - no additional cost!</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Same price - no additional cost!
+                </p>
               </div>
 
               <button
@@ -145,7 +168,9 @@ export default function UpgradePage() {
                     : "bg-forest hover:bg-opacity-90 shadow-lg hover:shadow-xl"
                 }`}
               >
-                {isProcessing ? "Processing..." : "Complete Upgrade (Free during Promo!)"}
+                {isProcessing
+                  ? "Processing..."
+                  : "Complete Upgrade (Free during Promo!)"}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
@@ -172,11 +197,16 @@ export default function UpgradePage() {
 
           {/* Right: Features */}
           <div className="bg-white rounded-lg shadow-lg p-8">
-            <h3 className="text-2xl font-bold text-[#0D1B2A] mb-6">What You Get</h3>
+            <h3 className="text-2xl font-bold text-[#0D1B2A] mb-6">
+              What You Get
+            </h3>
             <div className="space-y-4">
               {eliteFeatures.map((feature, idx) => (
                 <div key={idx} className="flex items-start gap-3">
-                  <Check size={20} className="text-forest flex-shrink-0 mt-0.5" />
+                  <Check
+                    size={20}
+                    className="text-forest flex-shrink-0 mt-0.5"
+                  />
                   <span className="text-gray-700">{feature}</span>
                 </div>
               ))}
@@ -184,7 +214,9 @@ export default function UpgradePage() {
 
             {/* Additional Info */}
             <div className="mt-8 pt-8 border-t border-gray-200">
-              <h4 className="font-semibold text-gray-900 mb-3">Why upgrade to Elite?</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                Why upgrade to Elite?
+              </h4>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>• Get advanced analytics to identify weak areas faster</li>
                 <li>• Practice hard-mode exams for extra challenge</li>
@@ -198,30 +230,44 @@ export default function UpgradePage() {
 
         {/* FAQ Section */}
         <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-8">
-          <h3 className="text-lg font-bold text-[#0D1B2A] mb-4">Frequently Asked Questions</h3>
+          <h3 className="text-lg font-bold text-[#0D1B2A] mb-4">
+            Frequently Asked Questions
+          </h3>
           <div className="space-y-4">
             <div>
-              <h4 className="font-semibold text-gray-900 mb-1">Why only ₦1,500?</h4>
+              <h4 className="font-semibold text-gray-900 mb-1">
+                Why only ₦1,000?
+              </h4>
               <p className="text-gray-600 text-sm">
-                You're upgrading from Scholar (₦3,500) to Elite (₦5,000) for the same 6-month period. You only pay the difference.
+                You&apos;re upgrading from Scholar (₦2,500) to Elite (₦3,500)
+                for the same 6-month period. You only pay the difference.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-1">How long does the upgrade take?</h4>
+              <h4 className="font-semibold text-gray-900 mb-1">
+                How long does the upgrade take?
+              </h4>
               <p className="text-gray-600 text-sm">
-                Your access is updated instantly after successful payment. You'll have full Elite features immediately.
+                Your access is updated instantly after successful payment.
+                You&apos;ll have full Elite features immediately.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-1">Can I get a refund?</h4>
+              <h4 className="font-semibold text-gray-900 mb-1">
+                Can I get a refund?
+              </h4>
               <p className="text-gray-600 text-sm">
-                Contact support within 7 days of purchase for a full refund if you're not satisfied.
+                Contact support within 7 days of purchase for a full refund if
+                you&apos;re not satisfied.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900 mb-1">What happens when my subscription expires?</h4>
+              <h4 className="font-semibold text-gray-900 mb-1">
+                What happens when my subscription expires?
+              </h4>
               <p className="text-gray-600 text-sm">
-                Your subscription lasts 6 months. You'll get a notification before it expires and can renew anytime.
+                Your subscription lasts 6 months. You&apos;ll get a notification
+                before it expires and can renew anytime.
               </p>
             </div>
           </div>
