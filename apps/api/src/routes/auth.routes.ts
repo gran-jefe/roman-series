@@ -282,8 +282,9 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
+      const redirectUrl = webUrl || "https://romanseries.com.ng";
       const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${webUrl}/reset-password`,
+        redirectTo: `${redirectUrl}/reset-password`,
       });
 
       if (error) {

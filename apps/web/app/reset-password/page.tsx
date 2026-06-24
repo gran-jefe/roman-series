@@ -1,34 +1,81 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import toast from "react-hot-toast";
 
 export default function ResetPasswordPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const token = searchParams.get("code");
-
   useEffect(() => {
-    // Check if we have the required token from Supabase
-    if (!token) {
-      setIsValidToken(false);
-      setError(
-        "Invalid or missing reset token. Please request a new password reset.",
+    const initializeAuth = async () => {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setError("Supabase configuration missing");
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      // Parse hash fragment from Supabase reset email link
+      const hashParams = new URLSearchParams(
+        typeof window !== "undefined"
+          ? window.location.hash.substring(1)
+          : ""
       );
-    }
-  }, [token]);
+      const accessToken = hashParams.get("access_token");
+      const type = hashParams.get("type");
+      const errorParam = hashParams.get("error");
+
+      if (errorParam) {
+        setError(
+          "Reset link is invalid or has expired. Please request a new one."
+        );
+        setIsValidToken(false);
+        return;
+      }
+
+      if (accessToken && type === "recovery") {
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get("refresh_token") || "",
+          });
+
+          if (sessionError) {
+            setError(
+              "Invalid or expired reset link. Please request a new password reset."
+            );
+            setIsValidToken(false);
+          } else {
+            setIsValidToken(true);
+          }
+        } catch (err) {
+          setError("Failed to initialize password reset");
+          setIsValidToken(false);
+        }
+      } else {
+        setError(
+          "Invalid or missing reset token. Please request a new password reset."
+        );
+        setIsValidToken(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,19 +103,7 @@ export default function ResetPasswordPage() {
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Exchange the code for a session
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.exchangeCodeForSession(token!);
-
-      if (sessionError || !sessionData.session) {
-        setError(
-          "Invalid or expired reset link. Please request a new password reset.",
-        );
-        setIsValidToken(false);
-        return;
-      }
-
-      // Update the password
+      // Update the password with the existing session
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       });
