@@ -1,80 +1,75 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
-import toast from "react-hot-toast";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
+  const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   useEffect(() => {
-    const initializeAuth = async () => {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Must run client-side only
+    if (typeof window === "undefined") return;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        setError("Supabase configuration missing");
-        return;
-      }
+    const hash = window.location.hash;
+    console.log("[reset-password] hash:", hash);
 
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Parse hash fragment
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    const type = hashParams.get("type");
+    const errorParam = hashParams.get("error");
+    const errorDescription = hashParams.get("error_description");
 
-      // Parse hash fragment from Supabase reset email link
-      const hashParams = new URLSearchParams(
-        typeof window !== "undefined"
-          ? window.location.hash.substring(1)
-          : ""
-      );
-      const accessToken = hashParams.get("access_token");
-      const type = hashParams.get("type");
-      const errorParam = hashParams.get("error");
+    console.log("[reset-password] accessToken:", !!accessToken);
+    console.log("[reset-password] type:", type);
+    console.log("[reset-password] error:", errorParam);
 
-      if (errorParam) {
-        setError(
-          "Reset link is invalid or has expired. Please request a new one."
-        );
-        setIsValidToken(false);
-        return;
-      }
+    if (errorParam) {
+      setError(errorDescription || "Reset link is invalid or has expired.");
+      setIsValidToken(false);
+      return;
+    }
 
-      if (accessToken && type === "recovery") {
-        try {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: hashParams.get("refresh_token") || "",
-          });
-
+    if (accessToken && type === "recovery") {
+      supabase.auth
+        .setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || "",
+        })
+        .then(({ error: sessionError }) => {
           if (sessionError) {
-            setError(
-              "Invalid or expired reset link. Please request a new password reset."
-            );
+            console.error("[reset-password] setSession error:", sessionError);
             setIsValidToken(false);
           } else {
+            console.log("[reset-password] session set successfully");
             setIsValidToken(true);
           }
-        } catch (err) {
-          setError("Failed to initialize password reset");
+        });
+    } else {
+      // No hash params — might be a code-based flow
+      // Check if we already have a session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setIsValidToken(true);
+        } else {
           setIsValidToken(false);
         }
-      } else {
-        setError(
-          "Invalid or missing reset token. Please request a new password reset."
-        );
-        setIsValidToken(false);
-      }
-    };
-
-    initializeAuth();
+      });
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,46 +81,25 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
     setLoading(true);
 
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+    });
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Supabase configuration missing");
-      }
-
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-      // Update the password with the existing session
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (updateError) {
-        setError(updateError.message || "Failed to update password");
-        return;
-      }
-
-      setSuccess(true);
-      toast.success("Password reset successfully!");
-
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
-    } catch (err: any) {
-      const errorMessage = err.message || "Failed to reset password";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
+    if (updateError) {
+      setError(updateError.message || "Failed to update password");
       setLoading(false);
+    } else {
+      setSuccess(true);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
     }
   };
 
@@ -143,7 +117,14 @@ export default function ResetPasswordPage() {
 
         {/* Reset Password Card */}
         <div className="bg-white rounded-xl shadow-2xl p-8">
-          {!isValidToken ? (
+          {isValidToken === null ? (
+            <>
+              <div className="text-center">
+                <div className="animate-spin inline-block w-8 h-8 border-4 border-gray-200 border-t-forest rounded-full mb-4"></div>
+                <p className="text-gray-600 text-sm">Validating reset link...</p>
+              </div>
+            </>
+          ) : !isValidToken ? (
             <>
               <div className="text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
