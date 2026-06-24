@@ -147,6 +147,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       }
 
       try {
+        console.log("[payments/verify] Verifying transaction:", { transaction_id, tx_ref });
+
         // Verify transaction with Flutterwave
         const flutterwave = getFlutterwave();
         if (!flutterwave) {
@@ -159,6 +161,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         }
 
         const response = await flutterwave.Transaction.verify({ id: transaction_id });
+        console.log("[payments/verify] Flutterwave response:", response.data?.status);
 
         if (response.data.status === "successful" && response.data.tx_ref === tx_ref) {
           const metadata = response.data.meta || {};
@@ -229,13 +232,20 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
               })
               .eq("paystack_reference", tx_ref);
 
-            await supabaseAdmin
+            const updateResult = await supabaseAdmin
               .from("profiles")
               .update({
                 subscription_status: actualPlan,
                 subscription_expires_at: expiresAt.toISOString(),
               })
               .eq("id", actualUserId);
+
+            console.log("[payments/verify] Profile updated:", {
+              userId: actualUserId,
+              plan: actualPlan,
+              expiresAt: expiresAt.toISOString(),
+              updateError: updateResult.error,
+            });
           }
 
           res.json({
