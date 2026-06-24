@@ -25,26 +25,31 @@ ALTER TABLE flagged_questions ENABLE ROW LEVEL SECURITY;
 -- 4. RLS Policies for flagged_questions
 
 -- Users can view their own flagged questions
+DROP POLICY IF EXISTS "Users can view their own flagged questions" ON flagged_questions;
 CREATE POLICY "Users can view their own flagged questions"
   ON flagged_questions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can create flags for their own questions
+DROP POLICY IF EXISTS "Users can flag questions" ON flagged_questions;
 CREATE POLICY "Users can flag questions"
   ON flagged_questions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own flags (reason)
+DROP POLICY IF EXISTS "Users can update their own flags" ON flagged_questions;
 CREATE POLICY "Users can update their own flags"
   ON flagged_questions FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Users can delete their own flags
+DROP POLICY IF EXISTS "Users can delete their own flags" ON flagged_questions;
 CREATE POLICY "Users can delete their own flags"
   ON flagged_questions FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Admins can view all flagged questions (for admin interface)
+DROP POLICY IF EXISTS "Admins can view all flagged questions" ON flagged_questions;
 CREATE POLICY "Admins can view all flagged questions"
   ON flagged_questions FOR SELECT
   USING (
