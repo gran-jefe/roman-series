@@ -1613,7 +1613,7 @@ Generate a JSON study plan with 5-8 topics prioritized by urgency. Each item sho
 Return ONLY valid JSON array, no markdown formatting.`;
 
       const message = await groq.chat.completions.create({
-        model: "llama-3.1-70b-versatile",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       });
