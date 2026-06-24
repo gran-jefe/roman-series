@@ -1457,9 +1457,22 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         .single();
 
       if (cachedReport?.cached_data) {
+        const studyPlan = cachedReport.cached_data;
+        const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
+        const criticalTopics = studyPlan.filter((t: any) => t.urgency === 'critical').length;
+
         res.json({
           status: "success",
-          data: cachedReport.cached_data,
+          data: {
+            study_plan: studyPlan,
+            summary: {
+              total_weak_topics: studyPlan.length,
+              critical_topics: criticalTopics,
+              total_estimated_hours: totalEstimatedHours,
+              generated_at: cachedReport.created_at,
+              from_cache: true
+            }
+          },
           timestamp: new Date().toISOString(),
         });
         return;
