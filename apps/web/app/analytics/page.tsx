@@ -841,25 +841,41 @@ export default function AnalyticsPage() {
                       <button
                         onClick={async () => {
                           try {
-                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/study-plan/download`, {
-                              method: 'GET',
-                              headers: {
-                                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-                              },
-                            });
-                            if (!response.ok) {
-                              throw new Error(`Failed to download: ${response.statusText}`);
+                            const token = localStorage.getItem("access_token");
+                            if (!token) {
+                              toast.error("Please log in again");
+                              return;
                             }
+
+                            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+                            const response = await fetch(
+                              `${apiUrl}/api/analytics/study-plan/download`,
+                              {
+                                method: "GET",
+                                headers: {
+                                  "Authorization": `Bearer ${token}`,
+                                  "Accept": "application/pdf",
+                                },
+                              }
+                            );
+
+                            if (!response.ok) {
+                              const error = await response.json().catch(() => ({})) as { message?: string };
+                              throw new Error(error.message || `Failed: ${response.statusText}`);
+                            }
+
                             const blob = await response.blob();
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(blob);
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
                             link.download = `study-plan-${Date.now()}.pdf`;
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
-                            URL.revokeObjectURL(link.href);
+                            URL.revokeObjectURL(url);
+                            toast.success("Study plan downloaded!");
                           } catch (error) {
-                            console.error("Failed to download study plan:", error);
+                            console.error("Download error:", error);
                             toast.error("Failed to download study plan. Please try again.");
                           }
                         }}

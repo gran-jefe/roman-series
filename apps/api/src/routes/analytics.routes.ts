@@ -1716,6 +1716,7 @@ Prioritize by: urgency first, then by how many questions have been answered (les
   // GET /api/analytics/study-plan/download - Download study plan as PDF (Elite only)
   app.get("/api/analytics/study-plan/download", async (req: Request, res: Response) => {
     try {
+      console.log("[study-plan/download] Starting PDF generation");
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith("Bearer ")) {
         res.status(401).json({
