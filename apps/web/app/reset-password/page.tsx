@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -108,9 +109,16 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-forest rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">
-            RS
-          </div>
+          <Link href="/" className="inline-block hover:opacity-80 transition">
+            <Image
+              src="/assets/logos/rs-logo.png"
+              alt="Roman Series"
+              width={120}
+              height={40}
+              className="h-10 w-auto mx-auto mb-4"
+              priority
+            />
+          </Link>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
           <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
