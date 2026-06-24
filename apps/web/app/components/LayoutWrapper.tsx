@@ -63,7 +63,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     <>
       <CountdownBanner />
       {shouldShowNavbar && (
-        <nav className="sticky top-16 z-40 bg-blush text-navy shadow-md border-b border-rose-100">
+        <nav className="sticky top-0 z-40 bg-blush text-navy shadow-md border-b border-rose-100">
           <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
             <Link href="/" className="hover:opacity-80 transition flex items-center">
               <Image
@@ -207,7 +207,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       )}
-      <div className={shouldShowNavbar ? "pt-20" : ""}>{children}</div>
+      <div className={shouldShowNavbar ? "pt-16" : ""}>{children}</div>
     </>
   );
 }
