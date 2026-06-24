@@ -81,7 +81,9 @@ export default function AnalyticsPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [speedData] = useState<Array<{ topic_id: string; topic_name: string; subject_name: string; avg_seconds: number; total_answered: number }> | null>(null);
   const [studyPlan, setStudyPlan] = useState<Array<{ priority: number; topic_name: string; subject_name: string; reason: string; urgency: string }> | null>(null);
+  const [studyPlanSummary, setStudyPlanSummary] = useState<{ generated_at: string; next_available_at: string; from_cache?: boolean } | null>(null);
   const [studyPlanLoading, setStudyPlanLoading] = useState(false);
+  const [nextPlanAvailable, setNextPlanAvailable] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -91,17 +93,36 @@ export default function AnalyticsPage() {
 
     const fetchAnalytics = async () => {
       try {
-        const [overviewRes, topicsRes, sessionsRes, predictionRes] = await Promise.all([
+        const requests = [
           api.get("/api/analytics/overview"),
           api.get("/api/analytics/topics"),
           api.get("/api/sessions/history"),
           api.get("/api/analytics/prediction"),
-        ]);
+        ];
 
-        setOverview(overviewRes.data.data);
-        setTopics(topicsRes.data.data || []);
-        setSessions(sessionsRes.data.data || []);
-        setPrediction(predictionRes.data.data);
+        // Load study plan for elite users
+        if (profile?.subscription_status === "elite") {
+          requests.push(api.get("/api/analytics/study-plan"));
+        }
+
+        const results = await Promise.all(requests);
+
+        setOverview(results[0].data.data);
+        setTopics(results[1].data.data || []);
+        setSessions(results[2].data.data || []);
+        setPrediction(results[3].data.data);
+
+        // Handle study plan if elite
+        if (profile?.subscription_status === "elite" && results[4]) {
+          const studyPlanData = results[4].data.data;
+          if (studyPlanData?.study_plan) {
+            setStudyPlan(studyPlanData.study_plan);
+            setStudyPlanSummary(studyPlanData.summary);
+            if (studyPlanData.summary?.next_available_at) {
+              setNextPlanAvailable(new Date(studyPlanData.summary.next_available_at));
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to fetch analytics:", error);
         toast.error("Failed to load analytics");
@@ -113,7 +134,7 @@ export default function AnalyticsPage() {
     if (!authLoading && user) {
       fetchAnalytics();
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, profile?.subscription_status]);
 
   // Fetch leaderboard data when window or scope changes
   useEffect(() => {
@@ -800,16 +821,21 @@ export default function AnalyticsPage() {
                         try {
                           const res = await api.get("/api/analytics/study-plan");
                           setStudyPlan(res.data.data?.study_plan || []);
+                          const summary = res.data.data?.summary;
+                          setStudyPlanSummary(summary);
+                          if (summary?.next_available_at) {
+                            setNextPlanAvailable(new Date(summary.next_available_at));
+                          }
                         } catch {
                           toast.error("Failed to generate study plan");
                         } finally {
                           setStudyPlanLoading(false);
                         }
                       }}
-                      disabled={studyPlanLoading}
+                      disabled={studyPlanLoading || (nextPlanAvailable && nextPlanAvailable > new Date())}
                       className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
                     >
-                      {studyPlanLoading ? "Generating..." : "Generate Plan"}
+                      {studyPlanLoading ? "Generating..." : nextPlanAvailable && nextPlanAvailable > new Date() ? "Available next week" : "Generate Plan"}
                     </button>
                     {studyPlan && studyPlan.length > 0 && (
                       <button

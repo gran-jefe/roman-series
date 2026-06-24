@@ -1445,13 +1445,13 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      // Check for cached study plan (24h)
+      // Check for cached study plan (7 days)
       const { data: cachedReport } = await supabaseAdmin
         .from("analytics_reports")
         .select("cached_data, created_at")
         .eq("user_id", user.id)
         .eq("report_type", "study_plan")
-        .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
@@ -1460,6 +1460,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         const studyPlan = cachedReport.cached_data;
         const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
         const criticalTopics = studyPlan.filter((t: any) => t.urgency === 'critical').length;
+        const nextAvailableAt = new Date(new Date(cachedReport.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
 
         res.json({
           status: "success",
@@ -1470,6 +1471,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
               critical_topics: criticalTopics,
               total_estimated_hours: totalEstimatedHours,
               generated_at: cachedReport.created_at,
+              next_available_at: nextAvailableAt.toISOString(),
               from_cache: true
             }
           },
@@ -1685,6 +1687,7 @@ Prioritize by: urgency first, then by how many questions have been answered (les
 
       const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
       const criticalTopics = studyPlan.filter((t: any) => t.urgency === 'critical').length;
+      const nextAvailableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       res.json({
         status: "success",
@@ -1694,7 +1697,8 @@ Prioritize by: urgency first, then by how many questions have been answered (les
             total_weak_topics: weakTopics.length,
             critical_topics: criticalTopics,
             total_estimated_hours: totalEstimatedHours,
-            generated_at: new Date().toISOString()
+            generated_at: new Date().toISOString(),
+            next_available_at: nextAvailableAt.toISOString()
           }
         },
         timestamp: new Date().toISOString(),
