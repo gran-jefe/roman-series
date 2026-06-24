@@ -80,7 +80,18 @@ export default function AnalyticsPage() {
   const [leaderboardScope, setLeaderboardScope] = useState<"global" | "cohort">("global");
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
   const [speedData] = useState<Array<{ topic_id: string; topic_name: string; subject_name: string; avg_seconds: number; total_answered: number }> | null>(null);
-  const [studyPlan, setStudyPlan] = useState<Array<{ priority: number; topic_name: string; subject_name: string; reason: string; urgency: string }> | null>(null);
+  const [studyPlan, setStudyPlan] = useState<Array<{
+    priority: number;
+    topic_name: string;
+    subject_name: string;
+    current_mastery: number;
+    target_mastery: number;
+    urgency: "critical" | "high" | "medium" | "low";
+    reason: string;
+    study_actions: string[];
+    estimated_hours: number;
+    quick_tip: string;
+  }> | null>(null);
   const [studyPlanSummary, setStudyPlanSummary] = useState<{ generated_at: string; next_available_at: string; from_cache?: boolean } | null>(null);
   const [studyPlanLoading, setStudyPlanLoading] = useState(false);
   const [nextPlanAvailable, setNextPlanAvailable] = useState<Date | null>(null);
