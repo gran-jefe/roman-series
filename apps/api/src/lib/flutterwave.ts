@@ -1,9 +1,19 @@
 // @ts-ignore - flutterwave-node-v3 doesn't have type declarations
 import Flutterwave from 'flutterwave-node-v3';
 
-const flw = new Flutterwave(
-  process.env.FLW_PUBLIC_KEY!,
-  process.env.FLW_SECRET_KEY!
-);
+let flw: any = null;
 
-export default flw;
+const getFlutterwave = () => {
+  if (!flw) {
+    const publicKey = process.env.FLW_PUBLIC_KEY;
+    const secretKey = process.env.FLW_SECRET_KEY;
+
+    // Only initialize if keys are available
+    if (publicKey && secretKey) {
+      flw = new Flutterwave(publicKey, secretKey);
+    }
+  }
+  return flw;
+};
+
+export default getFlutterwave;

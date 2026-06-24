@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
-import flw from "../lib/flutterwave";
+import getFlutterwave from "../lib/flutterwave";
 import crypto from "crypto";
 
 interface PaymentsDeps {
@@ -144,7 +144,17 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
       try {
         // Verify transaction with Flutterwave
-        const response = await flw.Transaction.verify({ id: transaction_id });
+        const flutterwave = getFlutterwave();
+        if (!flutterwave) {
+          res.status(500).json({
+            status: "error",
+            message: "Flutterwave not configured - missing API keys",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const response = await flutterwave.Transaction.verify({ id: transaction_id });
 
         if (response.data.status === "successful" && response.data.tx_ref === tx_ref) {
           const metadata = response.data.meta || {};
