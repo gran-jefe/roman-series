@@ -369,7 +369,7 @@ export default function MockSessionPage() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Question Navigation (Hidden on mobile, visible on lg) */}
-        <div className="hidden lg:flex lg:w-96 bg-white border-r border-gray-300 overflow-y-auto p-4 flex-col">
+        <div className="hidden lg:flex lg:w-96 bg-white border-r border-gray-300 overflow-y-auto p-4 flex-col flex-shrink-0">
           <div className="mb-4">
             <p className="text-sm font-bold text-navy mb-2">Progress</p>
             <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -416,8 +416,10 @@ export default function MockSessionPage() {
           </div>
         </div>
 
-        {/* Sticky Subject Tab Bar - All Screen Sizes */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide">
+        {/* Main Content Area - Flex Column */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Sticky Subject Tab Bar - All Screen Sizes */}
+          <div className="sticky top-0 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide flex-shrink-0">
           <div className="flex min-w-max">
             {subjects.map((subject: Subject, idx: number) => {
               const startQ = idx * questionsPerSubject;
@@ -467,8 +469,8 @@ export default function MockSessionPage() {
         </div>
 
         {/* Mini Question Palette for Current Subject on Mobile */}
-        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2">
-          <div className="flex flex-wrap gap-1.5">
+        <div className="lg:hidden bg-white border-b border-gray-100 px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0">
+          <div className="flex flex-wrap gap-1">
             {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
               const qNumber = subjectIndex * questionsPerSubject + qIdx;
               const isAnswered = answers[qNumber]?.selected_option_id !== null;
@@ -497,7 +499,7 @@ export default function MockSessionPage() {
         </div>
 
         {/* Main Question Area */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-2xl mx-auto">
             {/* Question */}
             <div className="mb-8 select-none">
@@ -600,6 +602,8 @@ export default function MockSessionPage() {
             </svg>
           </button>
         </div>
+        </div>
+        {/* End of Main Content Area Flex Column */}
       </div>
 
       {/* Mobile spacing for fixed bottom nav */}
