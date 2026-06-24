@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check, X } from "lucide-react";
+import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
+import toast from "react-hot-toast";
 
 export default function PricingPage() {
   const router = useRouter();
@@ -15,6 +17,18 @@ export default function PricingPage() {
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isLaunch, setIsLaunch] = useState(true);
+  const [flwConfig, setFlwConfig] = useState<any>(null);
+
+  // Initialize Flutterwave at component level
+  const handleFlutterPayment = useFlutterwave(flwConfig || {
+    public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || '',
+    tx_ref: '',
+    amount: 0,
+    currency: 'NGN',
+    payment_options: 'card,banktransfer,ussd,opay',
+    customer: { email: '', name: '' },
+    customizations: { title: 'Roman Series', description: '' }
+  });
 
   // Countdown to launch (June 27, 2026) or promo (7 days after launch)
   useEffect(() => {
@@ -79,16 +93,69 @@ export default function PricingPage() {
         return;
       }
 
-      // Standard payment flow for new subscribers
+      // Pricing in Naira
+      const pricing = {
+        scholar: 2500,
+        elite: 3500,
+      };
+
+      const amount = pricing[plan as keyof typeof pricing];
+
+      // Step 1: Create subscription record and get tx_ref
       const res = await api.post("/api/payments/initiate", { plan });
-      if (res.data.data?.authorization_url) {
-        window.location.href = res.data.data.authorization_url;
-      }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { tx_ref } = res.data.data;
+
+      // Step 2: Configure Flutterwave
+      const config = {
+        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY!,
+        tx_ref,
+        amount,
+        currency: "NGN",
+        payment_options: "card,banktransfer,ussd,opay",
+        customer: {
+          email: user?.email || "",
+          name: profile?.full_name || "Student",
+        },
+        customizations: {
+          title: "Roman Series",
+          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} subscription - 6 months`,
+        },
+        callback: async (response: any) => {
+          closePaymentModal();
+          console.log("[Flutterwave] callback response:", response);
+
+          if (response.status === "successful" || response.charge_response_code === "00") {
+            try {
+              await api.post("/api/payments/verify", {
+                transaction_id: response.transaction_id,
+                tx_ref: response.tx_ref,
+              });
+              toast.success("Payment successful! Subscription activated.");
+              router.push("/dashboard");
+            } catch {
+              toast.error("Payment received but verification failed. Contact support.");
+              setLoadingPlan(null);
+            }
+          } else {
+            toast.error("Payment was not completed");
+            setLoadingPlan(null);
+          }
+        },
+        onClose: () => {
+          setLoadingPlan(null);
+          toast("Payment cancelled");
+        },
+      };
+
+      // Step 3: Update config state and trigger modal
+      setFlwConfig(config);
+
+      // Small delay to ensure config is set before opening modal
+      setTimeout(() => {
+        handleFlutterPayment(config);
+      }, 100);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Failed to initiate payment"
-      );
+      setError(err.response?.data?.message || "Failed to initiate payment");
       setLoadingPlan(null);
     }
   };

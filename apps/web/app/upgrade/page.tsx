@@ -88,7 +88,7 @@ export default function UpgradePage() {
             setIsProcessing(false);
           }
         },
-        onclose: () => {
+        onClose: () => {
           setIsProcessing(false);
         },
       };
@@ -98,7 +98,7 @@ export default function UpgradePage() {
 
       // Defer the payment call to next render cycle
       setTimeout(() => {
-        handleFlutterPayment();
+        handleFlutterPayment(config);
       }, 100);
     } catch (err: any) {
       setError(

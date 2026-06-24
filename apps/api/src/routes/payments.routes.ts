@@ -106,8 +106,12 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         res.json({
           status: "success",
           data: {
-            ...paymentConfig,
-            public_key: process.env.FLW_PUBLIC_KEY,
+            tx_ref: paymentConfig.tx_ref,
+            amount: paymentConfig.amount,
+            currency: paymentConfig.currency,
+            customer: paymentConfig.customer,
+            customizations: paymentConfig.customizations,
+            payment_options: paymentConfig.payment_options,
           },
           timestamp: new Date().toISOString(),
         });
@@ -503,8 +507,12 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         res.json({
           status: "success",
           data: {
-            ...paymentConfig,
-            public_key: process.env.FLW_PUBLIC_KEY,
+            tx_ref: paymentConfig.tx_ref,
+            amount: paymentConfig.amount,
+            currency: paymentConfig.currency,
+            customer: paymentConfig.customer,
+            customizations: paymentConfig.customizations,
+            payment_options: paymentConfig.payment_options,
             upgrade_cost: upgradeDifference,
             from_plan: profile.subscription_status,
             to_plan: target_plan,
