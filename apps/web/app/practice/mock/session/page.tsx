@@ -43,7 +43,6 @@ export default function MockSessionPage() {
   const [timeLimitSeconds, setTimeLimitSeconds] = useState<number>(90 * 60); // Default 90 minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hardMode, setHardMode] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
@@ -339,15 +338,6 @@ export default function MockSessionPage() {
       {/* Top Navigation Bar with Time */}
       <div className="bg-navy text-white shadow-lg z-40">
         <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden flex items-center justify-center w-8 h-8 hover:bg-navy-dark rounded transition-colors"
-            title="Toggle questions sidebar"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <div className="min-w-0">
               <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
@@ -422,70 +412,85 @@ export default function MockSessionPage() {
           </div>
         </div>
 
-        {/* Mobile Sidebar - Dropdown Modal */}
-        {sidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 bg-black/50">
-            <div className="absolute top-0 left-0 right-0 bg-white border-b border-gray-300 max-h-96 overflow-y-auto p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-navy">Questions</h3>
+        {/* Sticky Subject Tab Bar - All Screen Sizes */}
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide">
+          <div className="flex min-w-max">
+            {subjects.map((subject: Subject, idx: number) => {
+              const startQ = idx * questionsPerSubject;
+              const endQ = startQ + questionsPerSubject;
+              const subjectAnswers = answers.slice(startQ, endQ);
+              const answeredCount = subjectAnswers.filter(
+                (a) => a.selected_option_id !== null
+              ).length;
+              const isActive = Math.floor(currentQuestion / questionsPerSubject) === idx;
+
+              return (
                 <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                  key={subject.id}
+                  onClick={() => {
+                    // Jump to first unanswered in this subject
+                    const firstUnanswered = subjectAnswers.findIndex(
+                      (a) => a.selected_option_id === null
+                    );
+                    const targetQ = firstUnanswered >= 0 ? startQ + firstUnanswered : startQ;
+                    setCurrentQuestion(targetQ);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2
+                             whitespace-nowrap transition-all ${
+                    isActive
+                      ? "border-forest text-forest font-semibold"
+                      : "border-transparent text-gray-500 hover:text-navy"
+                  }`}
                 >
-                  ×
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-sm font-bold text-navy mb-2">Progress</p>
-                <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
                   <div
-                    className="bg-forest h-full transition-all"
-                    style={{ width: `${answerPercentage}%` }}
-                  ></div>
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  {currentQuestion + 1}/{questions.length}
-                </p>
-              </div>
-
-              {/* Subject sections for mobile */}
-              <div className="space-y-3">
-                {subjects.map((subject: Subject, idx: number) => (
-                  <div key={subject.id} className="bg-gray-50 p-3 rounded border border-gray-200">
-                    <p className="text-sm font-semibold text-navy mb-3 text-center">{subject.name}</p>
-                    <div className="grid grid-cols-5 gap-1">
-                      {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
-                        const qNumber = idx * questionsPerSubject + qIdx;
-                        const isAnswered = answers[qNumber].selected_option_id !== null;
-                        const isCurrent = currentQuestion === qNumber;
-
-                        return (
-                          <button
-                            key={qNumber}
-                            onClick={() => {
-                              setCurrentQuestion(qNumber);
-                              setSidebarOpen(false);
-                            }}
-                            className={`w-7 h-7 text-sm font-bold rounded transition-all flex items-center justify-center ${
-                              isCurrent
-                                ? "bg-navy text-white ring-2 ring-forest"
-                                : isAnswered
-                                ? "bg-forest text-white"
-                                : "bg-gray-300 text-gray-700 hover:bg-gray-400"
-                            }`}
-                          >
-                            {qIdx + 1}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: subject.colour_token || "#666" }}
+                  />
+                  <span className="text-sm">{subject.name}</span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      answeredCount === questionsPerSubject
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {answeredCount}/{questionsPerSubject}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        {/* Mini Question Palette for Current Subject on Mobile */}
+        <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2">
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
+              const qNumber = subjectIndex * questionsPerSubject + qIdx;
+              const isAnswered = answers[qNumber]?.selected_option_id !== null;
+              const isCurrent = currentQuestion === qNumber;
+              const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
+
+              return (
+                <button
+                  key={qNumber}
+                  onClick={() => setCurrentQuestion(qNumber)}
+                  className={`w-8 h-8 text-xs font-bold rounded transition-all ${
+                    isCurrent
+                      ? "bg-navy text-white ring-2 ring-forest"
+                      : isFlagged
+                      ? "bg-crs text-white"
+                      : isAnswered
+                      ? "bg-forest text-white"
+                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                  }`}
+                >
+                  {qIdx + 1}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Main Question Area */}
         <div className="flex-1 overflow-y-auto p-8">
