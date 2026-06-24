@@ -27,9 +27,15 @@ export default function PracticeSessionPage() {
 
   // Refs for timer callback
   const answersRef = useRef(answers);
+  const sessionIdRef = useRef(sessionId);
+
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   // Persist answers to sessionStorage
   useEffect(() => {
@@ -252,14 +258,32 @@ export default function PracticeSessionPage() {
 
       const answersPayload = questions.map((q) => ({
         question_id: q.id,
-        selected_option_id: answers.get(q.id) ?? null,
+        selected_option_id: answersRef.current.get(q.id) ?? null,
         time_spent_seconds: questionTimes.current.get(q.id) ?? null,
       }));
 
       const timeTaken = totalTime - timeLeft;
 
-      const res = await api.post(`/api/sessions/${sessionId}/submit`, {
-        answers: answersPayload,
+      // Fallback to sessionStorage if answersRef is empty
+      let finalAnswers = answersPayload;
+      if (!answersPayload || answersPayload.length === 0) {
+        const saved = sessionStorage.getItem(`session_answers_${sessionIdRef.current}`);
+        if (saved) {
+          try {
+            const savedAnswersMap = new Map(Object.entries(JSON.parse(saved)));
+            finalAnswers = questions.map((q) => ({
+              question_id: q.id,
+              selected_option_id: (savedAnswersMap.get(q.id) as string | null) ?? null,
+              time_spent_seconds: questionTimes.current.get(q.id) ?? null,
+            }));
+          } catch (e) {
+            console.error("Failed to parse saved answers:", e);
+          }
+        }
+      }
+
+      const res = await api.post(`/api/sessions/${sessionIdRef.current}/submit`, {
+        answers: finalAnswers,
         time_taken_seconds: Math.max(timeTaken, 0),
       });
 

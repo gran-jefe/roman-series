@@ -48,6 +48,17 @@ export default function MockSessionPage() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
   const hasSubmittedRef = useRef(false);
+  const answersRef = useRef<Answer[]>([]);
+  const sessionIdRef = useRef<string | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   // Initialize hard mode from URL params early
   useEffect(() => {
@@ -169,8 +180,21 @@ export default function MockSessionPage() {
     try {
       const timeTaken = timeLimitSeconds - timeRemaining;
 
-      const res = await api.post(`/api/sessions/${sessionId}/submit`, {
-        answers,
+      // Use latest answers from ref, fallback to sessionStorage
+      let finalAnswers = answersRef.current;
+      if (!finalAnswers || finalAnswers.length === 0) {
+        const saved = sessionStorage.getItem(`mock_answers_${sessionIdRef.current}`);
+        if (saved) {
+          try {
+            finalAnswers = JSON.parse(saved);
+          } catch (e) {
+            console.error("Failed to parse saved answers:", e);
+          }
+        }
+      }
+
+      const res = await api.post(`/api/sessions/${sessionIdRef.current}/submit`, {
+        answers: finalAnswers,
         time_taken_seconds: Math.max(timeTaken, 0),
       });
 
@@ -205,7 +229,7 @@ export default function MockSessionPage() {
       toast.error("Failed to submit exam. Please try again.");
       setIsSubmitting(false);
     }
-  }, [sessionId, answers, timeRemaining, isSubmitting, router, questions, timeLimitSeconds]);
+  }, [sessionId, timeRemaining, isSubmitting, router, questions, timeLimitSeconds]);
 
   // Save current question to sessionStorage
   useEffect(() => {
@@ -649,10 +673,10 @@ export default function MockSessionPage() {
 
             <div className="space-y-2 mb-6 text-sm text-gray-700">
               <p>
-                <strong>Answered:</strong> {answers.filter(a => a.selected_option_id !== null).length} of {questions.length} questions
+                <strong>Answered:</strong> {answersRef.current.filter(a => a.selected_option_id !== null).length} of {questions.length} questions
               </p>
               <p>
-                <strong>Unanswered:</strong> {questions.length - answers.filter(a => a.selected_option_id !== null).length} questions
+                <strong>Unanswered:</strong> {questions.length - answersRef.current.filter(a => a.selected_option_id !== null).length} questions
               </p>
               <p>
                 <strong>Flagged:</strong> {flaggedQuestions.size} questions
