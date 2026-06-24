@@ -1448,7 +1448,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       // Check for cached study plan (24h)
       const { data: cachedReport } = await supabaseAdmin
         .from("analytics_reports")
-        .select("cached_data")
+        .select("cached_data, created_at")
         .eq("user_id", user.id)
         .eq("report_type", "study_plan")
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
@@ -1704,6 +1704,437 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       res.status(500).json({
         status: "error",
         message: error instanceof Error ? error.message : "Failed to generate study plan",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/analytics/study-plan/download - Download study plan as PDF (Elite only)
+  app.get("/api/analytics/study-plan/download", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Check Elite subscription
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status, full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_status !== "elite") {
+        res.status(403).json({
+          status: "error",
+          message: "Study plan download is available for Elite members only",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get the latest study plan
+      const { data: cachedReport } = await supabaseAdmin
+        .from("analytics_reports")
+        .select("cached_data, created_at")
+        .eq("user_id", user.id)
+        .eq("report_type", "study_plan")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!cachedReport?.cached_data) {
+        res.status(404).json({
+          status: "error",
+          message: "No study plan found. Please generate one first.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const studyPlan = cachedReport.cached_data;
+      const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
+
+      // Generate HTML for PDF
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Study Plan - Roman Series</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background: white;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 3px solid #0D1B2A;
+      padding-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #0D1B2A;
+      font-size: 28px;
+    }
+    .header p {
+      margin: 5px 0 0 0;
+      color: #666;
+      font-size: 14px;
+    }
+    .summary {
+      background: #f0f4f8;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    .summary-item {
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      border-left: 4px solid #1A7A4A;
+    }
+    .summary-item label {
+      font-size: 12px;
+      color: #666;
+      font-weight: bold;
+    }
+    .summary-item value {
+      display: block;
+      font-size: 20px;
+      color: #0D1B2A;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .topic {
+      page-break-inside: avoid;
+      margin-bottom: 25px;
+      padding: 15px;
+      border-left: 4px solid #1A7A4A;
+      background: #fafbfc;
+      border-radius: 5px;
+    }
+    .topic-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .topic-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0D1B2A;
+    }
+    .topic-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #0D1B2A;
+      margin: 5px 0;
+    }
+    .topic-subject {
+      font-size: 12px;
+      color: #666;
+    }
+    .urgency-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .urgency-critical { background: #fee2e2; color: #b91c1c; }
+    .urgency-high { background: #fed7aa; color: #b45309; }
+    .urgency-medium { background: #fef3c7; color: #a16207; }
+    .urgency-low { background: #dbeafe; color: #1e40af; }
+    .mastery {
+      margin: 10px 0;
+      font-size: 13px;
+    }
+    .progress-bar {
+      background: #e5e7eb;
+      height: 8px;
+      border-radius: 4px;
+      margin: 5px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #1A7A4A;
+    }
+    .reason {
+      font-size: 13px;
+      color: #555;
+      margin: 10px 0;
+      line-height: 1.5;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #0D1B2A;
+      margin: 10px 0 5px 0;
+    }
+    .actions {
+      font-size: 12px;
+      color: #555;
+      margin: 5px 0;
+      padding-left: 20px;
+    }
+    .actions li {
+      margin: 3px 0;
+    }
+    .tip-box {
+      background: #eff6ff;
+      padding: 8px;
+      border-radius: 4px;
+      border-left: 3px solid #2166B2;
+      font-size: 12px;
+      color: #1e40af;
+      margin: 10px 0;
+      font-style: italic;
+    }
+    .estimated-hours {
+      background: #f0fdf4;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #15803d;
+      border-left: 3px solid #22c55e;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #e5e7eb;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Your Personalized Study Plan</h1>
+    <p>Generated by Roman Series AI Coach</p>
+    <p>${new Date().toLocaleDateString()}</p>
+  </div>
+
+  <div class="summary">
+    <div class="summary-item">
+      <label>Topics to Focus On</label>
+      <value>${studyPlan.length}</value>
+    </div>
+    <div class="summary-item">
+      <label>Total Study Time</label>
+      <value>${totalEstimatedHours}h</value>
+    </div>
+    <div class="summary-item">
+      <label>Critical Topics</label>
+      <value>${studyPlan.filter((t: any) => t.urgency === "critical").length}</value>
+    </div>
+    <div class="summary-item">
+      <label>High Priority Topics</label>
+      <value>${studyPlan.filter((t: any) => t.urgency === "high").length}</value>
+    </div>
+  </div>
+
+  ${studyPlan
+    .map(
+      (item: any) => `
+    <div class="topic">
+      <div class="topic-header">
+        <div>
+          <div class="topic-number">#${item.priority}</div>
+          <div class="topic-title">${item.topic_name}</div>
+          <div class="topic-subject">${item.subject_name}</div>
+        </div>
+        <div class="urgency-badge urgency-${item.urgency}">
+          ${item.urgency.toUpperCase()}
+        </div>
+      </div>
+
+      <div class="mastery">
+        Current Mastery: <strong>${item.current_mastery}%</strong> → Target: <strong>${item.target_mastery}%</strong>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${Math.min(item.current_mastery, 100)}%"></div>
+        </div>
+      </div>
+
+      <div class="reason">${item.reason}</div>
+
+      <div class="section-title">What You Need to Do:</div>
+      <ul class="actions">
+        ${item.study_actions.map((action: string) => `<li>${action}</li>`).join("")}
+      </ul>
+
+      <div class="section-title">Exam Tip:</div>
+      <div class="tip-box">${item.quick_tip}</div>
+
+      <div class="estimated-hours">
+        ⏱ Estimated: ${item.estimated_hours}${item.estimated_hours === 1 ? " hour" : " hours"}
+      </div>
+    </div>
+  `
+    )
+    .join("")}
+
+  <div class="footer">
+    <p>Study hard, believe in yourself, and you'll ace that Post-UTME exam! 🚀</p>
+    <p style="margin-top: 10px; font-size: 11px;">Roman Series • Your Path to Excellence</p>
+  </div>
+</body>
+</html>
+      `;
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 40,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="study-plan-${Date.now()}.pdf"`
+      );
+
+      doc.pipe(res);
+
+      // Header
+      doc.fontSize(24).font("Helvetica-Bold").text("Your Personalized Study Plan", {
+        align: "center",
+      });
+      doc.fontSize(11).font("Helvetica").text("Generated by Roman Series AI Coach", {
+        align: "center",
+      });
+      doc.fontSize(10).text(new Date().toLocaleDateString(), { align: "center" });
+      doc.moveDown(0.5);
+      doc.strokeColor("#0D1B2A").lineWidth(2).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+      doc.moveDown(1);
+
+      // Summary
+      doc
+        .fillColor("#f0f4f8")
+        .rect(doc.x, doc.y, 515, 80)
+        .fill();
+      doc.fillColor("#0D1B2A");
+
+      const summaryY = doc.y + 10;
+      const colWidth = 515 / 2;
+
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text("Topics to Focus On", 50, summaryY);
+      doc.fontSize(18).font("Helvetica-Bold").text(studyPlan.length.toString(), 50, summaryY + 15);
+
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text("Total Study Time", 50 + colWidth, summaryY);
+      doc.fontSize(18).font("Helvetica-Bold").text(`${totalEstimatedHours}h`, 50 + colWidth, summaryY + 15);
+
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text("Critical Topics", 50, summaryY + 40);
+      doc.fontSize(18).font("Helvetica-Bold").text(
+        studyPlan.filter((t: any) => t.urgency === "critical").length.toString(),
+        50,
+        summaryY + 55
+      );
+
+      doc.fontSize(10).font("Helvetica-Bold");
+      doc.text("High Priority Topics", 50 + colWidth, summaryY + 40);
+      doc.fontSize(18).font("Helvetica-Bold").text(
+        studyPlan.filter((t: any) => t.urgency === "high").length.toString(),
+        50 + colWidth,
+        summaryY + 55
+      );
+
+      doc.moveDown(6);
+
+      // Topics
+      studyPlan.forEach((item: any, idx: number) => {
+        if (doc.y > 750) doc.addPage();
+
+        doc.fontSize(14).font("Helvetica-Bold").fillColor("#0D1B2A");
+        doc.text(`#${item.priority} ${item.topic_name}`, { width: 400 });
+        doc.fontSize(9).font("Helvetica").fillColor("#666");
+        doc.text(item.subject_name);
+
+        doc.fontSize(9).fillColor("#0D1B2A").font("Helvetica-Bold");
+        doc.text(
+          `Mastery: ${item.current_mastery}% → ${item.target_mastery}%`
+        );
+
+        // Progress bar
+        const barWidth = 100;
+        const barHeight = 6;
+        doc.rect(doc.x, doc.y, barWidth, barHeight).stroke();
+        const fillWidth = (item.current_mastery / 100) * barWidth;
+        doc.fillColor("#1A7A4A").rect(doc.x, doc.y, fillWidth, barHeight).fill();
+        doc.moveDown(1);
+
+        doc.fontSize(9).font("Helvetica").fillColor("#555");
+        doc.text(item.reason, { width: 450 });
+
+        doc.fontSize(9).font("Helvetica-Bold").fillColor("#0D1B2A");
+        doc.text("Study Actions:", { width: 450 });
+        doc.fontSize(8).font("Helvetica").fillColor("#555");
+        item.study_actions.forEach((action: string) => {
+          doc.text(`• ${action}`, { width: 430, indent: 10 });
+        });
+
+        doc.fontSize(9).font("Helvetica-Bold").fillColor("#0D1B2A");
+        doc.text("Exam Tip:", { width: 450 });
+        doc.fontSize(8).font("Helvetica").fillColor("#1e40af");
+        doc.text(item.quick_tip, { width: 430, indent: 10 });
+
+        doc.fontSize(9).font("Helvetica").fillColor("#22c55e");
+        doc.text(`⏱ Estimated: ${item.estimated_hours}${item.estimated_hours === 1 ? " hour" : " hours"}`);
+
+        doc.moveDown(1);
+        doc.strokeColor("#e5e7eb").lineWidth(0.5).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+        doc.moveDown(0.5);
+      });
+
+      // Footer
+      doc.moveDown(1);
+      doc.fontSize(9).font("Helvetica").fillColor("#999");
+      doc.text("Study hard, believe in yourself, and you'll ace that Post-UTME exam! 🚀", {
+        align: "center",
+      });
+      doc.fontSize(8).text("Roman Series • Your Path to Excellence", { align: "center" });
+
+      doc.end();
+    } catch (error) {
+      console.error("[analytics/study-plan/download] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to generate PDF",
         timestamp: new Date().toISOString(),
       });
     }

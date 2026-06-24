@@ -793,23 +793,56 @@ export default function AnalyticsPage() {
                     <h3 className="font-semibold text-navy mb-1">Your AI Study Plan</h3>
                     <p className="text-xs text-gray-500">Personalized topic study order based on your weakest areas</p>
                   </div>
-                  <button
-                    onClick={async () => {
-                      setStudyPlanLoading(true);
-                      try {
-                        const res = await api.get("/api/analytics/study-plan");
-                        setStudyPlan(res.data.data.study_plan || res.data.data);
-                      } catch {
-                        toast.error("Failed to generate study plan");
-                      } finally {
-                        setStudyPlanLoading(false);
-                      }
-                    }}
-                    disabled={studyPlanLoading}
-                    className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
-                  >
-                    {studyPlanLoading ? "Generating..." : "Generate Plan"}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        setStudyPlanLoading(true);
+                        try {
+                          const res = await api.get("/api/analytics/study-plan");
+                          setStudyPlan(res.data.data?.study_plan || []);
+                        } catch {
+                          toast.error("Failed to generate study plan");
+                        } finally {
+                          setStudyPlanLoading(false);
+                        }
+                      }}
+                      disabled={studyPlanLoading}
+                      className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
+                    >
+                      {studyPlanLoading ? "Generating..." : "Generate Plan"}
+                    </button>
+                    {studyPlan && studyPlan.length > 0 && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/analytics/study-plan/download`, {
+                              method: 'GET',
+                              headers: {
+                                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                              },
+                            });
+                            if (!response.ok) {
+                              throw new Error(`Failed to download: ${response.statusText}`);
+                            }
+                            const blob = await response.blob();
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = `study-plan-${Date.now()}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(link.href);
+                          } catch (error) {
+                            console.error("Failed to download study plan:", error);
+                            toast.error("Failed to download study plan. Please try again.");
+                          }
+                        }}
+                        className="px-4 py-2 bg-navy text-white rounded text-sm font-medium hover:bg-opacity-90 transition"
+                      >
+                        Download PDF
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {studyPlan && studyPlan.length > 0 ? (
                   <div className="space-y-4">
