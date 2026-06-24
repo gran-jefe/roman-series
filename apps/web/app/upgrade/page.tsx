@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
+import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
+import toast from "react-hot-toast";
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -39,13 +41,55 @@ export default function UpgradePage() {
     setError("");
 
     try {
+      // Call backend to create subscription record and get tx_ref
       const res = await api.post("/api/payments/upgrade", {
         target_plan: "elite",
       });
 
-      if (res.data.data?.authorization_url) {
-        window.location.href = res.data.data.authorization_url;
-      }
+      const paymentData = res.data.data;
+      const config = {
+        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY!,
+        tx_ref: paymentData.tx_ref,
+        amount: paymentData.amount,
+        currency: "NGN",
+        payment_options: "card,banktransfer,ussd,opay",
+        customer: {
+          email: user.email || "",
+          name: profile?.full_name || "Roman Series Student",
+        },
+        customizations: {
+          title: "Roman Series",
+          description: "Upgrade to Elite",
+          logo: "https://romanseries.com.ng/logo.png",
+        },
+        callback: async (response: any) => {
+          closePaymentModal();
+          if (response.status === "successful") {
+            try {
+              // Verify payment on backend
+              await api.post("/api/payments/verify", {
+                transaction_id: response.transaction_id,
+                tx_ref: response.tx_ref,
+              });
+              toast.success("Payment successful! Your subscription is now Elite.");
+              router.push("/dashboard");
+            } catch (verifyError) {
+              toast.error("Payment verified but profile update failed. Please contact support.");
+              setIsProcessing(false);
+            }
+          } else {
+            toast.error("Payment was not completed");
+            setIsProcessing(false);
+          }
+        },
+        onclose: () => {
+          toast("Payment cancelled");
+          setIsProcessing(false);
+        },
+      };
+
+      const handleFlutterPayment = useFlutterwave(config);
+      handleFlutterPayment();
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Failed to initiate upgrade. Please try again."
@@ -175,7 +219,7 @@ export default function UpgradePage() {
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
-                Secure payment powered by Paystack
+                Secure payment powered by Flutterwave
               </p>
             </div>
 
@@ -191,7 +235,7 @@ export default function UpgradePage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                <span>Secure payment with Paystack</span>
+                <span>Secure payment with Flutterwave</span>
               </div>
             </div>
           </div>

@@ -1,18 +1,16 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
-import axios from "axios";
+import flw from "../lib/flutterwave";
 import crypto from "crypto";
 
 interface PaymentsDeps {
   supabaseAdmin: SupabaseClient;
-  paystackSecretKey: string;
   webUrl: string;
+  flwWebhookHash?: string;
 }
 
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
-  const { supabaseAdmin, paystackSecretKey, webUrl } = deps;
-
-  const paystackApiUrl = "https://api.paystack.co";
+  const { supabaseAdmin, webUrl, flwWebhookHash } = deps;
 
   app.post("/api/payments/initiate", async (req: Request, res: Response) => {
     try {
@@ -40,62 +38,81 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
       const { plan } = req.body;
 
-      if (!plan || !["scholar", "elite"].includes(plan)) {
+      if (!plan || !["explorer", "scholar", "elite"].includes(plan)) {
         res.status(400).json({
           status: "error",
-          message: "Invalid plan. Must be 'scholar' or 'elite'",
+          message: "Invalid plan. Must be 'explorer', 'scholar', or 'elite'",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
+      // Explorer is free, no payment needed
+      if (plan === "explorer") {
+        res.status(400).json({
+          status: "error",
+          message: "Explorer plan is free",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Pricing in kobo (Naira × 100)
       const pricing = {
-        scholar: 250000, // ₦2,500 (promo price, was ₦3,500)
-        elite: 350000,   // ₦3,500 (promo price, was ₦5,000)
+        explorer: 0,       // Free
+        scholar: 350000,   // ₦3,500
+        elite: 500000,     // ₦5,000
       };
 
-      const amount = pricing[plan as keyof typeof pricing];
-      const reference = `RS-${user.id.slice(0, 8)}-${Date.now()}`;
+      const amountInKobo = pricing[plan as keyof typeof pricing];
+      const amountInNaira = amountInKobo / 100;
+      const tx_ref = `RS-${user.id.slice(0, 8)}-${Date.now()}`;
+
+      // Get user profile
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
 
       try {
-        const paystackRes = await axios.post(
-          `${paystackApiUrl}/transaction/initialize`,
-          {
-            email: user.email,
-            amount,
-            reference,
-            callback_url: `${webUrl}/payments/success?reference=${reference}`,
-            metadata: { user_id: user.id, plan },
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${paystackSecretKey}`,
-            },
-          }
-        );
-
-        if (!paystackRes.data.status) {
-          throw new Error("Paystack initialization failed");
-        }
-
+        // Insert subscription record with pending status
         await supabaseAdmin.from("subscriptions").insert({
           user_id: user.id,
           plan,
           status: "pending",
-          paystack_reference: reference,
-          amount,
+          paystack_reference: tx_ref, // Keep column name for now to avoid schema change
+          amount: amountInKobo,
         });
+
+        // Return Flutterwave payment config
+        const paymentConfig = {
+          tx_ref,
+          amount: amountInNaira,
+          currency: "NGN",
+          redirect_url: `${webUrl}/payments/success`,
+          customer: {
+            email: user.email,
+            name: profile?.full_name || "Roman Series Student",
+          },
+          customizations: {
+            title: "Roman Series",
+            description: `${plan} subscription`,
+            logo: "https://romanseries.com.ng/logo.png",
+          },
+          payment_options: "card,banktransfer,ussd,opay",
+        };
 
         res.json({
           status: "success",
           data: {
-            authorization_url: paystackRes.data.data.authorization_url,
-            reference,
+            ...paymentConfig,
+            public_key: process.env.FLW_PUBLIC_KEY,
           },
           timestamp: new Date().toISOString(),
         });
-      } catch (paystackError) {
-        console.error("Paystack error:", paystackError);
+      } catch (error) {
+        console.error("Flutterwave error:", error);
         res.status(500).json({
           status: "error",
           message: "Failed to initialize payment",
@@ -114,30 +131,60 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
   app.post("/api/payments/verify", async (req: Request, res: Response) => {
     try {
-      const { reference } = req.body;
+      const { transaction_id, tx_ref } = req.body;
 
-      if (!reference) {
+      if (!transaction_id || !tx_ref) {
         res.status(400).json({
           status: "error",
-          message: "Missing reference",
+          message: "Missing transaction_id or tx_ref",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
       try {
-        const paystackRes = await axios.get(
-          `${paystackApiUrl}/transaction/verify/${reference}`,
-          {
-            headers: {
-              Authorization: `Bearer ${paystackSecretKey}`,
-            },
-          }
-        );
+        // Verify transaction with Flutterwave
+        const response = await flw.Transaction.verify({ id: transaction_id });
 
-        if (paystackRes.data.status && paystackRes.data.data.status === "success") {
-          const metadata = paystackRes.data.data.metadata;
+        if (response.data.status === "successful" && response.data.tx_ref === tx_ref) {
+          const metadata = response.data.meta || {};
           const { user_id, plan, upgrade_to } = metadata;
+
+          // Extract user_id from tx_ref if not in metadata
+          let actualUserId = user_id;
+          if (!actualUserId && tx_ref) {
+            const txRefParts = tx_ref.split("-");
+            if (txRefParts.length >= 2) {
+              // Find the subscription record by tx_ref to get user_id
+              const { data: subscription } = await supabaseAdmin
+                .from("subscriptions")
+                .select("user_id, plan")
+                .eq("paystack_reference", tx_ref)
+                .single();
+
+              if (subscription) {
+                actualUserId = subscription.user_id;
+              }
+            }
+          }
+
+          if (!actualUserId) {
+            throw new Error("Cannot determine user_id from transaction");
+          }
+
+          // Get plan from subscription record if not in metadata
+          let actualPlan = plan;
+          if (!actualPlan) {
+            const { data: subscription } = await supabaseAdmin
+              .from("subscriptions")
+              .select("plan")
+              .eq("paystack_reference", tx_ref)
+              .single();
+
+            if (subscription) {
+              actualPlan = subscription.plan;
+            }
+          }
 
           // Handle plan upgrade
           if (upgrade_to) {
@@ -146,17 +193,17 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
               .update({
                 status: "active",
               })
-              .eq("paystack_reference", reference);
+              .eq("paystack_reference", tx_ref);
 
             await supabaseAdmin
               .from("profiles")
               .update({
                 subscription_status: upgrade_to,
               })
-              .eq("id", user_id);
+              .eq("id", actualUserId);
           } else {
             // Handle plan payment for scholar and elite
-            const durationDays = 180; // 6 months for all plans
+            const durationDays = 180; // 6 months
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + durationDays);
 
@@ -166,20 +213,20 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
                 status: "active",
                 expires_at: expiresAt.toISOString(),
               })
-              .eq("paystack_reference", reference);
+              .eq("paystack_reference", tx_ref);
 
             await supabaseAdmin
               .from("profiles")
               .update({
-                subscription_status: plan,
+                subscription_status: actualPlan,
                 subscription_expires_at: expiresAt.toISOString(),
               })
-              .eq("id", user_id);
+              .eq("id", actualUserId);
           }
 
           res.json({
             status: "success",
-            data: { success: true },
+            data: { success: true, plan: actualPlan },
             timestamp: new Date().toISOString(),
           });
         } else {
@@ -189,8 +236,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             timestamp: new Date().toISOString(),
           });
         }
-      } catch (paystackError) {
-        console.error("Paystack verification error:", paystackError);
+      } catch (flwError) {
+        console.error("Flutterwave verification error:", flwError);
         res.status(500).json({
           status: "error",
           message: "Failed to verify payment",
@@ -209,40 +256,36 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
   app.post("/api/payments/webhook", async (req: Request, res: Response) => {
     try {
-      const hash = crypto
-        .createHmac("sha512", paystackSecretKey || "")
-        .update(JSON.stringify(req.body))
-        .digest("hex");
+      // Verify webhook signature
+      const hash = req.headers["verif-hash"] as string;
 
-      if (hash !== req.headers["x-paystack-signature"]) {
+      if (!hash || hash !== (flwWebhookHash || process.env.FLW_WEBHOOK_HASH)) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
       const { event, data } = req.body;
 
-      if (event === "charge.success") {
-        const { reference, metadata } = data;
-        const { user_id, plan, upgrade_to } = metadata;
+      if (event === "charge.completed" && data.status === "successful") {
+        const { tx_ref } = data;
 
-        if (upgrade_to) {
-          // Handle plan upgrade
-          await supabaseAdmin
+        try {
+          // Get subscription record
+          const { data: subscription } = await supabaseAdmin
             .from("subscriptions")
-            .update({
-              status: "active",
-            })
-            .eq("paystack_reference", reference);
+            .select("user_id, plan")
+            .eq("paystack_reference", tx_ref)
+            .single();
 
-          await supabaseAdmin
-            .from("profiles")
-            .update({
-              subscription_status: upgrade_to,
-            })
-            .eq("id", user_id);
-        } else {
-          // Handle plan payment for scholar and elite
-          const durationDays = 180; // 6 months for all plans
+          if (!subscription) {
+            res.status(200).json({ status: "success" });
+            return;
+          }
+
+          const { user_id, plan } = subscription;
+
+          // Update subscription
+          const durationDays = 180; // 6 months
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + durationDays);
 
@@ -252,8 +295,9 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
               status: "active",
               expires_at: expiresAt.toISOString(),
             })
-            .eq("paystack_reference", reference);
+            .eq("paystack_reference", tx_ref);
 
+          // Update profile
           await supabaseAdmin
             .from("profiles")
             .update({
@@ -261,13 +305,15 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
               subscription_expires_at: expiresAt.toISOString(),
             })
             .eq("id", user_id);
+        } catch (error) {
+          console.error("[payments/webhook] Processing error:", error);
         }
       }
 
-      res.status(200).json({ success: true });
+      res.status(200).json({ status: "success" });
     } catch (error) {
       console.error("[payments/webhook] Error:", error);
-      res.status(200).json({ success: true });
+      res.status(200).json({ status: "success" });
     }
   });
 
@@ -295,7 +341,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      // Get subscription status from profiles table (which is the source of truth)
+      // Get subscription status from profiles table
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status, subscription_expires_at")
@@ -355,20 +401,20 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       if (!target_plan || !["explorer", "scholar", "elite"].includes(target_plan)) {
         res.status(400).json({
           status: "error",
-          message: "Invalid target plan. Must be 'explorer', 'scholar', or 'elite'",
+          message: "Invalid target plan",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
       // Get user's current subscription
-      const { data: profile, error: profileError } = await supabaseAdmin
+      const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
         .eq("id", user.id)
         .single();
 
-      if (profileError || !profile) {
+      if (!profile) {
         res.status(401).json({
           status: "error",
           message: "Profile not found",
@@ -386,26 +432,11 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      // Get plan prices for current and target plans
-      const { data: plans, error: plansError } = await supabaseAdmin
-        .from("plan_limits")
-        .select("plan_id")
-        .in("plan_id", [profile.subscription_status, target_plan]);
-
-      if (plansError || !plans || plans.length < 2) {
-        res.status(500).json({
-          status: "error",
-          message: "Plan not found",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Define plan pricing (in kobo: 1 naira = 100 kobo) - PROMO PRICING
+      // Pricing in kobo
       const planPricing: Record<string, number> = {
-        explorer: 0,         // Free
-        scholar: 250000,     // ₦2,500 (promo price, was ₦3,500)
-        elite: 350000,       // ₦3,500 (promo price, was ₦5,000)
+        explorer: 0,       // Free
+        scholar: 350000,   // ₦3,500
+        elite: 500000,     // ₦5,000
       };
 
       const currentPlanPrice = planPricing[profile.subscription_status];
@@ -421,56 +452,57 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const reference = `UPGRADE-${user.id.slice(0, 8)}-${Date.now()}`;
+      const tx_ref = `UPGRADE-${user.id.slice(0, 8)}-${Date.now()}`;
+      const amountInNaira = upgradeDifference / 100;
+
+      // Get user profile
+      const { data: userProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
 
       try {
-        const paystackRes = await axios.post(
-          `${paystackApiUrl}/transaction/initialize`,
-          {
-            email: user.email,
-            amount: upgradeDifference,
-            reference,
-            callback_url: `${webUrl}/payments/success?reference=${reference}`,
-            metadata: {
-              user_id: user.id,
-              upgrade_from: profile.subscription_status,
-              upgrade_to: target_plan,
-            },
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${paystackSecretKey}`,
-            },
-          }
-        );
-
-        if (!paystackRes.data.status) {
-          throw new Error("Paystack initialization failed");
-        }
-
         // Record the pending upgrade
         await supabaseAdmin.from("subscriptions").insert({
           user_id: user.id,
           plan: target_plan,
-          plan_price: upgradeDifference,
+          amount: upgradeDifference,
           upgraded_from: profile.subscription_status,
           status: "pending",
-          paystack_reference: reference,
+          paystack_reference: tx_ref,
         });
+
+        // Return Flutterwave payment config
+        const paymentConfig = {
+          tx_ref,
+          amount: amountInNaira,
+          currency: "NGN",
+          redirect_url: `${webUrl}/payments/success`,
+          customer: {
+            email: user.email,
+            name: userProfile?.full_name || "Roman Series Student",
+          },
+          customizations: {
+            title: "Roman Series",
+            description: `Upgrade to ${target_plan}`,
+          },
+          payment_options: "card,banktransfer,ussd,opay",
+        };
 
         res.json({
           status: "success",
           data: {
-            authorization_url: paystackRes.data.data.authorization_url,
-            reference,
+            ...paymentConfig,
+            public_key: process.env.FLW_PUBLIC_KEY,
             upgrade_cost: upgradeDifference,
             from_plan: profile.subscription_status,
             to_plan: target_plan,
           },
           timestamp: new Date().toISOString(),
         });
-      } catch (paystackError) {
-        console.error("Paystack error:", paystackError);
+      } catch (error) {
+        console.error("Flutterwave error:", error);
         res.status(500).json({
           status: "error",
           message: "Failed to initialize payment",

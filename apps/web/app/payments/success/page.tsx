@@ -11,7 +11,9 @@ import { useAuth } from "@/context/AuthContext";
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const reference = searchParams.get("reference");
+  const transaction_id = searchParams.get("transaction_id");
+  const tx_ref = searchParams.get("tx_ref");
+  const status = searchParams.get("status");
   const { restoreSession } = useAuth();
 
   const [verifying, setVerifying] = useState(true);
@@ -19,7 +21,7 @@ export default function PaymentSuccessPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!reference) {
+    if (!transaction_id || !tx_ref) {
       setError("No payment reference found");
       setVerifying(false);
       return;
@@ -27,7 +29,10 @@ export default function PaymentSuccessPage() {
 
     const verifyPayment = async () => {
       try {
-        const res = await api.post("/api/payments/verify", { reference });
+        const res = await api.post("/api/payments/verify", {
+          transaction_id,
+          tx_ref,
+        });
         if (res.data.data?.success) {
           setSuccess(true);
           // Refresh user profile to get updated subscription status
@@ -49,7 +54,7 @@ export default function PaymentSuccessPage() {
     };
 
     verifyPayment();
-  }, [reference, router, restoreSession]);
+  }, [transaction_id, tx_ref, router, restoreSession]);
 
   if (verifying) {
     return (

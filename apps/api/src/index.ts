@@ -153,8 +153,8 @@ registerUploadRoutes(app, { supabaseAdmin });
 
 registerPaymentsRoutes(app, {
   supabaseAdmin,
-  paystackSecretKey: process.env.PAYSTACK_SECRET_KEY || "",
   webUrl,
+  flwWebhookHash: process.env.FLW_WEBHOOK_HASH,
 });
 
 registerLeaderboardRoutes(app, { supabaseAdmin });
