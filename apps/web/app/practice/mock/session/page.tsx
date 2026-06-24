@@ -46,6 +46,7 @@ export default function MockSessionPage() {
   const [hardMode, setHardMode] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [timeUp, setTimeUp] = useState(false);
   const hasSubmittedRef = useRef(false);
 
   // Initialize hard mode from URL params early
@@ -196,6 +197,7 @@ export default function MockSessionPage() {
       sessionStorage.removeItem(`mock_answers_${sessionId}`);
       sessionStorage.removeItem(`mock_current_question_${sessionId}`);
       sessionStorage.removeItem(`mock_time_remaining_${sessionId}`);
+      setTimeUp(false);
 
       router.push(`/practice/results?sessionId=${sessionId}`);
     } catch (error) {
@@ -237,11 +239,13 @@ export default function MockSessionPage() {
 
   // Auto-submit when time runs out
   useEffect(() => {
-    if (timeRemaining <= 0 && !hasSubmittedRef.current && sessionId) {
+    if (timeRemaining === 0 && !hasSubmittedRef.current &&
+        sessionId && !pageLoading && questions.length > 0) {
       hasSubmittedRef.current = true;
+      setTimeUp(true);
       handleSubmitSession();
     }
-  }, [timeRemaining, sessionId, handleSubmitSession]);
+  }, [timeRemaining, sessionId, pageLoading, questions.length, handleSubmitSession]);
 
 
   const handleSelectOption = (optionId: string) => {
@@ -402,7 +406,7 @@ export default function MockSessionPage() {
                             : "bg-gray-300 text-gray-700 hover:bg-gray-400"
                         }`}
                       >
-                        {qIdx + 1}
+                        {idx * questionsPerSubject + qIdx + 1}
                       </button>
                     );
                   })}
@@ -600,6 +604,36 @@ export default function MockSessionPage() {
 
       {/* Mobile spacing for fixed bottom nav */}
       <div className="h-16 md:h-0" />
+
+      {/* Time's Up Overlay */}
+      {timeUp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+            <p className="text-2xl font-bold text-ember mb-2">⏰ Time&apos;s Up!</p>
+            <p className="text-gray-600 mb-4">Submitting your exam answers...</p>
+            <svg
+              className="animate-spin h-8 w-8 text-forest mx-auto"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
 
       {/* Submit Confirmation Dialog */}
       {showSubmitDialog && (
