@@ -7,8 +7,29 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
-import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import toast from "react-hot-toast";
+
+// Utility function to load Flutterwave script and open modal
+const openFlutterwaveModal = (config: any) => {
+  const scriptId = "flutterwave-inline-script";
+
+  const initPayment = () => {
+    if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
+      (window as any).FlutterwaveCheckout(config);
+    }
+  };
+
+  if (document.getElementById(scriptId)) {
+    initPayment();
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = scriptId;
+  script.src = "https://checkout.flutterwave.com/v3.js";
+  script.onload = initPayment;
+  document.body.appendChild(script);
+};
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -16,7 +37,6 @@ export default function UpgradePage() {
   const { user, profile, loading } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
-  const [flutterConfig, setFlutterConfig] = useState<any>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -31,9 +51,6 @@ export default function UpgradePage() {
       }
     }
   }, [user, profile, loading, router]);
-
-  // Initialize Flutterwave at component level
-  const handleFlutterPayment = useFlutterwave(flutterConfig || {});
 
   const handleUpgradeToElite = async () => {
     if (!user) {
@@ -52,7 +69,7 @@ export default function UpgradePage() {
 
       const paymentData = res.data.data;
 
-      // Set config for Flutterwave
+      // Configure Flutterwave
       const config = {
         public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY!,
         tx_ref: paymentData.tx_ref,
@@ -69,8 +86,9 @@ export default function UpgradePage() {
           logo: "https://romanseries.com.ng/logo.png",
         },
         callback: async (response: any) => {
-          closePaymentModal();
-          if (response.status === "successful") {
+          console.log("[FLW] Upgrade response:", response);
+
+          if (response.status === "successful" || response.charge_response_code === "00") {
             try {
               // Verify payment on backend
               await api.post("/api/payments/verify", {
@@ -78,32 +96,26 @@ export default function UpgradePage() {
                 tx_ref: response.tx_ref,
               });
               toast.success("Payment successful! Your subscription is now Elite.");
-              router.push("/dashboard");
-            } catch (verifyError) {
-              toast.error("Payment verified but profile update failed. Please contact support.");
+              setTimeout(() => router.push("/dashboard"), 1500);
+            } catch {
+              toast.error(`Verification failed. Contact support with ref: ${paymentData.tx_ref}`);
               setIsProcessing(false);
             }
           } else {
-            toast.error("Payment was not completed");
+            toast.error("Payment was not completed. Please try again.");
             setIsProcessing(false);
           }
         },
-        onClose: () => {
+        onclose: () => {
           setIsProcessing(false);
         },
       };
 
-      // Update config and trigger payment
-      setFlutterConfig(config);
-
-      // Defer the payment call to next render cycle
-      setTimeout(() => {
-        handleFlutterPayment(config);
-      }, 100);
+      // Open Flutterwave modal using direct script
+      openFlutterwaveModal(config);
+      setIsProcessing(false);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Failed to initiate upgrade. Please try again."
-      );
+      setError(err.response?.data?.message || "Failed to initiate upgrade. Please try again.");
       setIsProcessing(false);
     }
   };

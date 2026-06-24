@@ -7,8 +7,29 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check, X } from "lucide-react";
-import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import toast from "react-hot-toast";
+
+// Utility function to load Flutterwave script and open modal
+const openFlutterwaveModal = (config: any) => {
+  const scriptId = "flutterwave-inline-script";
+
+  const initPayment = () => {
+    if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
+      (window as any).FlutterwaveCheckout(config);
+    }
+  };
+
+  if (document.getElementById(scriptId)) {
+    initPayment();
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = scriptId;
+  script.src = "https://checkout.flutterwave.com/v3.js";
+  script.onload = initPayment;
+  document.body.appendChild(script);
+};
 
 export default function PricingPage() {
   const router = useRouter();
@@ -17,18 +38,6 @@ export default function PricingPage() {
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isLaunch, setIsLaunch] = useState(true);
-  const [flwConfig, setFlwConfig] = useState<any>(null);
-
-  // Initialize Flutterwave at component level
-  const handleFlutterPayment = useFlutterwave(flwConfig || {
-    public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || '',
-    tx_ref: '',
-    amount: 0,
-    currency: 'NGN',
-    payment_options: 'card,banktransfer,ussd,opay',
-    customer: { email: '', name: '' },
-    customizations: { title: 'Roman Series', description: '' }
-  });
 
   // Countdown to launch (June 27, 2026) or promo (7 days after launch)
   useEffect(() => {
@@ -118,11 +127,11 @@ export default function PricingPage() {
         },
         customizations: {
           title: "Roman Series",
-          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} subscription - 6 months`,
+          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - 6 months`,
+          logo: "https://romanseries.com.ng/logo.png",
         },
         callback: async (response: any) => {
-          closePaymentModal();
-          console.log("[Flutterwave] callback response:", response);
+          console.log("[FLW] Payment response:", response);
 
           if (response.status === "successful" || response.charge_response_code === "00") {
             try {
@@ -131,31 +140,27 @@ export default function PricingPage() {
                 tx_ref: response.tx_ref,
               });
               toast.success("Payment successful! Subscription activated.");
-              router.push("/dashboard");
+              setTimeout(() => router.push("/dashboard"), 1500);
             } catch {
-              toast.error("Payment received but verification failed. Contact support.");
+              toast.error(`Verification failed. Contact support with ref: ${tx_ref}`);
               setLoadingPlan(null);
             }
           } else {
-            toast.error("Payment was not completed");
+            toast.error("Payment was not completed. Please try again.");
             setLoadingPlan(null);
           }
         },
-        onClose: () => {
+        onclose: () => {
           setLoadingPlan(null);
-          toast("Payment cancelled");
         },
       };
 
-      // Step 3: Update config state and trigger modal
-      setFlwConfig(config);
-
-      // Small delay to ensure config is set before opening modal
-      setTimeout(() => {
-        handleFlutterPayment(config);
-      }, 100);
+      // Step 3: Open Flutterwave modal using direct script
+      openFlutterwaveModal(config);
+      setLoadingPlan(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to initiate payment");
+      console.error("Payment error:", err);
+      setError(err?.response?.data?.message || "Payment failed. Try again.");
       setLoadingPlan(null);
     }
   };
