@@ -33,7 +33,7 @@ const openFlutterwaveModal = (config: any) => {
 
 export default function PricingPage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -140,6 +140,8 @@ export default function PricingPage() {
                 tx_ref: response.tx_ref,
               });
               toast.success("Payment successful! Subscription activated.");
+              // Refresh user profile to get updated subscription status
+              await refreshProfile();
               setTimeout(() => router.push("/dashboard"), 1500);
             } catch {
               toast.error(`Verification failed. Contact support with ref: ${tx_ref}`);

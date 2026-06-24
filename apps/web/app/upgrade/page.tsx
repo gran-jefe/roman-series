@@ -34,7 +34,7 @@ const openFlutterwaveModal = (config: any) => {
 export default function UpgradePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
@@ -96,6 +96,8 @@ export default function UpgradePage() {
                 tx_ref: response.tx_ref,
               });
               toast.success("Payment successful! Your subscription is now Elite.");
+              // Refresh user profile to get updated subscription status
+              await refreshProfile();
               setTimeout(() => router.push("/dashboard"), 1500);
             } catch {
               toast.error(`Verification failed. Contact support with ref: ${paymentData.tx_ref}`);
