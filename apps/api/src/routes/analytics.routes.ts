@@ -1034,11 +1034,12 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       const { error: upsertError } = await supabaseAdmin.from("analytics_reports").upsert(
         {
           user_id: userId,
+          report_type: "report",
           report_text: reportText,
           generated_at: now.toISOString(),
           expires_at: expiresAt.toISOString(),
         },
-        { onConflict: "user_id" }
+        { onConflict: "user_id,report_type" }
       );
 
       if (upsertError) {
@@ -1678,12 +1679,22 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       }
 
       // Cache the study plan
-      await supabaseAdmin.from("analytics_reports").insert({
-        user_id: user.id,
-        report_type: "study_plan",
-        cached_data: studyPlan,
-        created_at: new Date().toISOString(),
-      });
+      const { error: cacheError } = await supabaseAdmin
+        .from("analytics_reports")
+        .upsert({
+          user_id: user.id,
+          report_type: "study_plan",
+          cached_data: studyPlan,
+          created_at: new Date().toISOString(),
+        }, {
+          onConflict: "user_id,report_type",
+        });
+
+      if (cacheError) {
+        console.error("[study-plan] Cache save error:", cacheError);
+      } else {
+        console.log("[study-plan] Cached study plan for user:", user.id);
+      }
 
       const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
       const criticalTopics = studyPlan.filter((t: any) => t.urgency === 'critical').length;
@@ -1759,7 +1770,8 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       }
 
       // Get the latest study plan
-      const { data: cachedReport } = await supabaseAdmin
+      console.log("[study-plan/download] Looking for plan for user:", user.id);
+      const { data: cachedReport, error: fetchError } = await supabaseAdmin
         .from("analytics_reports")
         .select("cached_data, created_at")
         .eq("user_id", user.id)
@@ -1767,6 +1779,8 @@ Prioritize by: urgency first, then by how many questions have been answered (les
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
+
+      console.log("[study-plan/download] Query result:", { found: !!cachedReport, error: fetchError?.message });
 
       if (!cachedReport?.cached_data) {
         res.status(404).json({
