@@ -35,7 +35,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
       // Get user profile and plan
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
-        .select("subscription_status, target_course, subject_combination")
+        .select("subscription_status, target_university_id")
         .eq("id", user.id)
         .single();
 
@@ -117,16 +117,16 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         sessionsQuery = sessionsQuery.gte("started_at", startDate.toISOString());
       }
 
-      // For cohort scope, filter by target_course and subject_combination
-      if (scope === "cohort" && profile.target_course && profile.subject_combination) {
-        // Get user IDs with same target_course and subject_combination
+      // For cohort scope, filter by target_university_id
+      if (scope === "cohort" && profile.target_university_id) {
+        // Get user IDs with same target_university_id
         const { data: cohortProfiles, error: cohortError } = await supabaseAdmin
           .from("profiles")
           .select("id")
-          .eq("target_course", profile.target_course)
-          .eq("subject_combination", profile.subject_combination);
+          .eq("target_university_id", profile.target_university_id);
 
         if (cohortError) {
+          console.error("[leaderboard/top-students] Cohort query error:", cohortError);
           res.status(500).json({
             status: "error",
             message: "Failed to fetch cohort members",
@@ -154,11 +154,28 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         }
 
         sessionsQuery = sessionsQuery.in("user_id", cohortUserIds);
+      } else if (scope === "cohort") {
+        // No university set, can't show cohort
+        res.json({
+          status: "success",
+          data: {
+            rankings: [],
+            window,
+            scope,
+            is_truncated: false,
+            current_user_rank: null,
+            total_participants: 0,
+            resets_at: resetsAt?.toISOString() || null,
+          },
+          timestamp: new Date().toISOString(),
+        });
+        return;
       }
 
       const { data: allSessions, error: sessionsError } = await sessionsQuery;
 
       if (sessionsError) {
+        console.error("[leaderboard/top-students] Sessions query error:", sessionsError);
         res.status(500).json({
           status: "error",
           message: "Failed to fetch sessions",
@@ -247,7 +264,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("[leaderboard/top-students] Error:", error);
+      console.error("[leaderboard/top-students] Full error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",
