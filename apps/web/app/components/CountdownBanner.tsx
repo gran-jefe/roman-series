@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCountdownTime, isCountdownMode, getCountdownEndDate } from "@/app/lib/countdown";
-import type { CountdownTime } from "@/app/lib/countdown";
+import { getCountdownTime, isCountdownMode, getCountdownEndDate } from "@/lib/countdown";
+import type { CountdownTime } from "@/lib/countdown";
 
 export default function CountdownBanner() {
   const [countdown, setCountdown] = useState<CountdownTime | null>(null);
