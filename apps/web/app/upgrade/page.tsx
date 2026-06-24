@@ -87,23 +87,43 @@ export default function UpgradePage() {
         },
         callback: async (response: any) => {
           console.log("[FLW] Upgrade response:", response);
+          console.log("[FLW] Payment status:", response.status);
+          console.log("[FLW] Transaction ID:", response.transaction_id);
+          console.log("[FLW] Tx Ref:", response.tx_ref);
 
           if (response.status === "successful" || response.charge_response_code === "00") {
             try {
-              // Verify payment on backend
-              await api.post("/api/payments/verify", {
+              console.log("[FLW] Calling verify endpoint for upgrade...");
+              const verifyRes = await api.post("/api/payments/verify", {
                 transaction_id: response.transaction_id,
                 tx_ref: response.tx_ref,
               });
-              toast.success("Payment successful! Your subscription is now Elite.");
-              // Refresh user profile to get updated subscription status
-              // Wait for refresh to complete before redirecting
-              await refreshProfile();
-              // Small delay to ensure UI updates, then redirect
-              setTimeout(() => router.push("/dashboard"), 500);
+              console.log("[FLW] Verify response:", verifyRes.data);
+
+              if (verifyRes.data.status === "success") {
+                console.log("[FLW] Verify succeeded, plan:", verifyRes.data.data.plan);
+                toast.success("Payment successful! Your subscription is now Elite.");
+
+                // Refresh user profile to get updated subscription status
+                console.log("[FLW] Refreshing profile...");
+                await refreshProfile();
+                console.log("[FLW] Profile refreshed");
+
+                // Redirect to dashboard
+                setTimeout(() => {
+                  console.log("[FLW] Redirecting to dashboard");
+                  router.push("/dashboard");
+                }, 500);
+              } else {
+                throw new Error(
+                  verifyRes.data.message || "Verification returned false"
+                );
+              }
             } catch (error) {
-              console.error("[Upgrade] Verification error:", error);
-              toast.error(`Verification failed. Contact support with ref: ${paymentData.tx_ref}`);
+              console.error("[FLW] Verification error:", error);
+              toast.error(
+                `Verification failed. Contact support with ref: ${paymentData.tx_ref}`
+              );
               setIsProcessing(false);
             }
           } else {

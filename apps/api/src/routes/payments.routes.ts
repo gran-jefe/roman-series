@@ -137,6 +137,10 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
     try {
       const { transaction_id, tx_ref } = req.body;
 
+      console.log("[Verify] Starting verification");
+      console.log("[Verify] transaction_id:", transaction_id);
+      console.log("[Verify] tx_ref:", tx_ref);
+
       if (!transaction_id || !tx_ref) {
         res.status(400).json({
           status: "error",
@@ -147,8 +151,6 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       }
 
       try {
-        console.log("[payments/verify] Verifying transaction:", { transaction_id, tx_ref });
-
         // Verify transaction with Flutterwave
         const flutterwave = getFlutterwave();
         if (!flutterwave) {
@@ -161,96 +163,73 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         }
 
         const response = await flutterwave.Transaction.verify({ id: transaction_id });
-        console.log("[payments/verify] Flutterwave response:", response.data?.status);
+        console.log("[Verify] FLW response status:", response.data?.status);
+        console.log("[Verify] FLW response tx_ref:", response.data?.tx_ref);
+        console.log("[Verify] FLW response amount:", response.data?.amount);
 
         if (response.data.status === "successful" && response.data.tx_ref === tx_ref) {
-          const metadata = response.data.meta || {};
-          const { user_id, plan, upgrade_to } = metadata;
+          // Look up subscription by tx_ref to get user_id and plan
+          const { data: subscription, error: subSelectError } = await supabaseAdmin
+            .from("subscriptions")
+            .select("user_id, plan")
+            .eq("paystack_reference", tx_ref)
+            .single();
 
-          // Extract user_id from tx_ref if not in metadata
-          let actualUserId = user_id;
-          if (!actualUserId && tx_ref) {
-            const txRefParts = tx_ref.split("-");
-            if (txRefParts.length >= 2) {
-              // Find the subscription record by tx_ref to get user_id
-              const { data: subscription } = await supabaseAdmin
-                .from("subscriptions")
-                .select("user_id, plan")
-                .eq("paystack_reference", tx_ref)
-                .single();
-
-              if (subscription) {
-                actualUserId = subscription.user_id;
-              }
-            }
-          }
-
-          if (!actualUserId) {
-            throw new Error("Cannot determine user_id from transaction");
-          }
-
-          // Get plan from subscription record if not in metadata
-          let actualPlan = plan;
-          if (!actualPlan) {
-            const { data: subscription } = await supabaseAdmin
-              .from("subscriptions")
-              .select("plan")
-              .eq("paystack_reference", tx_ref)
-              .single();
-
-            if (subscription) {
-              actualPlan = subscription.plan;
-            }
-          }
-
-          // Handle plan upgrade
-          if (upgrade_to) {
-            await supabaseAdmin
-              .from("subscriptions")
-              .update({
-                status: "active",
-              })
-              .eq("paystack_reference", tx_ref);
-
-            await supabaseAdmin
-              .from("profiles")
-              .update({
-                subscription_status: upgrade_to,
-              })
-              .eq("id", actualUserId);
-          } else {
-            // Handle plan payment for scholar and elite
-            const durationDays = 180; // 6 months
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + durationDays);
-
-            await supabaseAdmin
-              .from("subscriptions")
-              .update({
-                status: "active",
-                expires_at: expiresAt.toISOString(),
-              })
-              .eq("paystack_reference", tx_ref);
-
-            const updateResult = await supabaseAdmin
-              .from("profiles")
-              .update({
-                subscription_status: actualPlan,
-                subscription_expires_at: expiresAt.toISOString(),
-              })
-              .eq("id", actualUserId);
-
-            console.log("[payments/verify] Profile updated:", {
-              userId: actualUserId,
-              plan: actualPlan,
-              expiresAt: expiresAt.toISOString(),
-              updateError: updateResult.error,
+          if (subSelectError || !subscription) {
+            console.log("[Verify] No subscription found for tx_ref:", tx_ref);
+            console.log("[Verify] Subscription select error:", subSelectError);
+            res.status(404).json({
+              status: "error",
+              message: "Subscription not found",
+              timestamp: new Date().toISOString(),
             });
+            return;
+          }
+
+          const userId = subscription.user_id;
+          const plan = subscription.plan;
+
+          console.log("[Verify] Found subscription - userId:", userId, "plan:", plan);
+
+          // Calculate expiry date (6 months)
+          const durationDays = 180;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + durationDays);
+
+          // Update subscription status
+          const { error: subError } = await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "active",
+              expires_at: expiresAt.toISOString(),
+            })
+            .eq("paystack_reference", tx_ref);
+
+          console.log("[Verify] Subscription update result:", subError);
+
+          if (subError) {
+            throw new Error(`Failed to update subscription: ${subError.message}`);
+          }
+
+          // Update profile with new subscription status
+          const { error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .update({
+              subscription_status: plan,
+              subscription_expires_at: expiresAt.toISOString(),
+            })
+            .eq("id", userId);
+
+          console.log("[Verify] Profile update result:", profileError);
+          console.log("[Verify] Updated user_id:", userId);
+
+          if (profileError) {
+            throw new Error(`Failed to update profile: ${profileError.message}`);
           }
 
           res.json({
             status: "success",
-            data: { success: true, plan: actualPlan },
+            data: { success: true, plan },
             timestamp: new Date().toISOString(),
           });
         } else {
@@ -261,7 +240,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
           });
         }
       } catch (flwError) {
-        console.error("Flutterwave verification error:", flwError);
+        console.error("[Verify] Flutterwave verification error:", flwError);
         res.status(500).json({
           status: "error",
           message: "Failed to verify payment",
@@ -269,7 +248,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         });
       }
     } catch (error) {
-      console.error("[payments/verify] Error:", error);
+      console.error("[Verify] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",
