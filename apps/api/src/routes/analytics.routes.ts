@@ -1599,22 +1599,38 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       // Call Groq to generate study plan
       const groq = new Groq({ apiKey: groqApiKey });
 
-      const prompt = `Based on a student's performance data, create a prioritized study plan.
-Weak topics (mastery < 70%):
-${weakTopics.map((t: any) => `- ${t.topic_name} (${t.subject_name}): ${t.mastery_percentage}% mastery, ${t.total_answered} questions answered`).join("\n")}
+      const prompt = `You are an expert Post-UTME exam coach for Nigerian university entrance exams. A student needs a detailed, personalized study plan based on their performance data.
 
-Generate a JSON study plan with 5-8 topics prioritized by urgency. Each item should have:
-- priority (integer 1-8, where 1 is highest)
-- topic_name (string)
-- subject_name (string)
-- reason (1 sentence explaining why this topic needs focus)
-- urgency ("high", "medium", or "low" based on gap to 70% mastery)
+STUDENT PERFORMANCE DATA:
+Weak Topics (mastery below 70%):
+${weakTopics.map((t: any) =>
+  `- ${t.topic_name} (${t.subject_name}): ${t.mastery_percentage}% mastery, ${t.total_answered} questions answered`
+).join("\n")}
 
-Return ONLY valid JSON array, no markdown formatting.`;
+Create a comprehensive, prioritized study plan with 5-8 topics.
+Return ONLY a valid JSON array with no markdown formatting.
+
+Each item in the array must have these exact fields:
+{
+  "priority": <integer 1-8, where 1 is most urgent>,
+  "topic_name": <string>,
+  "subject_name": <string>,
+  "current_mastery": <number, the current mastery percentage>,
+  "target_mastery": 70,
+  "urgency": <"critical" if below 40%, "high" if 40-54%, "medium" if 55-64%, "low" if 65-69%>,
+  "reason": <2-3 sentence explanation of why this topic is important for Post-UTME and what gap exists>,
+  "study_actions": [
+    <3-4 specific, actionable study steps the student should take for this topic>
+  ],
+  "estimated_hours": <realistic number of hours needed to reach 70% mastery>,
+  "quick_tip": <one practical exam technique specific to this topic>
+}
+
+Prioritize by: urgency first, then by how many questions have been answered (less practice = higher priority). Be specific to Nigerian Post-UTME context.`;
 
       const message = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -1630,8 +1646,19 @@ Return ONLY valid JSON array, no markdown formatting.`;
           priority: idx + 1,
           topic_name: t.topic_name,
           subject_name: t.subject_name,
-          reason: `Focus on this topic to improve mastery from ${t.mastery_percentage}%`,
-          urgency: t.mastery_percentage < 40 ? "high" : t.mastery_percentage < 60 ? "medium" : "low",
+          current_mastery: t.mastery_percentage,
+          target_mastery: 70,
+          urgency: t.mastery_percentage < 40 ? 'critical' :
+                   t.mastery_percentage < 55 ? 'high' :
+                   t.mastery_percentage < 65 ? 'medium' : 'low',
+          reason: `Your mastery of ${t.topic_name} is currently ${t.mastery_percentage}%. Improving this topic will significantly boost your Post-UTME score. You need ${70 - t.mastery_percentage}% more mastery to reach the target.`,
+          study_actions: [
+            `Review all ${t.topic_name} questions in your error bank`,
+            `Practice at least 20 questions on this topic daily`,
+            `Focus on understanding why wrong answers are incorrect`,
+          ],
+          estimated_hours: Math.ceil((70 - t.mastery_percentage) / 5),
+          quick_tip: `For ${t.subject_name} questions, always eliminate obviously wrong options first.`
         }));
       }
 
@@ -1643,9 +1670,20 @@ Return ONLY valid JSON array, no markdown formatting.`;
         created_at: new Date().toISOString(),
       });
 
+      const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
+      const criticalTopics = studyPlan.filter((t: any) => t.urgency === 'critical').length;
+
       res.json({
         status: "success",
-        data: studyPlan,
+        data: {
+          study_plan: studyPlan,
+          summary: {
+            total_weak_topics: weakTopics.length,
+            critical_topics: criticalTopics,
+            total_estimated_hours: totalEstimatedHours,
+            generated_at: new Date().toISOString()
+          }
+        },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

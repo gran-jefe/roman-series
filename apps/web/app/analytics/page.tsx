@@ -489,14 +489,14 @@ export default function AnalyticsPage() {
               {!prediction.utme_qualifies && prediction.utme_qualifies !== undefined && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm font-semibold text-red-900">⚠ UTME Below Minimum (200)</p>
-                  <p className="text-sm text-red-800 mt-1">Your score of {prediction.utme_score} doesn't qualify. You need 200+ for admission eligibility.</p>
+                  <p className="text-sm text-red-800 mt-1">Your score of {prediction.utme_score} doesn&apos;t qualify. You need 200+ for admission eligibility.</p>
                 </div>
               )}
 
               {!prediction.putme_qualifies && prediction.putme_qualifies !== undefined && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm font-semibold text-red-900">⚠ Practice Score Below Minimum (50%)</p>
-                  <p className="text-sm text-red-800 mt-1">Current practice score: {prediction.current_practice_avg ?? 0}%. You need 50%+ on Post-UTME to qualify.</p>
+                  <p className="text-sm text-red-800 mt-1">Current practice score: {prediction.current_practice_avg ?? 0}%. You need 50%+ in Post-UTME to qualify.</p>
                 </div>
               )}
 
@@ -798,7 +798,7 @@ export default function AnalyticsPage() {
                       setStudyPlanLoading(true);
                       try {
                         const res = await api.get("/api/analytics/study-plan");
-                        setStudyPlan(res.data.data);
+                        setStudyPlan(res.data.data.study_plan || res.data.data);
                       } catch {
                         toast.error("Failed to generate study plan");
                       } finally {
@@ -812,20 +812,94 @@ export default function AnalyticsPage() {
                   </button>
                 </div>
                 {studyPlan && studyPlan.length > 0 ? (
-                  <div className="space-y-3">
-                    {studyPlan.map((item) => (
-                      <div key={item.priority} className="p-3 bg-gray-50 rounded border-l-4" style={{ borderLeftColor: getSubjectColor(item.subject_name) }}>
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <span className="text-lg font-bold text-navy">#{item.priority}</span>
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${item.urgency === "high" ? "bg-red-100 text-red-700" : item.urgency === "medium" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
-                            {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
-                          </span>
+                  <div className="space-y-4">
+                    {studyPlan.map((item: {
+                      priority: number;
+                      topic_name: string;
+                      subject_name: string;
+                      current_mastery: number;
+                      target_mastery: number;
+                      urgency: "critical" | "high" | "medium" | "low";
+                      reason: string;
+                      study_actions: string[];
+                      estimated_hours: number;
+                      quick_tip: string;
+                    }) => {
+                      const urgencyColors: Record<string, string> = {
+                        critical: "bg-red-100 text-red-700 border-red-300",
+                        high: "bg-orange-100 text-orange-700 border-orange-300",
+                        medium: "bg-amber-100 text-amber-700 border-amber-300",
+                        low: "bg-blue-100 text-blue-700 border-blue-300"
+                      };
+                      const progressColors: Record<string, string> = {
+                        critical: "bg-red-500",
+                        high: "bg-orange-500",
+                        medium: "bg-amber-500",
+                        low: "bg-blue-500"
+                      };
+                      return (
+                        <div key={item.priority} className="p-4 bg-white rounded border-l-4 shadow-sm hover:shadow-md transition" style={{ borderLeftColor: getSubjectColor(item.subject_name) }}>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              <span className="text-lg font-bold text-navy">#{item.priority}</span>
+                              <p className="font-semibold text-navy text-sm mt-1">{item.topic_name}</p>
+                              <p className="text-xs text-gray-500">{item.subject_name}</p>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${urgencyColors[item.urgency] || urgencyColors.low}`}>
+                              {item.urgency.charAt(0).toUpperCase() + item.urgency.slice(1)}
+                            </span>
+                          </div>
+
+                          {/* Mastery Progress Bar */}
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-gray-600">Mastery Progress</span>
+                              <span className="text-xs font-bold text-navy">{item.current_mastery}% → {item.target_mastery}%</span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${progressColors[item.urgency] || progressColors.low}`}
+                                style={{ width: `${Math.min(item.current_mastery, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Reason */}
+                          <p className="text-sm text-gray-700 mb-3 leading-relaxed">{item.reason}</p>
+
+                          {/* Study Actions */}
+                          {item.study_actions && item.study_actions.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-xs font-semibold text-gray-600 mb-2">Study Actions:</p>
+                              <ul className="space-y-1">
+                                {item.study_actions.map((action: string, idx: number) => (
+                                  <li key={idx} className="text-xs text-gray-700 flex gap-2">
+                                    <span className="text-forest font-bold">✓</span>
+                                    <span>{action}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Estimated Hours & Quick Tip */}
+                          <div className="flex gap-3">
+                            {item.estimated_hours && (
+                              <div className="flex-1 p-2 bg-blue-50 rounded border border-blue-200">
+                                <p className="text-xs font-semibold text-blue-900">Estimated Time</p>
+                                <p className="text-sm font-bold text-blue-700">{item.estimated_hours}h</p>
+                              </div>
+                            )}
+                            {item.quick_tip && (
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-200">
+                                <p className="text-xs font-semibold text-green-900">💡 Exam Tip</p>
+                                <p className="text-xs text-green-700">{item.quick_tip}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="font-medium text-navy">{item.topic_name}</p>
-                        <p className="text-xs text-gray-500 mb-2">{item.subject_name}</p>
-                        <p className="text-sm text-gray-600">{item.reason}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">Generate a study plan to see your personalized learning roadmap</p>
