@@ -35,7 +35,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
       // Get user profile and plan
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
-        .select("subscription_status, target_university_id")
+        .select("subscription_status, target_course")
         .eq("id", user.id)
         .single();
 
@@ -117,13 +117,13 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         sessionsQuery = sessionsQuery.gte("started_at", startDate.toISOString());
       }
 
-      // For cohort scope, filter by target_university_id
-      if (scope === "cohort" && profile.target_university_id) {
-        // Get user IDs with same target_university_id
+      // For cohort scope, filter by target_course
+      if (scope === "cohort" && profile.target_course) {
+        // Get user IDs with same target_course
         const { data: cohortProfiles, error: cohortError } = await supabaseAdmin
           .from("profiles")
           .select("id")
-          .eq("target_university_id", profile.target_university_id);
+          .eq("target_course", profile.target_course);
 
         if (cohortError) {
           console.error("[leaderboard/top-students] Cohort query error:", cohortError);
@@ -155,7 +155,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
 
         sessionsQuery = sessionsQuery.in("user_id", cohortUserIds);
       } else if (scope === "cohort") {
-        // No university set, can't show cohort
+        // No course set, can't show cohort
         res.json({
           status: "success",
           data: {
