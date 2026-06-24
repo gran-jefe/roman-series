@@ -1465,11 +1465,14 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      // Get topic performance data
-      const { data: topicPerformance } = await supabaseAdmin
-        .rpc("get_user_topic_performance", { user_id: user.id });
+      // Get all completed sessions with question details
+      const { data: sessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id, user_id")
+        .eq("user_id", user.id)
+        .eq("completed", true);
 
-      if (!topicPerformance || topicPerformance.length === 0) {
+      if (!sessions || sessions.length === 0) {
         res.json({
           status: "success",
           data: [],
@@ -1478,8 +1481,92 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
+      // Get session answers to calculate topic performance
+      const { data: answers } = await supabaseAdmin
+        .from("session_answers")
+        .select("session_id, is_correct, question_id")
+        .in("session_id", sessions.map(s => s.id));
+
+      if (!answers || answers.length === 0) {
+        res.json({
+          status: "success",
+          data: [],
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // Get unique question IDs and fetch their topic info
+      const questionIds = Array.from(new Set(answers.map(a => a.question_id)));
+      const { data: questions } = await supabaseAdmin
+        .from("questions")
+        .select("id, topic_id")
+        .in("id", questionIds);
+
+      // Get topic names
+      const topicIds = Array.from(new Set(questions?.map(q => q.topic_id) || []));
+      const { data: topics } = await supabaseAdmin
+        .from("topics")
+        .select("id, name, subject_id")
+        .in("id", topicIds);
+
+      // Get subject names
+      const subjectIds = Array.from(new Set(topics?.map(t => t.subject_id) || []));
+      const { data: subjects } = await supabaseAdmin
+        .from("subjects")
+        .select("id, name")
+        .in("id", subjectIds);
+
+      // Build lookup maps
+      const topicMap = new Map(topics?.map(t => [t.id, t]) || []);
+      const subjectMap = new Map(subjects?.map(s => [s.id, s.name]) || []);
+      const questionMap = new Map(questions?.map(q => [q.id, q]) || []);
+
+      // Calculate topic performance
+      const topicPerformance = new Map<string, { correct: number; total: number; subjectName: string }>();
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.question_id);
+        if (!question) continue;
+
+        const topic = topicMap.get(question.topic_id);
+        if (!topic) continue;
+
+        const subjectName = subjectMap.get(topic.subject_id) || "Unknown";
+        const topicKey = `${topic.name}|${subjectName}`;
+
+        const entry = topicPerformance.get(topicKey) || { correct: 0, total: 0, subjectName };
+        entry.total++;
+        if (answer.is_correct) entry.correct++;
+        topicPerformance.set(topicKey, entry);
+      }
+
+      // Convert to array format
+      const topicPerformanceArray = Array.from(topicPerformance.entries()).map(([key, data]) => {
+        const [topicName, subjectName] = key.split("|");
+        const mastery_percentage = Math.round((data.correct / data.total) * 100);
+        return {
+          topic_name: topicName,
+          subject_name: subjectName,
+          mastery_percentage,
+          total_answered: data.total,
+          correct: data.correct,
+        };
+      });
+
+      if (!topicPerformanceArray || topicPerformanceArray.length === 0) {
+        res.json({
+          status: "success",
+          data: [],
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const topicPerformance_refined = topicPerformanceArray;
+
       // Get weakest topics for AI context
-      const weakTopics = topicPerformance
+      const weakTopics = topicPerformance_refined
         .filter((t: any) => t.mastery_percentage < 70)
         .sort((a: any, b: any) => a.mastery_percentage - b.mastery_percentage)
         .slice(0, 10);
@@ -1537,10 +1624,10 @@ Return ONLY valid JSON array, no markdown formatting.`;
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("[analytics/study-plan] Error:", error);
+      console.error("[analytics/study-plan] Full error:", error);
       res.status(500).json({
         status: "error",
-        message: "Failed to generate study plan",
+        message: error instanceof Error ? error.message : "Failed to generate study plan",
         timestamp: new Date().toISOString(),
       });
     }
