@@ -30,6 +30,19 @@ export default function PracticeSessionPage() {
     answersRef.current = answers;
   }, [answers]);
 
+  // Persist answers to sessionStorage
+  useEffect(() => {
+    if (!sessionId || answers.size === 0) return;
+    const answersObj = Object.fromEntries(answers);
+    sessionStorage.setItem(`session_answers_${sessionId}`, JSON.stringify(answersObj));
+  }, [answers, sessionId]);
+
+  // Persist flagged questions to sessionStorage
+  useEffect(() => {
+    if (!sessionId) return;
+    sessionStorage.setItem(`session_flagged_${sessionId}`, JSON.stringify(Array.from(flagged)));
+  }, [flagged, sessionId]);
+
   // Per-question timing tracking
   const questionStartTime = useRef<number>(Date.now());
   const questionTimes = useRef<Map<string, number>>(new Map());
@@ -73,7 +86,41 @@ export default function PracticeSessionPage() {
 
       const calcTotalTime = questionsData.length * 60; // 1 minute per question
       setTotalTime(calcTotalTime);
-      setTimeLeft(calcTotalTime);
+
+      // Restore answers
+      const savedAnswers = sessionStorage.getItem(`session_answers_${sessionId}`);
+      if (savedAnswers) {
+        try {
+          const answersObj = JSON.parse(savedAnswers);
+          setAnswers(new Map(Object.entries(answersObj)));
+        } catch {
+          // Ignore parse errors, use default empty map
+        }
+      }
+
+      // Restore flagged
+      const savedFlagged = sessionStorage.getItem(`session_flagged_${sessionId}`);
+      if (savedFlagged) {
+        try {
+          setFlagged(new Set(JSON.parse(savedFlagged)));
+        } catch {
+          // Ignore parse errors, use default empty set
+        }
+      }
+
+      // Restore timer — use saved time if it exists and is less than total
+      const savedTime = sessionStorage.getItem(`session_time_${sessionId}`);
+      if (savedTime) {
+        const parsed = parseInt(savedTime, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= calcTotalTime) {
+          setTimeLeft(parsed);
+        } else {
+          setTimeLeft(calcTotalTime);
+        }
+      } else {
+        setTimeLeft(calcTotalTime);
+      }
+
       setPageLoading(false);
     } catch (error) {
       console.error("Failed to parse session data:", error);
@@ -112,6 +159,8 @@ export default function PracticeSessionPage() {
         if (newTime <= 0) {
           return 0;
         }
+        // Persist time to sessionStorage
+        sessionStorage.setItem(`session_time_${sessionId}`, String(newTime));
         return newTime;
       });
     }, 1000);
@@ -215,6 +264,11 @@ export default function PracticeSessionPage() {
         `session_results_${sessionId}`,
         JSON.stringify(res.data.data)
       );
+
+      // Clean up session state
+      sessionStorage.removeItem(`session_answers_${sessionId}`);
+      sessionStorage.removeItem(`session_flagged_${sessionId}`);
+      sessionStorage.removeItem(`session_time_${sessionId}`);
 
       // Navigate to results
       router.push(`/practice/results?sessionId=${sessionId}`);
