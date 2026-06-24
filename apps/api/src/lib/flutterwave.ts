@@ -1,3 +1,4 @@
+// @ts-ignore - flutterwave-node-v3 doesn't have type declarations
 import Flutterwave from 'flutterwave-node-v3';
 
 const flw = new Flutterwave(
