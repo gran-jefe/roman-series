@@ -42,6 +42,7 @@ export default function PracticeSessionPage() {
     if (!sessionId || answers.size === 0) return;
     const answersObj = Object.fromEntries(answers);
     sessionStorage.setItem(`session_answers_${sessionId}`, JSON.stringify(answersObj));
+    console.log("[Answers] Saved to sessionStorage:", answers.size, "answers");
   }, [answers, sessionId]);
 
   // Persist flagged questions to sessionStorage
@@ -246,63 +247,84 @@ export default function PracticeSessionPage() {
 
   // Submit session
   const submitSession = async () => {
-    if (!sessionId) return;
+    if (!sessionIdRef.current) return;
 
     setSubmitting(true);
+
     try {
-      // Capture time for the current question before submitting
+      // Capture time for current question
       const elapsed = Math.round((Date.now() - questionStartTime.current) / 1000);
       if (currentIndex >= 0 && currentIndex < questions.length) {
         questionTimes.current.set(questions[currentIndex].id, elapsed);
       }
 
-      const answersPayload = questions.map((q) => ({
-        question_id: q.id,
-        selected_option_id: answersRef.current.get(q.id) ?? null,
-        time_spent_seconds: questionTimes.current.get(q.id) ?? null,
-      }));
+      // PRIMARY: Read answers from sessionStorage (most reliable, always current)
+      let answersMap = new Map<string, string | null>();
 
-      const timeTaken = totalTime - timeLeft;
-
-      // Fallback to sessionStorage if answersRef is empty
-      let finalAnswers = answersPayload;
-      if (!answersPayload || answersPayload.length === 0) {
-        const saved = sessionStorage.getItem(`session_answers_${sessionIdRef.current}`);
-        if (saved) {
-          try {
-            const savedAnswersMap = new Map(Object.entries(JSON.parse(saved)));
-            finalAnswers = questions.map((q) => ({
-              question_id: q.id,
-              selected_option_id: (savedAnswersMap.get(q.id) as string | null) ?? null,
-              time_spent_seconds: questionTimes.current.get(q.id) ?? null,
-            }));
-          } catch (e) {
-            console.error("Failed to parse saved answers:", e);
-          }
+      const savedAnswers = sessionStorage.getItem(
+        `session_answers_${sessionIdRef.current}`
+      );
+      if (savedAnswers) {
+        try {
+          const parsed = JSON.parse(savedAnswers);
+          answersMap = new Map(Object.entries(parsed));
+          console.log("[Submit] Loaded from sessionStorage:", answersMap.size, "answers");
+        } catch (e) {
+          console.error("[Submit] Failed to parse sessionStorage answers:", e);
         }
       }
 
+      // FALLBACK: Use answersRef if sessionStorage is empty
+      if (answersMap.size === 0 && answersRef.current.size > 0) {
+        answersMap = answersRef.current;
+        console.log("[Submit] Using answersRef fallback:", answersMap.size, "answers");
+      }
+
+      // LAST RESORT: Use current state (may be stale on auto-submit)
+      if (answersMap.size === 0 && answers.size > 0) {
+        answersMap = answers;
+        console.log("[Submit] Using state fallback:", answersMap.size, "answers");
+      }
+
+      console.log("[Submit] Final answers count:", answersMap.size);
+      console.log(
+        "[Submit] Answered questions:",
+        Array.from(answersMap.entries()).filter(([, v]) => v !== null).length
+      );
+
+      const answersPayload = questions.map((q) => ({
+        question_id: q.id,
+        selected_option_id: answersMap.get(q.id) ?? null,
+        time_spent_seconds: questionTimes.current.get(q.id) ?? null,
+      }));
+
+      // Read timeLeft from sessionStorage too (also stale in closure)
+      const savedTime = sessionStorage.getItem(
+        `session_time_${sessionIdRef.current}`
+      );
+      const currentTimeLeft = savedTime ? parseInt(savedTime, 10) : timeLeft;
+      const timeTaken = totalTime - currentTimeLeft;
+
       const res = await api.post(`/api/sessions/${sessionIdRef.current}/submit`, {
-        answers: finalAnswers,
+        answers: answersPayload,
         time_taken_seconds: Math.max(timeTaken, 0),
       });
 
-      // Store results in sessionStorage
+      // Store results
       sessionStorage.setItem(
-        `session_results_${sessionId}`,
+        `session_results_${sessionIdRef.current}`,
         JSON.stringify(res.data.data)
       );
 
-      // Clean up session state
-      sessionStorage.removeItem(`session_answers_${sessionId}`);
-      sessionStorage.removeItem(`session_flagged_${sessionId}`);
-      sessionStorage.removeItem(`session_time_${sessionId}`);
+      // Clean up sessionStorage
+      sessionStorage.removeItem(`session_answers_${sessionIdRef.current}`);
+      sessionStorage.removeItem(`session_flagged_${sessionIdRef.current}`);
+      sessionStorage.removeItem(`session_time_${sessionIdRef.current}`);
       setTimeUp(false);
 
-      // Navigate to results
-      router.push(`/practice/results?sessionId=${sessionId}`);
+      router.push(`/practice/results?sessionId=${sessionIdRef.current}`);
     } catch (error) {
-      console.error("Failed to submit session:", error);
+      console.error("[Submit] Failed:", error);
       setSubmitting(false);
     }
   };
