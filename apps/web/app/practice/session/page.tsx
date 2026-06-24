@@ -23,6 +23,7 @@ export default function PracticeSessionPage() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [timeUp, setTimeUp] = useState(false);
 
   // Refs for timer callback
   const answersRef = useRef(answers);
@@ -145,34 +146,37 @@ export default function PracticeSessionPage() {
 
   // Timer effect
   useEffect(() => {
-    if (!sessionId || questions.length === 0 || timeLeft === 0) return;
-
-    if (timeLeft <= 0) {
-      // Auto-submit when time runs out
-      handleAutoSubmit();
-      return;
-    }
+    if (pageLoading || questions.length === 0 || !sessionId) return;
+    if (timeLeft <= 0) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         const newTime = prev - 1;
+        sessionStorage.setItem(`session_time_${sessionId}`, String(newTime));
         if (newTime <= 0) {
+          clearInterval(timer);
           return 0;
         }
-        // Persist time to sessionStorage
-        sessionStorage.setItem(`session_time_${sessionId}`, String(newTime));
         return newTime;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [sessionId, questions.length]);
+  }, [pageLoading, questions.length, sessionId]);
 
-  // Auto-submit handler
+  // Auto-submit handler - must be defined before being used
   const handleAutoSubmit = useCallback(async () => {
-    if (!sessionId) return;
+    if (submitting) return; // prevent double submission
+    setTimeUp(true);
     await submitSession();
-  }, [sessionId]);
+  }, [submitting]);
+
+  // Auto-submit when time reaches zero
+  useEffect(() => {
+    if (timeLeft === 0 && !pageLoading && questions.length > 0 && !submitting) {
+      handleAutoSubmit();
+    }
+  }, [timeLeft, pageLoading, questions.length, submitting, handleAutoSubmit]);
 
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
@@ -269,6 +273,7 @@ export default function PracticeSessionPage() {
       sessionStorage.removeItem(`session_answers_${sessionId}`);
       sessionStorage.removeItem(`session_flagged_${sessionId}`);
       sessionStorage.removeItem(`session_time_${sessionId}`);
+      setTimeUp(false);
 
       // Navigate to results
       router.push(`/practice/results?sessionId=${sessionId}`);
@@ -543,8 +548,40 @@ export default function PracticeSessionPage() {
         </div>
       )}
 
+      {/* Time's Up Overlay */}
+      {timeUp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+            <p className="text-2xl font-bold text-ember mb-2">⏰ Time&apos;s Up!</p>
+            <p className="text-gray-600 mb-4">Submitting your answers...</p>
+            <div className="flex justify-center">
+              <svg
+                className="animate-spin h-8 w-8 text-forest"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submission Loader */}
-      {submitting && (
+      {submitting && !timeUp && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
