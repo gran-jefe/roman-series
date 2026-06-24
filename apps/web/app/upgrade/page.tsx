@@ -16,6 +16,7 @@ export default function UpgradePage() {
   const { user, profile, loading } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [flutterConfig, setFlutterConfig] = useState<any>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -30,6 +31,9 @@ export default function UpgradePage() {
       }
     }
   }, [user, profile, loading, router]);
+
+  // Initialize Flutterwave at component level
+  const handleFlutterPayment = useFlutterwave(flutterConfig || {});
 
   const handleUpgradeToElite = async () => {
     if (!user) {
@@ -47,6 +51,8 @@ export default function UpgradePage() {
       });
 
       const paymentData = res.data.data;
+
+      // Set config for Flutterwave
       const config = {
         public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY!,
         tx_ref: paymentData.tx_ref,
@@ -83,13 +89,17 @@ export default function UpgradePage() {
           }
         },
         onclose: () => {
-          toast("Payment cancelled");
           setIsProcessing(false);
         },
       };
 
-      const handleFlutterPayment = useFlutterwave(config);
-      handleFlutterPayment();
+      // Update config and trigger payment
+      setFlutterConfig(config);
+
+      // Defer the payment call to next render cycle
+      setTimeout(() => {
+        handleFlutterPayment();
+      }, 100);
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Failed to initiate upgrade. Please try again."
