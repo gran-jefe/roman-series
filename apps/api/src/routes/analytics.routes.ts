@@ -1466,11 +1466,13 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       }
 
       // Get all completed sessions with question details
-      const { data: sessions } = await supabaseAdmin
+      const { data: sessions, error: sessionsError } = await supabaseAdmin
         .from("sessions")
         .select("id, user_id")
         .eq("user_id", user.id)
         .eq("completed", true);
+
+      console.log("[study-plan] Sessions:", sessions?.length || 0, "Error:", sessionsError);
 
       if (!sessions || sessions.length === 0) {
         res.json({
@@ -1482,10 +1484,12 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       }
 
       // Get session answers to calculate topic performance
-      const { data: answers } = await supabaseAdmin
+      const { data: answers, error: answersError } = await supabaseAdmin
         .from("session_answers")
         .select("session_id, is_correct, question_id")
         .in("session_id", sessions.map(s => s.id));
+
+      console.log("[study-plan] Answers:", answers?.length || 0, "Error:", answersError);
 
       if (!answers || answers.length === 0) {
         res.json({
@@ -1498,24 +1502,45 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
 
       // Get unique question IDs and fetch their topic info
       const questionIds = Array.from(new Set(answers.map(a => a.question_id)));
-      const { data: questions } = await supabaseAdmin
+      console.log("[study-plan] Question IDs:", questionIds.length);
+
+      const { data: questions, error: questionsError } = await supabaseAdmin
         .from("questions")
         .select("id, topic_id")
         .in("id", questionIds);
 
-      // Get topic names
-      const topicIds = Array.from(new Set(questions?.map(q => q.topic_id) || []));
-      const { data: topics } = await supabaseAdmin
-        .from("topics")
-        .select("id, name, subject_id")
-        .in("id", topicIds);
+      console.log("[study-plan] Questions:", questions?.length || 0, "Error:", questionsError);
 
-      // Get subject names
-      const subjectIds = Array.from(new Set(topics?.map(t => t.subject_id) || []));
-      const { data: subjects } = await supabaseAdmin
-        .from("subjects")
-        .select("id, name")
-        .in("id", subjectIds);
+      // Get topic names
+      const topicIds = Array.from(new Set(questions?.map(q => q.topic_id).filter(Boolean) || []));
+      console.log("[study-plan] Topic IDs:", topicIds.length);
+
+      let topics: any[] = [];
+      let subjects: any[] = [];
+
+      if (topicIds.length > 0) {
+        const { data: topicsData, error: topicsError } = await supabaseAdmin
+          .from("topics")
+          .select("id, name, subject_id")
+          .in("id", topicIds);
+
+        console.log("[study-plan] Topics:", topicsData?.length || 0, "Error:", topicsError);
+        topics = topicsData || [];
+
+        // Get subject names
+        const subjectIds = Array.from(new Set(topics?.map(t => t.subject_id).filter(Boolean) || []));
+        console.log("[study-plan] Subject IDs:", subjectIds.length);
+
+        if (subjectIds.length > 0) {
+          const { data: subjectsData, error: subjectsError } = await supabaseAdmin
+            .from("subjects")
+            .select("id, name")
+            .in("id", subjectIds);
+
+          console.log("[study-plan] Subjects:", subjectsData?.length || 0, "Error:", subjectsError);
+          subjects = subjectsData || [];
+        }
+      }
 
       // Build lookup maps
       const topicMap = new Map(topics?.map(t => [t.id, t]) || []);
