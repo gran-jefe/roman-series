@@ -843,7 +843,7 @@ export default function AnalyticsPage() {
                           setStudyPlanLoading(false);
                         }
                       }}
-                      disabled={studyPlanLoading || (nextPlanAvailable && nextPlanAvailable > new Date())}
+                      disabled={studyPlanLoading || (nextPlanAvailable ? nextPlanAvailable > new Date() : false)}
                       className="px-4 py-2 bg-forest text-white rounded text-sm font-medium hover:bg-opacity-90 transition disabled:opacity-50"
                     >
                       {studyPlanLoading ? "Generating..." : nextPlanAvailable && nextPlanAvailable > new Date() ? "Available next week" : "Generate Plan"}
