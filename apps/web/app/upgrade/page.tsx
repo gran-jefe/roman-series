@@ -134,7 +134,8 @@ export default function UpgradePage() {
             <div className="bg-gradient-to-br from-forest/5 to-transparent rounded-lg p-6 mb-8 border border-forest/20">
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  Your current plan: Scholar (₦3,500)
+                  Your current plan: Scholar (₦2,500){" "}
+                  <span className="text-xs text-ember font-semibold">PROMO</span>
                 </p>
                 <p className="text-sm text-gray-600 mb-1">
                   Elite plan regular price:{" "}
@@ -153,9 +154,9 @@ export default function UpgradePage() {
 
               <div className="bg-white rounded-lg p-4 mb-4 border-2 border-forest">
                 <p className="text-sm text-gray-600 mb-1">You&apos;ll pay today:</p>
-                <p className="text-5xl font-bold text-forest">₦0</p>
+                <p className="text-5xl font-bold text-forest">₦1,000</p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Same price - no additional cost!
+                  Difference between Scholar (₦2,500) and Elite (₦3,500) for 6 months
                 </p>
               </div>
 
@@ -170,7 +171,7 @@ export default function UpgradePage() {
               >
                 {isProcessing
                   ? "Processing..."
-                  : "Complete Upgrade (Free during Promo!)"}
+                  : "Complete Upgrade (₦1,000)"}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
@@ -239,8 +240,7 @@ export default function UpgradePage() {
                 Why only ₦1,000?
               </h4>
               <p className="text-gray-600 text-sm">
-                You&apos;re upgrading from Scholar (₦2,500) to Elite (₦3,500)
-                for the same 6-month period. You only pay the difference.
+                During our promo, you&apos;re upgrading from Scholar at the promo price (₦2,500) to Elite at the promo price (₦3,500) for the same 6-month period. You only pay the difference of ₦1,000.
               </p>
             </div>
             <div>
