@@ -22,7 +22,8 @@ export const metadata: Metadata = {
   title: "Roman Series — Post-UTME Past Questions",
   description: "Practice Post-UTME past questions for UI, OAU, UNILAG, ABU, FUTA and more. Timed practice, instant scoring, performance tracking.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
     apple: "/favicon.png",
   },
   openGraph: {
