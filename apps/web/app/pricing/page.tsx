@@ -141,9 +141,12 @@ export default function PricingPage() {
               });
               toast.success("Payment successful! Subscription activated.");
               // Refresh user profile to get updated subscription status
+              // Wait for refresh to complete before redirecting
               await refreshProfile();
-              setTimeout(() => router.push("/dashboard"), 1500);
-            } catch {
+              // Small delay to ensure UI updates, then redirect
+              setTimeout(() => router.push("/dashboard"), 500);
+            } catch (error) {
+              console.error("[Payment] Verification error:", error);
               toast.error(`Verification failed. Contact support with ref: ${tx_ref}`);
               setLoadingPlan(null);
             }

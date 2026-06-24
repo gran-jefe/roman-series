@@ -97,9 +97,12 @@ export default function UpgradePage() {
               });
               toast.success("Payment successful! Your subscription is now Elite.");
               // Refresh user profile to get updated subscription status
+              // Wait for refresh to complete before redirecting
               await refreshProfile();
-              setTimeout(() => router.push("/dashboard"), 1500);
-            } catch {
+              // Small delay to ensure UI updates, then redirect
+              setTimeout(() => router.push("/dashboard"), 500);
+            } catch (error) {
+              console.error("[Upgrade] Verification error:", error);
               toast.error(`Verification failed. Contact support with ref: ${paymentData.tx_ref}`);
               setIsProcessing(false);
             }
