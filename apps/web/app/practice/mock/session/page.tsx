@@ -363,8 +363,8 @@ export default function MockSessionPage() {
 
   return (
     <div className="min-h-screen bg-blush flex flex-col">
-      {/* Top Navigation Bar with Time */}
-      <div className="bg-navy text-white shadow-lg z-40">
+      {/* Top Navigation Bar with Time - Fixed */}
+      <div className="fixed top-0 left-0 right-0 bg-navy text-white shadow-lg z-40">
         <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <div className="min-w-0">
@@ -391,9 +391,10 @@ export default function MockSessionPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Content area - below navbar, above bottom nav */}
+      <div className="flex flex-1 mt-16 mb-20 overflow-hidden">
         {/* Sidebar - Question Navigation (Hidden on mobile, visible on lg) */}
-        <div className="hidden lg:flex lg:w-96 bg-white border-r border-gray-300 overflow-y-auto p-4 flex-col flex-shrink-0">
+        <div className="hidden lg:flex lg:w-72 bg-white border-r border-gray-300 overflow-y-auto p-4 flex-col flex-shrink-0">
           <div className="mb-4">
             <p className="text-sm font-bold text-navy mb-2">Progress</p>
             <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -443,8 +444,8 @@ export default function MockSessionPage() {
         {/* Main Content Area - Flex Column */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Sticky Subject Tab Bar - All Screen Sizes */}
-          <div className="sticky top-0 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide flex-shrink-0">
-          <div className="flex min-w-max">
+          <div className="sticky top-16 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide flex-shrink-0">
+            <div className="flex min-w-max">
             {subjects.map((subject: Subject, idx: number) => {
               const startQ = idx * questionsPerSubject;
               const endQ = startQ + questionsPerSubject;
@@ -523,7 +524,7 @@ export default function MockSessionPage() {
         </div>
 
         {/* Main Question Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20">
           <div className="max-w-2xl mx-auto">
             {/* Question */}
             <div className="mb-8 select-none">
@@ -561,11 +562,13 @@ export default function MockSessionPage() {
             </div>
           </div>
         </div>
+        {/* End of Main Column */}
       </div>
+      {/* End of Content Area */}</div>
 
-      {/* Bottom Navigation - Fixed/Sticky */}
-      <div className="fixed md:relative bottom-0 left-0 right-0 bg-white border-t border-gray-300 shadow-lg p-2 md:p-4 z-40">
-        <div className="max-w-7xl mx-auto flex gap-2 md:gap-4">
+      {/* Bottom Navigation - Fixed */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-2 md:p-4 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 md:gap-4">
           {/* Left Arrow (Mobile) */}
           <button
             onClick={handlePreviousQuestion}
@@ -626,12 +629,8 @@ export default function MockSessionPage() {
             </svg>
           </button>
         </div>
-        </div>
-        {/* End of Main Content Area Flex Column */}
       </div>
-
-      {/* Mobile spacing for fixed bottom nav */}
-      <div className="h-16 md:h-0" />
+      {/* End of Bottom Navigation */}
 
       {/* Time's Up Overlay */}
       {timeUp && (
