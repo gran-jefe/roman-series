@@ -28,6 +28,7 @@ export default function PracticeSessionPage() {
   // Refs for timer callback
   const answersRef = useRef(answers);
   const sessionIdRef = useRef(sessionId);
+  const questionsRef = useRef<StudentQuestion[]>([]);
 
   useEffect(() => {
     answersRef.current = answers;
@@ -36,6 +37,20 @@ export default function PracticeSessionPage() {
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
+
+  // Persist questions to sessionStorage (for use in submitSession)
+  useEffect(() => {
+    if (!sessionId || questions.length === 0) return;
+    sessionStorage.setItem(
+      `session_questions_${sessionId}`,
+      JSON.stringify(questions)
+    );
+    console.log('[Questions] Saved to sessionStorage:', questions.length);
+  }, [questions, sessionId]);
 
   // Persist answers to sessionStorage
   useEffect(() => {
@@ -292,7 +307,28 @@ export default function PracticeSessionPage() {
         Array.from(answersMap.entries()).filter(([, v]) => v !== null).length
       );
 
-      const answersPayload = questions.map((q) => ({
+      // Read questions from ref (not stale state)
+      let currentQuestions = questionsRef.current;
+
+      console.log('[Submit] Questions from ref:', currentQuestions.length);
+
+      if (currentQuestions.length === 0) {
+        // Fallback: read from sessionStorage
+        const savedQ = sessionStorage.getItem(
+          `session_questions_${sessionIdRef.current}`
+        );
+        if (savedQ) {
+          try {
+            const parsedQ = JSON.parse(savedQ);
+            console.log('[Submit] Questions from sessionStorage:', parsedQ.length);
+            currentQuestions = parsedQ;
+          } catch (e) {
+            console.error('[Submit] Failed to parse sessionStorage questions:', e);
+          }
+        }
+      }
+
+      const answersPayload = currentQuestions.map((q) => ({
         question_id: q.id,
         selected_option_id: answersMap.get(q.id) ?? null,
         time_spent_seconds: questionTimes.current.get(q.id) ?? null,
