@@ -710,6 +710,14 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { id } = req.params;
       const { answers, time_taken_seconds } = req.body;
 
+      // Debug logs - START
+      console.log('[Submit] Session ID:', id);
+      console.log('[Submit] Body keys:', Object.keys(req.body));
+      console.log('[Submit] Answers received:', answers?.length);
+      console.log('[Submit] First answer:', JSON.stringify(answers?.[0]));
+      console.log('[Submit] Answers with selection:', answers?.filter((a: any) => a.selected_option_id !== null).length);
+      // Debug logs - END
+
       const { data: session, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .select("*")
@@ -761,6 +769,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           time_spent_seconds: a.time_spent_seconds ?? null,
         };
       });
+
+      // Debug logs - SCORE
+      console.log('[Submit] Calculated score:', score);
+      console.log('[Submit] Total questions:', answers.length);
 
       const { error: insertError } = await supabaseAdmin
         .from("session_answers")

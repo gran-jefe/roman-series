@@ -39,13 +39,13 @@ export default function PricingPage() {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isLaunch, setIsLaunch] = useState(true);
 
-  // Countdown to launch (June 27, 2026) or promo (7 days after launch)
+  // Countdown to launch (June 27, 2026) or discount (7 days after launch)
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
       const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
-      const promoEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
-      promoEnd.setHours(23, 59, 59, 999);
+      const discountEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
+      discountEnd.setHours(23, 59, 59, 999);
 
       let targetDate: Date;
       let launchMode: boolean;
@@ -54,12 +54,12 @@ export default function PricingPage() {
         // Still countdown to launch
         targetDate = launchDate;
         launchMode = true;
-      } else if (now < promoEnd) {
-        // Countdown to end of promo
-        targetDate = promoEnd;
+      } else if (now < discountEnd) {
+        // Countdown to end of discount
+        targetDate = discountEnd;
         launchMode = false;
       } else {
-        // Promo ended
+        // Discount ended
         setTimeLeft("");
         return;
       }
@@ -282,10 +282,10 @@ export default function PricingPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
-        {/* Launch/Promo Banner */}
+        {/* Launch/Discount Banner */}
         {timeLeft && (
           <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
-            <p className="font-semibold">{isLaunch ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time promo pricing available"}</p>
+            <p className="font-semibold">{isLaunch ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time discount pricing available"}</p>
             <p className="text-sm mt-1">{isLaunch ? "Launching in: " : "Ends in: "}{timeLeft}</p>
           </div>
         )}
@@ -332,7 +332,7 @@ export default function PricingPage() {
                           {plan.originalPrice}
                         </span>
                         <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
-                          PROMO
+                          DISCOUNT
                         </span>
                       </>
                     )}

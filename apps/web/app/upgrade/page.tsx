@@ -226,7 +226,7 @@ export default function UpgradePage() {
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
                   Your current plan: Scholar (₦2,500){" "}
-                  <span className="text-xs text-ember font-semibold">PROMO</span>
+                  <span className="text-xs text-ember font-semibold">DISCOUNT</span>
                 </p>
                 <p className="text-sm text-gray-600 mb-1">
                   Elite plan regular price:{" "}
@@ -234,11 +234,11 @@ export default function UpgradePage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-gray-600">
-                    Elite plan promo price:{" "}
+                    Elite plan discount price:{" "}
                     <span className="font-bold text-forest">₦3,500</span>
                   </p>
                   <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
-                    PROMO
+                    DISCOUNT
                   </span>
                 </div>
               </div>
@@ -331,7 +331,7 @@ export default function UpgradePage() {
                 Why only ₦1,000?
               </h4>
               <p className="text-gray-600 text-sm">
-                During our promo, you&apos;re upgrading from Scholar at the promo price (₦2,500) to Elite at the promo price (₦3,500) for the same 6-month period. You only pay the difference of ₦1,000.
+                During our discount, you&apos;re upgrading from Scholar at the discount price (₦2,500) to Elite at the discount price (₦3,500) for the same 6-month period. You only pay the difference of ₦1,000.
               </p>
             </div>
             <div>

@@ -24,13 +24,13 @@ export default function LandingPage() {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [currentTestimonialIdx, setCurrentTestimonialIdx] = useState(0);
 
-  // Countdown to launch (June 27, 2026) or promo (7 days after launch)
+  // Countdown to launch (June 27, 2026) or discount (7 days after launch)
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
       const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
-      const promoEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
-      promoEnd.setHours(23, 59, 59, 999);
+      const discountEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
+      discountEnd.setHours(23, 59, 59, 999);
 
       let targetDate: Date;
       let label: string;
@@ -39,13 +39,13 @@ export default function LandingPage() {
         // Still countdown to launch
         targetDate = launchDate;
         label = "launch";
-      } else if (now < promoEnd) {
-        // Countdown to end of promo
-        targetDate = promoEnd;
-        label = "promo";
+      } else if (now < discountEnd) {
+        // Countdown to end of discount
+        targetDate = discountEnd;
+        label = "discount";
       } else {
-        // Promo ended
-        setTimeLeft(""); // Don't show countdown banner after promo ends
+        // Discount ended
+        setTimeLeft(""); // Don't show countdown banner after discount ends
         return;
       }
 
@@ -54,7 +54,7 @@ export default function LandingPage() {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setTimeLeft(`${label === "launch" ? "Launching in" : "Promo ends in"}: ${days}d ${hours}h ${minutes}m`);
+        setTimeLeft(`${label === "launch" ? "Launching in" : "Discount ends in"}: ${days}d ${hours}h ${minutes}m`);
       }
     };
 
@@ -515,14 +515,14 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight tracking-tight">
-            Master Post-UTME,<br />
+            Ace Post-UTME,<br />
             <span className="bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent">
               Secure Your Admission
             </span>
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
-            Practice with 1000+ authentic past questions from Nigeria's top universities.
+            Practice with 1000+ authentic past questions from Nigeria&apos;s top universities.
             Get real-time analytics, AI-powered insights, and predictive scoring to guarantee your success.
           </p>
 
@@ -668,7 +668,7 @@ export default function LandingPage() {
               Top Nigerian Universities
             </h2>
             <p className="text-gray-600 text-lg">
-              Practice with questions from universities you're applying to
+              Practice with questions from universities you&apos;re applying to
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
@@ -776,7 +776,7 @@ export default function LandingPage() {
       <section id="pricing" className="bg-gray-50 py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="mb-12 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
-            <p className="text-amber-900 font-semibold">🎉 Launch Week Special! Limited-time promo pricing available</p>
+            <p className="text-amber-900 font-semibold">🎉 Launch Week Special! Limited-time discount pricing available</p>
             {timeLeft && <p className="text-sm text-amber-800 mt-1">Ends in: {timeLeft}</p>}
           </div>
           <div className="text-center mb-16">
@@ -820,7 +820,7 @@ export default function LandingPage() {
                             {plan.originalPrice}
                           </span>
                           <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
-                            PROMO
+                            DISCOUNT
                           </span>
                         </>
                       )}

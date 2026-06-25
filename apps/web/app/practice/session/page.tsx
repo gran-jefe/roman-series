@@ -92,7 +92,7 @@ export default function PracticeSessionPage() {
 
       setQuestions(questionsData);
 
-      const calcTotalTime = questionsData.length * 60; // 1 minute per question
+      const calcTotalTime = questionsData.length * 20; // 20 seconds per question (temp for testing)
       setTotalTime(calcTotalTime);
 
       // Restore answers
