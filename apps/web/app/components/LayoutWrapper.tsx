@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,10 +18,25 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [subscription, setSubscription] = useState<{ subscription_status: string } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [menuOpen]);
 
   useEffect(() => {
     const fetchSubscription = async () => {
@@ -83,7 +98,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                 {subscription?.subscription_status === "elite" && <span>⭐</span>}
                 {subscriptionBadge.label}
               </span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 relative" ref={menuRef}>
                 <div className="w-8 h-8 rounded-full bg-forest flex items-center justify-center text-xs font-bold text-white">
                   {profile?.full_name?.split(" ").map(n => n[0]).join("") || "U"}
                 </div>
