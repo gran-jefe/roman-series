@@ -314,7 +314,7 @@ export default function PracticeResultsPage() {
                     } else {
                       return (
                         <p className="text-red-700 font-medium">
-                          Focus on practicing ({percentage}%) to improve your score.
+                          Focus on practicing more to improve your score.
                         </p>
                       );
                     }
@@ -332,19 +332,19 @@ export default function PracticeResultsPage() {
                         if (diff > 0) {
                           return (
                             <p className="text-sm text-gray-600">
-                              {diff.toFixed(0)}% above the subject average ({subjectAvg.toFixed(0)}%)
+                             You are {diff.toFixed(0)}% above the subject average ({subjectAvg.toFixed(0)}%)
                             </p>
                           );
                         } else if (diff < 0) {
                           return (
                             <p className="text-sm text-gray-600">
-                              {Math.abs(diff).toFixed(0)}% below the subject average ({subjectAvg.toFixed(0)}%)
+                             You are {Math.abs(diff).toFixed(0)}% below the subject average ({subjectAvg.toFixed(0)}%)
                             </p>
                           );
                         } else {
                           return (
                             <p className="text-sm text-gray-600">
-                              On par with the subject average ({subjectAvg.toFixed(0)}%)
+                             You are on par with the subject average ({subjectAvg.toFixed(0)}%)
                             </p>
                           );
                         }
