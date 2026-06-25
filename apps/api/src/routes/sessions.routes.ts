@@ -1026,7 +1026,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Check mock exam access based on subscription tier
       const planId = profile.subscription_status;
 
-      // Explorer: max 2 mock exams lifetime
+      // Explorer: max 1 mock exam lifetime
       if (planId === "explorer") {
         const { data: completedMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
@@ -1035,10 +1035,10 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           .eq("is_mock", true)
           .eq("completed", true);
 
-        if (!mockError && completedMocks && completedMocks.length >= 2) {
+        if (!mockError && completedMocks && completedMocks.length >= 1) {
           res.status(402).json({
             status: "error",
-            message: "Mock exam limit reached. You've used your 2 free mock exams. Upgrade to Scholar or Elite to practice more mocks.",
+            message: "Mock exam limit reached. You've used your 1 free mock exam. Upgrade to Scholar or Elite to practice more mocks.",
             timestamp: new Date().toISOString(),
           });
           return;
