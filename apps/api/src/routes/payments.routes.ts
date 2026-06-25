@@ -75,54 +75,61 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         .eq("id", user.id)
         .single();
 
-      try {
-        // Insert subscription record with pending status
-        await supabaseAdmin.from("subscriptions").insert({
+      // INSERT subscription record FIRST before returning
+      const { data: newSub, error: insertError } = await supabaseAdmin
+        .from("subscriptions")
+        .insert({
           user_id: user.id,
           plan,
           status: "pending",
-          paystack_reference: tx_ref, // Keep column name for now to avoid schema change
+          paystack_reference: tx_ref,
           amount: amountInKobo,
-        });
+        })
+        .select()
+        .single();
 
-        // Return Flutterwave payment config
-        const paymentConfig = {
-          tx_ref,
-          amount: amountInNaira,
-          currency: "NGN",
-          redirect_url: `${webUrl}/payments/success`,
-          customer: {
-            email: user.email,
-            name: profile?.full_name || "Roman Series Student",
-          },
-          customizations: {
-            title: "Roman Series",
-            description: `${plan} subscription`,
-            logo: "https://romanseries.com.ng/logo.png",
-          },
-          payment_options: "card,banktransfer,ussd,opay",
-        };
-
-        res.json({
-          status: "success",
-          data: {
-            tx_ref: paymentConfig.tx_ref,
-            amount: paymentConfig.amount,
-            currency: paymentConfig.currency,
-            customer: paymentConfig.customer,
-            customizations: paymentConfig.customizations,
-            payment_options: paymentConfig.payment_options,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error("Flutterwave error:", error);
+      if (insertError) {
+        console.error("[Initiate] Failed to create subscription:", insertError);
         res.status(500).json({
           status: "error",
-          message: "Failed to initialize payment",
+          message: "Failed to initiate payment",
           timestamp: new Date().toISOString(),
         });
+        return;
       }
+
+      console.log("[Initiate] Subscription created:", newSub?.id, "tx_ref:", tx_ref);
+
+      // Return Flutterwave payment config
+      const paymentConfig = {
+        tx_ref,
+        amount: amountInNaira,
+        currency: "NGN",
+        redirect_url: `${webUrl}/payments/success`,
+        customer: {
+          email: user.email,
+          name: profile?.full_name || "Roman Series Student",
+        },
+        customizations: {
+          title: "Roman Series",
+          description: `${plan} subscription`,
+          logo: "https://romanseries.com.ng/logo.png",
+        },
+        payment_options: "card,banktransfer,ussd,opay",
+      };
+
+      res.json({
+        status: "success",
+        data: {
+          tx_ref: paymentConfig.tx_ref,
+          amount: paymentConfig.amount,
+          currency: paymentConfig.currency,
+          customer: paymentConfig.customer,
+          customizations: paymentConfig.customizations,
+          payment_options: paymentConfig.payment_options,
+        },
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       console.error("[payments/initiate] Error:", error);
       res.status(500).json({
@@ -174,11 +181,17 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       }
 
       // Find subscription by tx_ref
+      console.log("[Verify] Looking for tx_ref:", tx_ref);
       const { data: subscription, error: subFindError } = await supabaseAdmin
         .from("subscriptions")
         .select("user_id, plan, status")
         .eq("paystack_reference", tx_ref)
         .single();
+
+      console.log("[Verify] Subscription found:", !!subscription);
+      if (subFindError) {
+        console.error("[Verify] Error finding subscription:", subFindError);
+      }
 
       if (subFindError || !subscription) {
         return res.status(404).json({
@@ -439,57 +452,64 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         .eq("id", user.id)
         .single();
 
-      try {
-        // Record the pending upgrade
-        await supabaseAdmin.from("subscriptions").insert({
+      // Record the pending upgrade
+      const { data: newUpgrade, error: upgradeError } = await supabaseAdmin
+        .from("subscriptions")
+        .insert({
           user_id: user.id,
           plan: target_plan,
           amount: upgradeDifference,
           upgraded_from: profile.subscription_status,
           status: "pending",
           paystack_reference: tx_ref,
-        });
+        })
+        .select()
+        .single();
 
-        // Return Flutterwave payment config
-        const paymentConfig = {
-          tx_ref,
-          amount: amountInNaira,
-          currency: "NGN",
-          redirect_url: `${webUrl}/payments/success`,
-          customer: {
-            email: user.email,
-            name: userProfile?.full_name || "Roman Series Student",
-          },
-          customizations: {
-            title: "Roman Series",
-            description: `Upgrade to ${target_plan}`,
-          },
-          payment_options: "card,banktransfer,ussd,opay",
-        };
-
-        res.json({
-          status: "success",
-          data: {
-            tx_ref: paymentConfig.tx_ref,
-            amount: paymentConfig.amount,
-            currency: paymentConfig.currency,
-            customer: paymentConfig.customer,
-            customizations: paymentConfig.customizations,
-            payment_options: paymentConfig.payment_options,
-            upgrade_cost: upgradeDifference,
-            from_plan: profile.subscription_status,
-            to_plan: target_plan,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error("Flutterwave error:", error);
+      if (upgradeError) {
+        console.error("[Upgrade] Failed to create subscription:", upgradeError);
         res.status(500).json({
           status: "error",
-          message: "Failed to initialize payment",
+          message: "Failed to initiate payment",
           timestamp: new Date().toISOString(),
         });
+        return;
       }
+
+      console.log("[Upgrade] Subscription created:", newUpgrade?.id, "tx_ref:", tx_ref);
+
+      // Return Flutterwave payment config
+      const paymentConfig = {
+        tx_ref,
+        amount: amountInNaira,
+        currency: "NGN",
+        redirect_url: `${webUrl}/payments/success`,
+        customer: {
+          email: user.email,
+          name: userProfile?.full_name || "Roman Series Student",
+        },
+        customizations: {
+          title: "Roman Series",
+          description: `Upgrade to ${target_plan}`,
+        },
+        payment_options: "card,banktransfer,ussd,opay",
+      };
+
+      res.json({
+        status: "success",
+        data: {
+          tx_ref: paymentConfig.tx_ref,
+          amount: paymentConfig.amount,
+          currency: paymentConfig.currency,
+          customer: paymentConfig.customer,
+          customizations: paymentConfig.customizations,
+          payment_options: paymentConfig.payment_options,
+          upgrade_cost: upgradeDifference,
+          from_plan: profile.subscription_status,
+          to_plan: target_plan,
+        },
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       console.error("[payments/upgrade] Error:", error);
       res.status(500).json({
