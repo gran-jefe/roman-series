@@ -159,7 +159,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         }
       }
 
-      // Calculate avg score by subject
+      // Calculate avg score by subject (used as fallback when topic data is empty)
       const subjectMap = new Map<string, { scores: number[]; total: number }>();
       sessions.forEach((s: any) => {
         if (!s.subject_id) return;
@@ -194,6 +194,10 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         ),
         sessions_count: data.total,
       }));
+
+      if (subjectMap.size > 0) {
+        console.log("[analytics/overview] Subject-level averages computed - fallback for when topic data is empty");
+      }
 
       // Calculate speed_by_subject for Scholar+ (empty array for Explorer)
       let speedBySubject: any[] = [];
@@ -376,39 +380,88 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         }
       >();
 
+      const subjectStats = new Map<
+        string,
+        {
+          subject: any;
+          total_answered: number;
+          correct: number;
+          session_ids: Set<string>;
+        }
+      >();
+
       answers.forEach((answer: any) => {
         const question = questionMap.get(answer.question_id);
-        if (!question?.topic_id) return;
+        if (!question) return;
 
-        const topicId = question.topic_id;
-        const existing = topicStats.get(topicId) || {
-          topic: topicMap.get(topicId),
-          subject: subjectMap.get(topicMap.get(topicId)?.subject_id),
-          total_answered: 0,
-          correct: 0,
-          session_ids: new Set(),
-        };
+        // Try to group by topic first
+        if (question.topic_id) {
+          const topicId = question.topic_id;
+          const existing = topicStats.get(topicId) || {
+            topic: topicMap.get(topicId),
+            subject: subjectMap.get(topicMap.get(topicId)?.subject_id),
+            total_answered: 0,
+            correct: 0,
+            session_ids: new Set(),
+          };
 
-        existing.total_answered++;
-        if (answer.is_correct) existing.correct++;
-        existing.session_ids.add(answer.sessions.id);
+          existing.total_answered++;
+          if (answer.is_correct) existing.correct++;
+          existing.session_ids.add(answer.sessions.id);
 
-        topicStats.set(topicId, existing);
+          topicStats.set(topicId, existing);
+        } else {
+          // Fallback: group by subject when topic_id is null
+          const subjectId = question.subject_id;
+          if (subjectId) {
+            const existing = subjectStats.get(subjectId) || {
+              subject: subjectMap.get(subjectId) || { id: subjectId, name: "Unknown", colour_token: "#666666" },
+              total_answered: 0,
+              correct: 0,
+              session_ids: new Set(),
+            };
+
+            existing.total_answered++;
+            if (answer.is_correct) existing.correct++;
+            existing.session_ids.add(answer.sessions.id);
+
+            subjectStats.set(subjectId, existing);
+          }
+        }
       });
 
-      // Build response
-      const topicPerformances: TopicPerformance[] = Array.from(topicStats.entries())
-        .map(([topicId, data]) => ({
-          topic_id: topicId,
-          topic_name: data.topic?.name || "Unknown",
-          subject_name: data.subject?.name || "Unknown",
-          subject_colour_token: data.subject?.colour_token || "#666666",
-          total_answered: data.total_answered,
-          correct: data.correct,
-          avg_percentage: Math.round((data.correct / data.total_answered) * 100),
-          sessions_count: data.session_ids.size,
-        }))
-        .sort((a, b) => b.avg_percentage - a.avg_percentage); // Sort by score desc
+      // Build response - use topic data if available, else fall back to subject data
+      let topicPerformances: TopicPerformance[];
+
+      if (topicStats.size > 0) {
+        topicPerformances = Array.from(topicStats.entries())
+          .map(([topicId, data]) => ({
+            topic_id: topicId,
+            topic_name: data.topic?.name || "Unknown",
+            subject_name: data.subject?.name || "Unknown",
+            subject_colour_token: data.subject?.colour_token || "#666666",
+            total_answered: data.total_answered,
+            correct: data.correct,
+            avg_percentage: Math.round((data.correct / data.total_answered) * 100),
+            sessions_count: data.session_ids.size,
+          }))
+          .sort((a, b) => b.avg_percentage - a.avg_percentage); // Sort by score desc
+      } else {
+        // Fallback to subject-level performance when no topics available
+        console.log("[analytics/topics] No topic data found, using subject-level fallback");
+        topicPerformances = Array.from(subjectStats.entries())
+          .map(([subjectId, data]) => ({
+            topic_id: subjectId,
+            topic_name: data.subject?.name || "Unknown",
+            subject_name: data.subject?.name || "Unknown",
+            subject_colour_token: data.subject?.colour_token || "#666666",
+            total_answered: data.total_answered,
+            correct: data.correct,
+            avg_percentage: Math.round((data.correct / data.total_answered) * 100),
+            sessions_count: data.session_ids.size,
+          }))
+          .sort((a, b) => b.avg_percentage - a.avg_percentage); // Sort by score desc
+      }
 
       res.json({
         status: "success",
