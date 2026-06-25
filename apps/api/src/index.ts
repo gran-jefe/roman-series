@@ -20,6 +20,7 @@ import { registerAnalyticsRoutes } from "./routes/analytics.routes";
 import { registerFlaggingRoutes } from "./routes/flagging.routes";
 import { registerPlansRoutes } from "./routes/plans";
 import { registerRecalledQuestionsRoutes } from "./routes/recalled-questions.routes";
+import { registerFeedbackRoutes } from "./routes/feedback.routes";
 
 dotenv.config();
 
@@ -169,6 +170,8 @@ registerFlaggingRoutes(app, { supabaseAdmin });
 registerPlansRoutes(app, { supabaseAdmin });
 
 registerRecalledQuestionsRoutes(app, { supabaseAdmin });
+
+registerFeedbackRoutes(app, { supabaseAdmin });
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)

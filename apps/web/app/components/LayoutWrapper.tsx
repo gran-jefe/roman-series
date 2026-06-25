@@ -203,6 +203,14 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                     </svg>
                     Profile
                   </a>
+                  <a
+                    href="/feedback"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="text-lg">💬</span>
+                    Feedback
+                  </a>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
