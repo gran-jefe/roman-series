@@ -14,12 +14,22 @@ const openFlutterwaveModal = (config: any) => {
   const scriptId = "flutterwave-inline-script";
 
   const initPayment = () => {
-    if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
-      (window as any).FlutterwaveCheckout(config);
+    try {
+      if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
+        (window as any).FlutterwaveCheckout(config);
+      } else {
+        console.error("[FLW] FlutterwaveCheckout not available on window");
+        toast.error("Payment system failed to load. Please refresh and try again.");
+      }
+    } catch (err) {
+      console.error("[FLW] FlutterwaveCheckout error:", err);
+      toast.error("Payment failed to open. Please try again.");
     }
   };
 
-  if (document.getElementById(scriptId)) {
+  const existingScript = document.getElementById(scriptId);
+  if (existingScript) {
+    // Script already loaded — call directly
     initPayment();
     return;
   }
@@ -27,7 +37,15 @@ const openFlutterwaveModal = (config: any) => {
   const script = document.createElement("script");
   script.id = scriptId;
   script.src = "https://checkout.flutterwave.com/v3.js";
-  script.onload = initPayment;
+  script.async = true;
+  script.onload = () => {
+    console.log("[FLW] Script loaded successfully");
+    initPayment();
+  };
+  script.onerror = () => {
+    console.error("[FLW] Failed to load Flutterwave script");
+    toast.error("Payment system unavailable. Check your connection.");
+  };
   document.body.appendChild(script);
 };
 
@@ -62,6 +80,20 @@ export default function UpgradePage() {
     setError("");
 
     try {
+      // Check if public key is available
+      console.log(
+        "[FLW] Public key available:",
+        !!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY
+      );
+
+      if (!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY) {
+        toast.error(
+          "Payment configuration error: Flutterwave public key not configured"
+        );
+        setIsProcessing(false);
+        return;
+      }
+
       // Call backend to create subscription record and get tx_ref
       const res = await api.post("/api/payments/upgrade", {
         target_plan: "elite",
@@ -71,7 +103,7 @@ export default function UpgradePage() {
 
       // Configure Flutterwave
       const config = {
-        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY!,
+        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY,
         tx_ref: paymentData.tx_ref,
         amount: paymentData.amount,
         currency: "NGN",
@@ -115,11 +147,32 @@ export default function UpgradePage() {
         },
       };
 
+      // Validate config before opening modal
+      if (!config.public_key) {
+        toast.error("Payment configuration error: missing public key");
+        setIsProcessing(false);
+        return;
+      }
+      if (!config.customer.email) {
+        toast.error("Please log in to make a payment");
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log("[FLW] Opening modal with config:", {
+        public_key: config.public_key.substring(0, 20) + "...",
+        tx_ref: config.tx_ref,
+        amount: config.amount,
+        customer_email: config.customer.email,
+      });
+
       // Open Flutterwave modal using direct script
       openFlutterwaveModal(config);
       setIsProcessing(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to initiate upgrade. Please try again.");
+      setError(
+        err.response?.data?.message || "Failed to initiate upgrade. Please try again."
+      );
       setIsProcessing(false);
     }
   };

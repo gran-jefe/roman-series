@@ -117,10 +117,9 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                   </svg>
                   <span className="text-xs font-semibold">Menu</span>
                 </button>
-              </div>
 
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A2F45] rounded-lg shadow-xl z-50">
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A2F45] rounded-lg shadow-xl z-50">
                   <a
                     href="/dashboard"
                     className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
@@ -217,7 +216,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                     Logout
                   </button>
                 </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </nav>
