@@ -21,7 +21,13 @@ export default function PaymentSuccessPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!transaction_id || !tx_ref) {
+    if (status === "cancelled") {
+      setError("Payment was cancelled");
+      setVerifying(false);
+      return;
+    }
+
+    if (status !== "successful" || !transaction_id || !tx_ref) {
       setError("No payment reference found");
       setVerifying(false);
       return;
@@ -33,7 +39,7 @@ export default function PaymentSuccessPage() {
           transaction_id,
           tx_ref,
         });
-        if (res.data.data?.success) {
+        if (res.data.status === "success") {
           setSuccess(true);
           // Refresh user profile to get updated subscription status
           await restoreSession();
@@ -42,7 +48,7 @@ export default function PaymentSuccessPage() {
             router.push("/dashboard");
           }, 2000);
         } else {
-          setError("Payment verification failed");
+          setError(res.data.message || "Payment verification failed");
         }
       } catch (err: any) {
         setError(
@@ -54,7 +60,7 @@ export default function PaymentSuccessPage() {
     };
 
     verifyPayment();
-  }, [transaction_id, tx_ref, router, restoreSession]);
+  }, [transaction_id, tx_ref, status, router, restoreSession]);
 
   if (verifying) {
     return (

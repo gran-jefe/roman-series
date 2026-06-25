@@ -34,7 +34,7 @@ const openFlutterwaveModal = (config: any) => {
 export default function UpgradePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading, refreshProfile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
 
@@ -86,48 +86,27 @@ export default function UpgradePage() {
           logo: "https://romanseries.com.ng/logo.png",
         },
         callback: async (response: any) => {
-          console.log("[FLW] Upgrade response:", response);
-          console.log("[FLW] Payment status:", response.status);
-          console.log("[FLW] Transaction ID:", response.transaction_id);
-          console.log("[FLW] Tx Ref:", response.tx_ref);
-
-          if (response.status === "successful" || response.charge_response_code === "00") {
+          if (
+            response.status === "successful" ||
+            response.charge_response_code === "00"
+          ) {
             try {
-              console.log("[FLW] Calling verify endpoint for upgrade...");
-              const verifyRes = await api.post("/api/payments/verify", {
+              await api.post("/api/payments/verify", {
                 transaction_id: response.transaction_id,
                 tx_ref: response.tx_ref,
               });
-              console.log("[FLW] Verify response:", verifyRes.data);
-
-              if (verifyRes.data.status === "success") {
-                console.log("[FLW] Verify succeeded, plan:", verifyRes.data.data.plan);
-                toast.success("Payment successful! Your subscription is now Elite.");
-
-                // Refresh user profile to get updated subscription status
-                console.log("[FLW] Refreshing profile...");
-                await refreshProfile();
-                console.log("[FLW] Profile refreshed");
-
-                // Redirect to dashboard
-                setTimeout(() => {
-                  console.log("[FLW] Redirecting to dashboard");
-                  router.push("/dashboard");
-                }, 500);
-              } else {
-                throw new Error(
-                  verifyRes.data.message || "Verification returned false"
-                );
-              }
-            } catch (error) {
-              console.error("[FLW] Verification error:", error);
+              toast.success("Payment successful! Upgrading your account...");
+              setTimeout(() => {
+                window.location.href = "/dashboard";
+              }, 2000);
+            } catch (err: any) {
               toast.error(
-                `Verification failed. Contact support with ref: ${paymentData.tx_ref}`
+                err?.response?.data?.message ||
+                  "Payment received but upgrade failed. Contact support."
               );
-              setIsProcessing(false);
             }
           } else {
-            toast.error("Payment was not completed. Please try again.");
+            toast.error("Payment was not completed");
             setIsProcessing(false);
           }
         },

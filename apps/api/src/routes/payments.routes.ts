@@ -134,163 +134,139 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   });
 
   app.post("/api/payments/verify", async (req: Request, res: Response) => {
-    try {
-      const { transaction_id, tx_ref } = req.body;
+    const { transaction_id, tx_ref } = req.body;
 
-      console.log("[Verify] Starting verification");
-      console.log("[Verify] transaction_id:", transaction_id);
-      console.log("[Verify] tx_ref:", tx_ref);
-
-      if (!transaction_id || !tx_ref) {
-        res.status(400).json({
-          status: "error",
-          message: "Missing transaction_id or tx_ref",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      try {
-        // Verify transaction with Flutterwave
-        const flutterwave = getFlutterwave();
-        if (!flutterwave) {
-          res.status(500).json({
-            status: "error",
-            message: "Flutterwave not configured - missing API keys",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
-
-        const response = await flutterwave.Transaction.verify({ id: transaction_id });
-        console.log("[Verify] FLW response status:", response.data?.status);
-        console.log("[Verify] FLW response tx_ref:", response.data?.tx_ref);
-        console.log("[Verify] FLW response amount:", response.data?.amount);
-
-        if (response.data.status === "successful" && response.data.tx_ref === tx_ref) {
-          // Look up subscription by tx_ref to get user_id and plan
-          const { data: subscription, error: subSelectError } = await supabaseAdmin
-            .from("subscriptions")
-            .select("user_id, plan")
-            .eq("paystack_reference", tx_ref)
-            .single();
-
-          if (subSelectError || !subscription) {
-            console.log("[Verify] No subscription found for tx_ref:", tx_ref);
-            console.log("[Verify] Subscription select error:", subSelectError);
-            res.status(404).json({
-              status: "error",
-              message: "Subscription not found",
-              timestamp: new Date().toISOString(),
-            });
-            return;
-          }
-
-          const userId = subscription.user_id;
-          const plan = subscription.plan;
-
-          console.log("[Verify] Found subscription - userId:", userId, "plan:", plan);
-
-          // Calculate expiry date (6 months)
-          const durationDays = 180;
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + durationDays);
-
-          // Update subscription status
-          const { error: subError } = await supabaseAdmin
-            .from("subscriptions")
-            .update({
-              status: "active",
-              expires_at: expiresAt.toISOString(),
-            })
-            .eq("paystack_reference", tx_ref);
-
-          console.log("[Verify] Subscription update result:", subError);
-
-          if (subError) {
-            throw new Error(`Failed to update subscription: ${subError.message}`);
-          }
-
-          // Update profile with new subscription status
-          const { error: profileError } = await supabaseAdmin
-            .from("profiles")
-            .update({
-              subscription_status: plan,
-              subscription_expires_at: expiresAt.toISOString(),
-            })
-            .eq("id", userId);
-
-          console.log("[Verify] Profile update result:", profileError);
-          console.log("[Verify] Updated user_id:", userId);
-
-          if (profileError) {
-            throw new Error(`Failed to update profile: ${profileError.message}`);
-          }
-
-          res.json({
-            status: "success",
-            data: { success: true, plan },
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          res.status(400).json({
-            status: "error",
-            message: "Payment verification failed",
-            timestamp: new Date().toISOString(),
-          });
-        }
-      } catch (flwError) {
-        console.error("[Verify] Flutterwave verification error:", flwError);
-        res.status(500).json({
-          status: "error",
-          message: "Failed to verify payment",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (error) {
-      console.error("[Verify] Error:", error);
-      res.status(500).json({
+    if (!transaction_id || !tx_ref) {
+      return res.status(400).json({
         status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
+        message: "transaction_id and tx_ref are required",
+      });
+    }
+
+    try {
+      const flutterwave = getFlutterwave();
+      if (!flutterwave) {
+        return res.status(500).json({
+          status: "error",
+          message: "Flutterwave not configured",
+        });
+      }
+
+      // Verify with Flutterwave
+      const flwResponse = await flutterwave.Transaction.verify({
+        id: String(transaction_id),
+      });
+
+      console.log("[Verify] FLW response:", flwResponse?.data?.status);
+
+      if (flwResponse?.data?.status !== "successful") {
+        return res.status(400).json({
+          status: "error",
+          message: "Transaction not successful",
+        });
+      }
+
+      if (flwResponse.data.tx_ref !== tx_ref) {
+        return res.status(400).json({
+          status: "error",
+          message: "Transaction reference mismatch",
+        });
+      }
+
+      // Find subscription by tx_ref
+      const { data: subscription, error: subFindError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan, status")
+        .eq("paystack_reference", tx_ref)
+        .single();
+
+      if (subFindError || !subscription) {
+        return res.status(404).json({
+          status: "error",
+          message: "Subscription record not found for this transaction",
+        });
+      }
+
+      // Already processed
+      if (subscription.status === "active") {
+        return res.json({
+          status: "success",
+          data: { plan: subscription.plan, already_active: true },
+        });
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 180);
+
+      // Update subscription status
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          status: "active",
+          expires_at: expiresAt.toISOString(),
+        })
+        .eq("paystack_reference", tx_ref);
+
+      // Update profile subscription status
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: subscription.plan,
+          subscription_expires_at: expiresAt.toISOString(),
+        })
+        .eq("id", subscription.user_id);
+
+      if (profileError) {
+        console.error("[Verify] Profile update failed:", profileError);
+        return res.status(500).json({
+          status: "error",
+          message:
+            "Payment received but profile update failed. Contact support.",
+        });
+      }
+
+      return res.json({
+        status: "success",
+        data: {
+          plan: subscription.plan,
+          expires_at: expiresAt.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("[Verify] Error:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Verification failed: " + error.message,
       });
     }
   });
 
   app.post("/api/payments/webhook", async (req: Request, res: Response) => {
-    try {
-      // Verify webhook signature
-      const hash = req.headers["verif-hash"] as string;
+    const secretHash = process.env.FLW_WEBHOOK_HASH;
+    const signature = req.headers["verif-hash"];
 
-      if (!hash || hash !== (flwWebhookHash || process.env.FLW_WEBHOOK_HASH)) {
-        res.status(401).json({ error: "Unauthorized" });
-        return;
-      }
+    if (signature !== secretHash) {
+      return res.status(401).send("Unauthorized");
+    }
 
-      const { event, data } = req.body;
+    const payload = req.body;
 
-      if (event === "charge.completed" && data.status === "successful") {
-        const { tx_ref } = data;
+    if (
+      payload.event === "charge.completed" &&
+      payload.data?.status === "successful"
+    ) {
+      const { tx_ref, id: transaction_id } = payload.data;
 
-        try {
-          // Get subscription record
-          const { data: subscription } = await supabaseAdmin
-            .from("subscriptions")
-            .select("user_id, plan")
-            .eq("paystack_reference", tx_ref)
-            .single();
+      try {
+        const { data: subscription } = await supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, plan, status")
+          .eq("paystack_reference", tx_ref)
+          .single();
 
-          if (!subscription) {
-            res.status(200).json({ status: "success" });
-            return;
-          }
-
-          const { user_id, plan } = subscription;
-
-          // Update subscription
-          const durationDays = 180; // 6 months
+        if (subscription && subscription.status !== "active") {
           const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + durationDays);
+          expiresAt.setDate(expiresAt.getDate() + 180);
 
           await supabaseAdmin
             .from("subscriptions")
@@ -300,24 +276,22 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             })
             .eq("paystack_reference", tx_ref);
 
-          // Update profile
           await supabaseAdmin
             .from("profiles")
             .update({
-              subscription_status: plan,
+              subscription_status: subscription.plan,
               subscription_expires_at: expiresAt.toISOString(),
             })
-            .eq("id", user_id);
-        } catch (error) {
-          console.error("[payments/webhook] Processing error:", error);
-        }
-      }
+            .eq("id", subscription.user_id);
 
-      res.status(200).json({ status: "success" });
-    } catch (error) {
-      console.error("[payments/webhook] Error:", error);
-      res.status(200).json({ status: "success" });
+          console.log("[Webhook] Payment processed for tx_ref:", tx_ref);
+        }
+      } catch (err) {
+        console.error("[Webhook] Error processing:", err);
+      }
     }
+
+    return res.status(200).json({ status: "success" });
   });
 
   app.get("/api/payments/status", async (req: Request, res: Response) => {
