@@ -313,7 +313,7 @@ export default function PricingPage() {
     
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-12">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
         {/* Launch/Discount Banner */}
         {timeLeft && (
           <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
@@ -336,15 +336,15 @@ export default function PricingPage() {
         )}
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`rounded-lg shadow-lg overflow-hidden transition-transform ${
+              className={`w-full rounded-lg shadow-lg overflow-hidden transition-transform ${
                 plan.highlighted
-                  ? "ring-2 ring-[#1A7A4A] scale-105 bg-white"
+                  ? "ring-2 ring-[#1A7A4A] md:scale-105 md:-mt-4 bg-white order-1 md:order-2"
                   : "bg-white hover:shadow-xl"
-              }`}
+              } ${plan.name === "Elite" ? "order-2 md:order-3" : ""} ${plan.name === "Explorer" ? "order-3 md:order-1" : ""}`}
             >
               {plan.badge && (
                 <div className="bg-[#1A7A4A] text-white text-center py-2 text-sm font-semibold">
@@ -356,11 +356,11 @@ export default function PricingPage() {
                 <p className="text-gray-600 text-sm mb-6">{plan.subheading}</p>
 
                 <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-baseline gap-2 flex-wrap mb-2">
                     <span className="text-4xl font-bold text-[#1A7A4A]">{plan.price}</span>
                     {plan.originalPrice && (
                       <>
-                        <span className="text-xl text-gray-400 line-through">
+                        <span className="text-lg text-gray-400 line-through">
                           {plan.originalPrice}
                         </span>
                         <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
