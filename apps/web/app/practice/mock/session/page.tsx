@@ -343,9 +343,6 @@ export default function MockSessionPage() {
   }
 
   const currentQ = questions[currentQuestion];
-  const answerPercentage = Math.round(
-    ((currentQuestion + 1) / questions.length) * 100
-  );
   const isTimeWarning = timeRemaining < 600; // 10 minutes
   const isCritical = timeRemaining < 60; // 1 minute
   const questionsPerSubject = 25;
@@ -363,75 +360,63 @@ export default function MockSessionPage() {
 
   return (
     <div className="min-h-screen bg-blush flex flex-col">
-      {/* Top Navigation Bar with Time - Fixed */}
-      <div className="fixed top-0 left-0 right-0 bg-navy text-white shadow-lg z-40">
-        <div className="px-2 md:px-4 py-2 md:py-4 flex items-center justify-between gap-2">
-          <div className="flex-1 min-w-0 flex items-center gap-2">
-            <div className="min-w-0">
-              <h1 className="text-sm md:text-xl font-bold truncate">Mock PUTME</h1>
-              <p className="text-xs md:text-sm text-gray-300 truncate">
-                {currentSubject} • Q{questionInSubject}/25
-              </p>
-            </div>
-            <span className={`text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap flex-shrink-0 ${hardMode ? "bg-red-600" : "invisible"}`}>
-              HARD MODE
-            </span>
-          </div>
-          <div
-            className={`text-base md:text-2xl font-bold px-2 md:px-4 py-1 md:py-2 rounded-lg whitespace-nowrap flex-shrink-0 ${
-              isCritical
-                ? "bg-red-600 text-white"
-                : isTimeWarning
-                ? "bg-yellow-600 text-white"
-                : "bg-forest text-white"
-            }`}
-          >
-            {formatTime(timeRemaining)}
-          </div>
+      {/* NAVBAR - Fixed top */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-navy text-white h-14 flex items-center justify-between px-4 shadow-lg">
+        <div>
+          <p className="font-bold text-sm">{hardMode ? "🔴 HARD MODE" : "Mock PUTME"}</p>
+          <p className="text-xs text-gray-300">{currentSubject} • Q{questionInSubject}/25</p>
+        </div>
+        <div className={`font-bold text-lg px-3 py-1 rounded ${
+          isCritical ? "bg-red-600" : isTimeWarning ? "bg-yellow-600" : "bg-forest"
+        }`}>
+          {formatTime(timeRemaining)}
         </div>
       </div>
 
-      {/* Content area - below navbar, above bottom nav */}
-      <div className="flex flex-1 mt-16 mb-20 overflow-hidden">
-        {/* Sidebar - Question Navigation (Hidden on mobile, visible on lg) */}
-        <div className="hidden lg:flex lg:w-72 bg-white border-r border-gray-300 overflow-y-auto p-4 flex-col flex-shrink-0">
-          <div className="mb-4">
-            <p className="text-sm font-bold text-navy mb-2">Progress</p>
-            <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-forest h-full transition-all"
-                style={{ width: `${answerPercentage}%` }}
-              ></div>
+      {/* MAIN LAYOUT - Below navbar and above bottom nav */}
+      <div className="flex flex-1 pt-14 pb-14">
+
+        {/* LEFT SIDEBAR - Desktop only, sticky */}
+        <div className="hidden lg:block w-64 flex-shrink-0">
+          <div className="sticky top-14 h-[calc(100vh-112px)] overflow-y-auto bg-white border-r border-gray-200 p-3">
+
+            {/* Progress bar */}
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Progress</span>
+                <span>{answers.filter(a => a.selected_option_id !== null).length}/100</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-forest transition-all"
+                  style={{ width: `${(answers.filter(a => a.selected_option_id !== null).length / 100) * 100}%` }}
+                />
+              </div>
             </div>
-            <p className="text-xs text-gray-600 mt-1">
-              {currentQuestion + 1}/{questions.length}
-            </p>
-          </div>
 
-          {/* Subject sections in 2x2 grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {subjects.map((subject: Subject, idx: number) => (
-              <div key={subject.id} className="bg-gray-50 p-3 rounded border border-gray-200">
-                <p className="text-sm font-semibold text-navy mb-3 text-center">{subject.name}</p>
+            {/* Subject grids */}
+            {subjects.map((subject, idx) => (
+              <div key={subject.id} className="mb-4">
+                <p className="text-xs font-bold text-navy mb-2 uppercase tracking-wide">
+                  {subject.name}
+                </p>
                 <div className="grid grid-cols-5 gap-1">
-                  {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
-                    const qNumber = idx * questionsPerSubject + qIdx;
-                    const isAnswered = answers[qNumber].selected_option_id !== null;
+                  {Array.from({ length: 25 }).map((_, qIdx) => {
+                    const qNumber = idx * 25 + qIdx;
+                    const isAnswered = answers[qNumber]?.selected_option_id !== null;
                     const isCurrent = currentQuestion === qNumber;
-
+                    const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
                     return (
                       <button
                         key={qNumber}
                         onClick={() => setCurrentQuestion(qNumber)}
-                        className={`w-7 h-7 text-sm font-bold rounded transition-all flex items-center justify-center ${
-                          isCurrent
-                            ? "bg-navy text-white ring-2 ring-forest"
-                            : isAnswered
-                            ? "bg-forest text-white"
-                            : "bg-gray-300 text-gray-700 hover:bg-gray-400"
+                        className={`w-8 h-8 text-xs font-semibold rounded transition-all ${
+                          isCurrent ? "bg-navy text-white ring-2 ring-forest" :
+                          isFlagged ? "bg-amber-400 text-white" :
+                          isAnswered ? "bg-forest text-white" :
+                          "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                       >
-                        {idx * questionsPerSubject + qIdx + 1}
+                        {idx * 25 + qIdx + 1}
                       </button>
                     );
                   })}
@@ -441,117 +426,89 @@ export default function MockSessionPage() {
           </div>
         </div>
 
-        {/* Main Content Area - Flex Column */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Sticky Subject Tab Bar - All Screen Sizes */}
-          <div className="sticky top-16 z-30 bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide flex-shrink-0">
-            <div className="flex min-w-max">
-            {subjects.map((subject: Subject, idx: number) => {
-              const startQ = idx * questionsPerSubject;
-              const endQ = startQ + questionsPerSubject;
-              const subjectAnswers = answers.slice(startQ, endQ);
-              const answeredCount = subjectAnswers.filter(
-                (a) => a.selected_option_id !== null
-              ).length;
-              const isActive = Math.floor(currentQuestion / questionsPerSubject) === idx;
+        {/* MAIN CONTENT */}
+        <div className="flex-1 flex flex-col min-w-0">
 
-              return (
-                <button
-                  key={subject.id}
-                  onClick={() => {
-                    // Jump to first unanswered in this subject
-                    const firstUnanswered = subjectAnswers.findIndex(
-                      (a) => a.selected_option_id === null
-                    );
-                    const targetQ = firstUnanswered >= 0 ? startQ + firstUnanswered : startQ;
-                    setCurrentQuestion(targetQ);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2
-                             whitespace-nowrap transition-all ${
-                    isActive
-                      ? "border-forest text-forest font-semibold"
-                      : "border-transparent text-gray-500 hover:text-navy"
-                  }`}
-                >
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: subject.colour_token || "#666" }}
-                  />
-                  <span className="text-sm">{subject.name}</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      answeredCount === questionsPerSubject
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
+          {/* SUBJECT TABS - Sticky below navbar */}
+          <div className="sticky top-14 z-30 bg-white border-b border-gray-200 overflow-x-auto flex-shrink-0">
+            <div className="flex">
+              {subjects.map((subject, idx) => {
+                const startQ = idx * 25;
+                const answered = answers.slice(startQ, startQ + 25)
+                  .filter(a => a.selected_option_id !== null).length;
+                const isActive = Math.floor(currentQuestion / 25) === idx;
+                return (
+                  <button
+                    key={subject.id}
+                    onClick={() => {
+                      const firstUnanswered = answers.slice(startQ, startQ + 25)
+                        .findIndex(a => a.selected_option_id === null);
+                      setCurrentQuestion(firstUnanswered >= 0 ? startQ + firstUnanswered : startQ);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap text-sm font-medium transition-all ${
+                      isActive
+                        ? "border-forest text-forest"
+                        : "border-transparent text-gray-500 hover:text-navy"
                     }`}
                   >
-                    {answeredCount}/{questionsPerSubject}
-                  </span>
-                </button>
-              );
-            })}
+                    {subject.name}
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      answered === 25 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {answered}/25
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Mini Question Palette for Current Subject on Mobile */}
-        <div className="lg:hidden bg-white border-b border-gray-100 px-3 py-2 max-h-28 overflow-y-auto flex-shrink-0">
-          <div className="flex flex-wrap gap-1">
-            {Array.from({ length: questionsPerSubject }).map((_, qIdx) => {
-              const qNumber = subjectIndex * questionsPerSubject + qIdx;
-              const isAnswered = answers[qNumber]?.selected_option_id !== null;
-              const isCurrent = currentQuestion === qNumber;
-              const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
-
-              return (
-                <button
-                  key={qNumber}
-                  onClick={() => setCurrentQuestion(qNumber)}
-                  className={`w-8 h-8 text-xs font-bold rounded transition-all ${
-                    isCurrent
-                      ? "bg-navy text-white ring-2 ring-forest"
-                      : isFlagged
-                      ? "bg-crs text-white"
-                      : isAnswered
-                      ? "bg-forest text-white"
-                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  {qIdx + 1}
-                </button>
-              );
-            })}
+          {/* MOBILE MINI PALETTE */}
+          <div className="lg:hidden bg-white border-b border-gray-100 px-3 py-2 flex-shrink-0">
+            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+              {Array.from({ length: 25 }).map((_, qIdx) => {
+                const subjectIdx = Math.floor(currentQuestion / 25);
+                const qNumber = subjectIdx * 25 + qIdx;
+                const isAnswered = answers[qNumber]?.selected_option_id !== null;
+                const isCurrent = currentQuestion === qNumber;
+                const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
+                return (
+                  <button
+                    key={qNumber}
+                    onClick={() => setCurrentQuestion(qNumber)}
+                    className={`w-8 h-8 text-xs font-semibold rounded transition-all ${
+                      isCurrent ? "bg-navy text-white ring-2 ring-forest" :
+                      isFlagged ? "bg-amber-400 text-white" :
+                      isAnswered ? "bg-forest text-white" :
+                      "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {subjectIdx * 25 + qIdx + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Main Question Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-20">
-          <div className="max-w-2xl mx-auto">
-            {/* Question */}
-            <div className="mb-8 select-none">
-              <div
-                className="p-6 rounded-lg border-l-4 mb-6"
-                style={{
-                  backgroundColor: currentQ.subject_colour_token + "20",
-                  borderColor: currentQ.subject_colour_token,
-                }}
-              >
-                <p className="text-lg font-semibold text-navy">{currentQ.body}</p>
+          {/* QUESTION */}
+          <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-4">
+                <p className="text-navy font-semibold text-base leading-relaxed select-none">
+                  {currentQ?.body}
+                </p>
               </div>
-
-              {/* Options */}
               <div className="space-y-3">
-                {currentQ.options.map((option) => {
-                  const isSelected =
-                    answers[currentQuestion].selected_option_id === option.id;
-
+                {currentQ?.options.map((option) => {
+                  const isSelected = answers[currentQuestion]?.selected_option_id === option.id;
                   return (
                     <button
                       key={option.id}
                       onClick={() => handleSelectOption(option.id)}
-                      className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all select-none ${
                         isSelected
                           ? "bg-forest text-white border-forest"
-                          : "bg-white border-gray-300 hover:border-forest text-gray-900"
+                          : "bg-white border-gray-200 hover:border-forest text-gray-800"
                       }`}
                     >
                       <span className="font-bold">{option.label}.</span> {option.body}
@@ -562,75 +519,43 @@ export default function MockSessionPage() {
             </div>
           </div>
         </div>
-        {/* End of Main Column */}
       </div>
-      {/* End of Content Area */}</div>
 
-      {/* Bottom Navigation - Fixed */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-2 md:p-4 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 md:gap-4">
-          {/* Left Arrow (Mobile) */}
+      {/* BOTTOM NAV - Fixed */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg h-14 flex items-center px-4">
+        <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-2">
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestion === 0}
-            className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            title="Previous question"
+            className="flex items-center gap-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <span className="hidden sm:inline">←</span> Previous
           </button>
-
-          <button
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestion === 0}
-            className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            ← Previous
-          </button>
-
           <button
             onClick={handleToggleFlag}
-            className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-colors ${
-              flaggedQuestions.has(currentQ.id)
-                ? "bg-crs text-white hover:bg-opacity-90"
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              flaggedQuestions.has(currentQ?.id)
+                ? "bg-amber-400 text-white"
                 : "border border-gray-300 text-navy hover:bg-gray-50"
             }`}
-            title={flaggedQuestions.has(currentQ.id) ? "Unflag this question" : "Flag for review"}
           >
-            {flaggedQuestions.has(currentQ.id) ? "✓ Flagged" : "Flag"}
+            {flaggedQuestions.has(currentQ?.id) ? "⚑ Flagged" : "⚐ Flag"}
           </button>
-
           <button
             onClick={() => setShowSubmitDialog(true)}
-            disabled={isSubmitting}
-            className="px-4 md:px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition"
           >
-            {isSubmitting ? "..." : "Submit"}
+            Submit
           </button>
-
           <button
             onClick={handleNextQuestion}
             disabled={currentQuestion === questions.length - 1}
-            className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            Next →
-          </button>
-
-          {/* Right Arrow (Mobile) */}
-          <button
-            onClick={handleNextQuestion}
-            disabled={currentQuestion === questions.length - 1}
-            className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            title="Next question"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            Next <span className="hidden sm:inline">→</span>
           </button>
         </div>
       </div>
-      {/* End of Bottom Navigation */}
 
       {/* Time's Up Overlay */}
       {timeUp && (
