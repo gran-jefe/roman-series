@@ -303,6 +303,8 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         return;
       }
 
+      console.log("[analytics/topics] Fetching answers for user:", user.id);
+
       // Get session answers with question and topic info
       const { data: answers, error: answersError } = await supabaseAdmin
         .from("session_answers")
@@ -310,7 +312,10 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         .eq("sessions.user_id", user.id)
         .eq("sessions.completed", true);
 
-      if (answersError || !answers) {
+      console.log("[analytics/topics] Answers query result - count:", answers?.length || 0, "error:", answersError);
+
+      if (answersError) {
+        console.error("[analytics/topics] Query error:", answersError);
         res.status(500).json({
           status: "error",
           message: "Failed to fetch answers",
@@ -319,7 +324,8 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         return;
       }
 
-      if (answers.length === 0) {
+      if (!answers || answers.length === 0) {
+        console.log("[analytics/topics] No answers found for user - user may have no completed sessions");
         res.json({
           status: "success",
           data: [],
@@ -330,6 +336,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
 
       // Get unique question IDs
       const questionIds = [...new Set(answers.map((a: any) => a.question_id))];
+      console.log("[analytics/topics] Unique question IDs:", questionIds.length);
 
       // Fetch question data with topic info
       const { data: questions } = await supabaseAdmin
@@ -337,12 +344,15 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         .select("id, topic_id, subject_id")
         .in("id", questionIds);
 
+      console.log("[analytics/topics] Questions fetched:", questions?.length || 0, "Topic IDs with data:", questions?.filter(q => q.topic_id).length || 0);
+
       const questionMap = new Map(questions?.map((q: any) => [q.id, q]) ?? []);
 
       // Get unique topic IDs
       const topicIds = [...new Set(
         questions?.map((q: any) => q.topic_id).filter(Boolean) ?? []
       )];
+      console.log("[analytics/topics] Unique topic IDs:", topicIds.length);
 
       // Fetch topic and subject data
       let topicsData: any[] = [];
@@ -463,6 +473,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
           .sort((a, b) => b.avg_percentage - a.avg_percentage); // Sort by score desc
       }
 
+      console.log("[analytics/topics] Returning", topicPerformances.length, "topic performances");
       res.json({
         status: "success",
         data: topicPerformances,
