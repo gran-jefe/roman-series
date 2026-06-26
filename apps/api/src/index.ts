@@ -29,12 +29,10 @@ const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  realtime: { transport: ws },
-});
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: { transport: ws },
-});
+// Note: We don't use Realtime subscriptions on the backend, so we skip the WebSocket transport
+// to avoid Node.js < 22 compatibility issues
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 // Zod schemas for validation
 const registerSchema = z.object({
