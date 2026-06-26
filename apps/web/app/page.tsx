@@ -377,7 +377,7 @@ export default function LandingPage() {
       features: [
         "1–2 subjects",
         "20 questions/day",
-        "1 mock exam (lifetime)",
+        "1 mock exam",
         "Timer simulation",
         "Last 10 errors in error bank",
         "Basic analytics",

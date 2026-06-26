@@ -239,7 +239,7 @@ export default function PricingPage() {
       features: [
         { name: "1–2 subjects", included: true },
         { name: "20 questions/day", included: true },
-        { name: "1 mock exam (lifetime)", included: true },
+        { name: "1 mock exam", included: true },
         { name: "Timer simulation", included: true },
         { name: "Last 10 errors in error bank", included: true },
         { name: "Basic analytics", included: true },

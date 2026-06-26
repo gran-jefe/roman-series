@@ -339,7 +339,7 @@ Feature limits and constraints by subscription tier.
   - Redirects to `/dashboard` on success
 
 - **`/pricing`** — Subscription pricing plans
-  - **Explorer**: Free (1–2 subjects, 20 Q/day, 1 mock exam lifetime)
+  - **Explorer**: Free (1–2 subjects, 20 Q/day, 1 mock exam)
   - **Scholar**: ₦3,500 for 6 months (all subjects, unlimited practice, 3 mocks/week) — Most Popular
   - **Elite**: ₦5,000 for 6 months (Scholar + advanced analytics, percentile ranking, cohort insights) — Best Value
   - Scholar→Elite upgrade: Shows "Upgrade for ₦1,500" button if user already on Scholar (extends subscription to Elite tier)

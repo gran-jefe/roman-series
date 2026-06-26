@@ -311,7 +311,7 @@ export default function DashboardPage() {
 
                       {subscription?.subscription_status === "explorer" && !mockExamLimit.hasExhausted && (
                         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 1 mock exam (lifetime)</p>
+                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 1 mock exam</p>
                           <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 mocks per week) or Elite (₦3,500 - unlimited mocks) for more attempts.</p>
                         </div>
                       )}

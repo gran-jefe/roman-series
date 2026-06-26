@@ -1026,7 +1026,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Check mock exam access based on subscription tier
       const planId = profile.subscription_status;
 
-      // Explorer: max 1 mock exam lifetime
+      // Explorer: max 1 mock exam
       if (planId === "explorer") {
         const { data: completedMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
