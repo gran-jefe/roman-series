@@ -1,7 +1,11 @@
+// MUST be the FIRST import - load environment variables before anything else
+import dotenv from "dotenv";
+dotenv.config();
+
+// All other imports AFTER dotenv.config()
 import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import crypto from "crypto";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
@@ -19,8 +23,6 @@ import { registerFlaggingRoutes } from "./routes/flagging.routes";
 import { registerPlansRoutes } from "./routes/plans";
 import { registerRecalledQuestionsRoutes } from "./routes/recalled-questions.routes";
 import { registerFeedbackRoutes } from "./routes/feedback.routes";
-
-dotenv.config();
 
 // Initialize Supabase clients
 const supabaseUrl = process.env.SUPABASE_URL || "";

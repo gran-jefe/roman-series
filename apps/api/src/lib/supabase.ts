@@ -1,14 +1,28 @@
+// Load environment variables as safety net
+import dotenv from "dotenv";
+dotenv.config();
+
 // Polyfill WebSocket for Node.js < 22
-import WebSocket from 'ws'
-if (typeof globalThis.WebSocket === 'undefined') {
-  (globalThis as any).WebSocket = WebSocket
+import WebSocket from "ws";
+if (typeof globalThis.WebSocket === "undefined") {
+  (globalThis as any).WebSocket = WebSocket;
 }
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
+// Validate required environment variables with helpful error messages
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL is not set in .env file");
+}
+if (!supabaseServiceKey) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set in .env file");
+}
+
+console.log("[Supabase] Initializing clients with URL:", supabaseUrl.substring(0, 30) + "...");
 
 // Disable realtime entirely - not needed in the API server
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
@@ -24,22 +38,22 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'roman-series-api',
+      "x-application-name": "roman-series-api",
     },
   },
-})
+});
 
 // Prevent realtime from initializing by not calling channel()
 // The API only needs database queries, not realtime subscriptions
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey || "", {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
     detectSessionInUrl: false,
   },
-})
+});
 
-export default supabaseAdmin
+export default supabaseAdmin;
 
 /**
  * Batch query helper to avoid HeadersOverflowError
