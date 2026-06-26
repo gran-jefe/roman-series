@@ -1,5 +1,6 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { batchQuery } from "../lib/supabase";
 
 interface LeaderboardDeps {
   supabaseAdmin: SupabaseClient;
@@ -222,14 +223,20 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
 
       // Fetch user profiles for display
       const userIds = sortedUsers.map((u) => u.user_id);
-      const profilesResult = userIds.length > 0
-        ? await supabaseAdmin
-            .from("profiles")
-            .select("id, full_name")
-            .in("id", userIds)
-        : { data: [] };
 
-      const userProfiles = profilesResult.data ?? [];
+      interface ProfileRow {
+        id: string;
+        full_name: string;
+      }
+
+      const userProfiles = userIds.length > 0
+        ? await batchQuery<ProfileRow>(
+            "profiles",
+            "id",
+            userIds,
+            "id, full_name"
+          )
+        : [];
       const profileMap = new Map(userProfiles?.map((p: any) => [p.id, p]) ?? []);
 
       const rankings = sortedUsers.map((entry, idx) => {
@@ -355,13 +362,22 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         .slice(0, 20);
 
       const userIds = leaderboardData.map((l) => l.user_id);
-      const { data: profiles } =
-        userIds.length > 0
-          ? await supabaseAdmin
-              .from("profiles")
-              .select("id, full_name, target_university_id, subscription_status")
-              .in("id", userIds)
-          : { data: [] };
+
+      interface ProfileRow2 {
+        id: string;
+        full_name: string;
+        target_university_id: string;
+        subscription_status: string;
+      }
+
+      const profiles = userIds.length > 0
+        ? await batchQuery<ProfileRow2>(
+            "profiles",
+            "id",
+            userIds,
+            "id, full_name, target_university_id, subscription_status"
+          )
+        : [];
 
       const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) ?? []);
 
@@ -370,13 +386,20 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
           profiles?.map((p: any) => p.target_university_id).filter(Boolean)
         )
       );
-      const { data: universities } =
-        universityIds.length > 0
-          ? await supabaseAdmin
-              .from("universities")
-              .select("id, short_code")
-              .in("id", universityIds)
-          : { data: [] };
+
+      interface UniversityRow {
+        id: string;
+        short_code: string;
+      }
+
+      const universities = universityIds.length > 0
+        ? await batchQuery<UniversityRow>(
+            "universities",
+            "id",
+            universityIds,
+            "id, short_code"
+          )
+        : [];
 
       const univMap = new Map(universities?.map((u: any) => [u.id, u]) ?? []);
 

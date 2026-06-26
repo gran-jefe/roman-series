@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { shuffleArray } from "../utils/helpers";
+import { batchQuery } from "../lib/supabase";
 
 interface SessionsDeps {
   supabaseAdmin: SupabaseClient;
@@ -540,35 +541,37 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Batch the IDs to avoid headers overflow — max 50 per batch
-      const batchSize = 50;
-      const batches = [];
-      for (let i = 0; i < uniqueQuestionIds.length; i += batchSize) {
-        batches.push(uniqueQuestionIds.slice(i, i + batchSize));
+      // Limit to top 50 most recent wrong questions (sort by last_seen_at first)
+      const sortedByRecency = Array.from(questionMap.entries())
+        .sort(([, a], [, b]) => {
+          const aTime = new Date(a.last_seen_at).getTime();
+          const bTime = new Date(b.last_seen_at).getTime();
+          return bTime - aTime; // Most recent first
+        })
+        .slice(0, 50)
+        .map(([questionId]) => questionId);
+
+      console.log("[wrong-questions] Limited to", sortedByRecency.length, "most recent wrong questions");
+
+      // Fetch full question data with subject info using batch helper
+      interface QuestionRow {
+        id: string;
+        subject_id: string;
+        university_id: string;
+        topic_id: string;
+        body: string;
+        options: any[];
       }
 
-      console.log("[wrong-questions] Batching", uniqueQuestionIds.length, "IDs into", batches.length, "batches of", batchSize);
+      const questions = await batchQuery<QuestionRow>(
+        "questions",
+        "id",
+        sortedByRecency,
+        "id, subject_id, university_id, topic_id, body, options(*)"
+      );
 
-      // Fetch full question data with subject info in batches
-      const allQuestions: any[] = [];
-      for (const batch of batches) {
-        const { data: batchQuestions, error: qError } = await supabaseAdmin
-          .from("questions")
-          .select("id, subject_id, university_id, topic_id, body, options(*)")
-          .in("id", batch);
-
-        if (qError) {
-          console.error("[wrong-questions] Batch fetch error:", qError);
-        }
-
-        if (batchQuestions) {
-          allQuestions.push(...batchQuestions);
-        }
-      }
-
-      console.log("[wrong-questions] Questions fetched from all batches:", allQuestions.length);
-
-      if (allQuestions.length === 0) {
+      if (questions.length === 0) {
+        console.error("[wrong-questions] Failed to fetch question details after batching");
         res.status(500).json({
           status: "error",
           message: "Failed to fetch question details",
@@ -576,17 +579,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         });
         return;
       }
-
-      // Sort by most recent wrong answer and limit to top 50
-      const sortedQuestions = allQuestions
-        .sort((a: any, b: any) => {
-          const aTime = new Date(questionMap.get(a.id)?.last_seen_at || 0).getTime();
-          const bTime = new Date(questionMap.get(b.id)?.last_seen_at || 0).getTime();
-          return bTime - aTime; // Most recent first
-        })
-        .slice(0, 50);
-
-      const questions = sortedQuestions;
 
       // Fetch subject info for each question
       const subjectIds = [...new Set(questions.map((q: any) => q.subject_id))];

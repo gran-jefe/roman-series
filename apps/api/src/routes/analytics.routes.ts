@@ -3,6 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import type { AnalyticsOverview, TopicPerformance, PeerRanking, PredictionResult } from "../types";
+import { batchQuery } from "../lib/supabase";
 
 interface AnalyticsDeps {
   supabaseAdmin: SupabaseClient;
@@ -1580,16 +1581,24 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      // Get unique question IDs and fetch their topic info
-      const questionIds = Array.from(new Set(answers.map(a => a.question_id)));
-      console.log("[study-plan] Question IDs:", questionIds.length);
+      // Get unique question IDs and fetch their topic info (limit to 200 to avoid headers overflow)
+      const allQuestionIds = Array.from(new Set(answers.map(a => a.question_id)));
+      const questionIds = allQuestionIds.slice(0, 200);
+      console.log("[study-plan] Question IDs:", questionIds.length, "(limited from", allQuestionIds.length, ")");
 
-      const { data: questions, error: questionsError } = await supabaseAdmin
-        .from("questions")
-        .select("id, topic_id")
-        .in("id", questionIds);
+      interface QuestionRow {
+        id: string;
+        topic_id: string;
+      }
 
-      console.log("[study-plan] Questions:", questions?.length || 0, "Error:", questionsError);
+      const questions = await batchQuery<QuestionRow>(
+        "questions",
+        "id",
+        questionIds,
+        "id, topic_id"
+      );
+
+      console.log("[study-plan] Questions fetched:", questions.length);
 
       // Get topic names
       const topicIds = Array.from(new Set(questions?.map(q => q.topic_id).filter(Boolean) || []));
@@ -1599,26 +1608,39 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       let subjects: any[] = [];
 
       if (topicIds.length > 0) {
-        const { data: topicsData, error: topicsError } = await supabaseAdmin
-          .from("topics")
-          .select("id, name, subject_id")
-          .in("id", topicIds);
+        interface TopicRow {
+          id: string;
+          name: string;
+          subject_id: string;
+        }
 
-        console.log("[study-plan] Topics:", topicsData?.length || 0, "Error:", topicsError);
-        topics = topicsData || [];
+        topics = await batchQuery<TopicRow>(
+          "topics",
+          "id",
+          topicIds,
+          "id, name, subject_id"
+        );
+
+        console.log("[study-plan] Topics fetched:", topics.length);
 
         // Get subject names
         const subjectIds = Array.from(new Set(topics?.map(t => t.subject_id).filter(Boolean) || []));
         console.log("[study-plan] Subject IDs:", subjectIds.length);
 
         if (subjectIds.length > 0) {
-          const { data: subjectsData, error: subjectsError } = await supabaseAdmin
-            .from("subjects")
-            .select("id, name")
-            .in("id", subjectIds);
+          interface SubjectRow {
+            id: string;
+            name: string;
+          }
 
-          console.log("[study-plan] Subjects:", subjectsData?.length || 0, "Error:", subjectsError);
-          subjects = subjectsData || [];
+          subjects = await batchQuery<SubjectRow>(
+            "subjects",
+            "id",
+            subjectIds,
+            "id, name"
+          );
+
+          console.log("[study-plan] Subjects fetched:", subjects.length);
         }
       }
 
