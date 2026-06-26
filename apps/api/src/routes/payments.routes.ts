@@ -14,6 +14,10 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
   app.post("/api/payments/initiate", async (req: Request, res: Response) => {
     try {
+      console.log("[Initiate] ========= INITIATE CALLED =========");
+      console.log("[Initiate] User ID from auth:", req.headers.authorization?.substring(7) ? "present" : "missing");
+      console.log("[Initiate] Body:", JSON.stringify(req.body));
+
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith("Bearer ")) {
         res.status(401).json({
@@ -28,6 +32,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
       if (authError || !user) {
+        console.error("[Initiate] Auth error:", authError);
         res.status(401).json({
           status: "error",
           message: "Invalid or expired token",
@@ -36,9 +41,12 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
+      console.log("[Initiate] User:", user.id);
+
       const { plan } = req.body;
 
       if (!plan || !["explorer", "scholar", "elite"].includes(plan)) {
+        console.error("[Initiate] Invalid plan:", plan);
         res.status(400).json({
           status: "error",
           message: "Invalid plan. Must be 'explorer', 'scholar', or 'elite'",
@@ -46,6 +54,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         });
         return;
       }
+
+      console.log("[Initiate] Plan:", plan);
 
       // Explorer is free, no payment needed
       if (plan === "explorer") {
@@ -68,6 +78,9 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const amountInNaira = amountInKobo / 100;
       const tx_ref = `RS-${user.id.slice(0, 8)}-${Date.now()}`;
 
+      console.log("[Initiate] Amount:", amountInKobo, "kobo,", amountInNaira, "NGN");
+      console.log("[Initiate] tx_ref:", tx_ref);
+
       // Get user profile
       const { data: profile } = await supabaseAdmin
         .from("profiles")
@@ -89,7 +102,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         .single();
 
       if (insertError) {
-        console.error("[Initiate] Failed to create subscription:", insertError);
+        console.error("[Initiate] Insert error:", insertError);
         res.status(500).json({
           status: "error",
           message: "Failed to initiate payment",
@@ -98,7 +111,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      console.log("[Initiate] Subscription created:", newSub?.id, "tx_ref:", tx_ref);
+      console.log("[Initiate] Subscription inserted:", JSON.stringify(newSub));
 
       // Return Flutterwave payment config
       const paymentConfig = {
@@ -141,14 +154,21 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   });
 
   app.post("/api/payments/verify", async (req: Request, res: Response) => {
+    console.log("[Verify] ========= VERIFY CALLED =========");
+    console.log("[Verify] Body:", JSON.stringify(req.body));
+
     const { transaction_id, tx_ref } = req.body;
 
     if (!transaction_id || !tx_ref) {
+      console.error("[Verify] Missing required fields - transaction_id:", !!transaction_id, "tx_ref:", !!tx_ref);
       return res.status(400).json({
         status: "error",
         message: "transaction_id and tx_ref are required",
       });
     }
+
+    console.log("[Verify] transaction_id:", transaction_id);
+    console.log("[Verify] tx_ref:", tx_ref);
 
     try {
       const flutterwave = getFlutterwave();
@@ -164,9 +184,10 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         id: String(transaction_id),
       });
 
-      console.log("[Verify] FLW response:", flwResponse?.data?.status);
+      console.log("[Verify] FLW raw response:", JSON.stringify(flwResponse?.data));
 
       if (flwResponse?.data?.status !== "successful") {
+        console.error("[Verify] FLW status not successful:", flwResponse?.data?.status);
         return res.status(400).json({
           status: "error",
           message: "Transaction not successful",
@@ -174,6 +195,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       }
 
       if (flwResponse.data.tx_ref !== tx_ref) {
+        console.error("[Verify] tx_ref mismatch - FLW:", flwResponse.data.tx_ref, "Request:", tx_ref);
         return res.status(400).json({
           status: "error",
           message: "Transaction reference mismatch",
@@ -188,12 +210,11 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         .eq("paystack_reference", tx_ref)
         .single();
 
-      console.log("[Verify] Subscription found:", !!subscription);
-      if (subFindError) {
-        console.error("[Verify] Error finding subscription:", subFindError);
-      }
+      console.log("[Verify] Subscription query result:", JSON.stringify(subscription));
+      console.log("[Verify] Subscription error:", subFindError);
 
       if (subFindError || !subscription) {
+        console.error("[Verify] Subscription not found for tx_ref:", tx_ref);
         return res.status(404).json({
           status: "error",
           message: "Subscription record not found for this transaction",
@@ -202,6 +223,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
       // Already processed
       if (subscription.status === "active") {
+        console.log("[Verify] Subscription already active for tx_ref:", tx_ref);
         return res.json({
           status: "success",
           data: { plan: subscription.plan, already_active: true },
@@ -211,14 +233,20 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 180);
 
+      console.log("[Verify] Updating subscription status to active, expires:", expiresAt.toISOString());
+
       // Update subscription status
-      await supabaseAdmin
+      const { error: subUpdateError } = await supabaseAdmin
         .from("subscriptions")
         .update({
           status: "active",
           expires_at: expiresAt.toISOString(),
         })
         .eq("paystack_reference", tx_ref);
+
+      if (subUpdateError) {
+        console.error("[Verify] Subscription update error:", subUpdateError);
+      }
 
       // Update profile subscription status
       const { error: profileError } = await supabaseAdmin
@@ -229,6 +257,9 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         })
         .eq("id", subscription.user_id);
 
+      console.log("[Verify] Profile update error:", profileError);
+      console.log("[Verify] Profile update success for user:", subscription.user_id);
+
       if (profileError) {
         console.error("[Verify] Profile update failed:", profileError);
         return res.status(500).json({
@@ -237,6 +268,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             "Payment received but profile update failed. Contact support.",
         });
       }
+
+      console.log("[Verify] Payment verified successfully for tx_ref:", tx_ref);
 
       return res.json({
         status: "success",
@@ -255,14 +288,24 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   });
 
   app.post("/api/payments/webhook", async (req: Request, res: Response) => {
+    console.log("[Webhook] ========= WEBHOOK CALLED =========");
+    console.log("[Webhook] Headers:", JSON.stringify(req.headers));
+    console.log("[Webhook] Body:", JSON.stringify(req.body));
+
     const secretHash = process.env.FLW_WEBHOOK_HASH;
     const signature = req.headers["verif-hash"];
 
-    if (signature !== secretHash) {
+    const hashMatch = signature === secretHash;
+    console.log("[Webhook] verif-hash match:", hashMatch);
+
+    if (!hashMatch) {
+      console.error("[Webhook] Signature mismatch - Expected:", secretHash ? "set" : "not set", "Received:", signature);
       return res.status(401).send("Unauthorized");
     }
 
     const payload = req.body;
+
+    console.log("[Webhook] Event:", payload.event, "Status:", payload.data?.status);
 
     if (
       payload.event === "charge.completed" &&
@@ -270,12 +313,16 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
     ) {
       const { tx_ref, id: transaction_id } = payload.data;
 
+      console.log("[Webhook] Processing successful charge - tx_ref:", tx_ref, "transaction_id:", transaction_id);
+
       try {
         const { data: subscription } = await supabaseAdmin
           .from("subscriptions")
           .select("user_id, plan, status")
           .eq("paystack_reference", tx_ref)
           .single();
+
+        console.log("[Webhook] Found subscription:", !!subscription, "Status:", subscription?.status);
 
         if (subscription && subscription.status !== "active") {
           const expiresAt = new Date();
@@ -297,13 +344,18 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
             })
             .eq("id", subscription.user_id);
 
-          console.log("[Webhook] Payment processed for tx_ref:", tx_ref);
+          console.log("[Webhook] Payment processed for tx_ref:", tx_ref, "Plan:", subscription.plan, "User:", subscription.user_id);
+        } else if (subscription?.status === "active") {
+          console.log("[Webhook] Subscription already active for tx_ref:", tx_ref);
         }
       } catch (err) {
         console.error("[Webhook] Error processing:", err);
       }
+    } else {
+      console.log("[Webhook] Ignoring non-successful or non-charge.completed event");
     }
 
+    console.log("[Webhook] Webhook response sent");
     return res.status(200).json({ status: "success" });
   });
 
