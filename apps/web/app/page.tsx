@@ -810,13 +810,13 @@ export default function LandingPage() {
                     {plan.description}
                   </p>
                   <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-baseline gap-2 flex-wrap mb-2">
                       <span className="text-5xl font-bold text-forest">
                         {plan.price}
                       </span>
                       {plan.originalPrice && (
                         <>
-                          <span className="text-xl text-gray-400 line-through">
+                          <span className="text-lg text-gray-400 line-through">
                             {plan.originalPrice}
                           </span>
                           <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
