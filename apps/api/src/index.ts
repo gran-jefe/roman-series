@@ -7,8 +7,6 @@ import multer from "multer";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
-// @ts-ignore
-import ws from "ws";
 import { registerAuthRoutes } from "./routes/auth.routes";
 import { registerDataRoutes } from "./routes/data.routes";
 import { registerSessionsRoutes } from "./routes/sessions.routes";
@@ -29,10 +27,23 @@ const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-// Note: We don't use Realtime subscriptions on the backend, so we skip the WebSocket transport
-// to avoid Node.js < 22 compatibility issues
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+// Supabase clients configured to disable Realtime (not needed on backend)
+// This avoids Node.js < 22 WebSocket compatibility issues
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+  global: {
+    fetch: fetch,
+  },
+});
+
+const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: fetch,
+  },
+});
 
 // Zod schemas for validation
 const registerSchema = z.object({

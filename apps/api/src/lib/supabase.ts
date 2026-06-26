@@ -1,6 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-// @ts-ignore - WebSocket transport for Node.js < 22
-import ws from "ws";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -16,27 +14,41 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
   );
 }
 
-// Configure WebSocket transport for Node.js < 22 (ws package required)
-// @ts-ignore - WebSocket type compatibility
-const clientOptions = {
-  realtime: {
-    transport: ws,
-  },
-};
-
 /**
  * Supabase Admin Client
  * Uses service role key for server-side operations with full access
  * Use this for operations that bypass RLS policies
+ * Realtime disabled since API only uses REST queries
  */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, clientOptions as any);
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  supabaseServiceRoleKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      fetch: fetch,
+    },
+  }
+);
 
 /**
  * Supabase Anon Client
  * Uses anon key for client-side operations
  * Respects RLS policies and is safe for browser use
+ * Realtime disabled since API only uses REST queries
  */
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, clientOptions as any);
+export const supabaseClient = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    global: {
+      fetch: fetch,
+    },
+  }
+);
 
 export default supabaseAdmin;
 
