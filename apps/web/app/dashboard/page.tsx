@@ -49,6 +49,13 @@ export default function DashboardPage() {
   const [essentialLoading, setEssentialLoading] = useState(true);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
 
+  // Guard: redirect admins to /admin
+  useEffect(() => {
+    if (profile?.role === "admin") {
+      router.push("/admin");
+    }
+  }, [profile, router]);
+
   // Fetch essential data first (blocks page render until done)
   useEffect(() => {
     const fetchEssentialData = async () => {

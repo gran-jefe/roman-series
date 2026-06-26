@@ -37,10 +37,14 @@ export default function OnboardingPage() {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [coursesLoading, setCoursesLoading] = useState(false);
 
-  // Guard: redirect if already has subject combination
+  // Guard: redirect admins to /admin and students with onboarding complete to /dashboard
   useEffect(() => {
-    if (!loading && profile?.subject_combination?.length) {
-      router.push("/dashboard");
+    if (!loading && profile) {
+      if (profile.role === "admin") {
+        router.push("/admin");
+      } else if (profile.subject_combination?.length) {
+        router.push("/dashboard");
+      }
     }
   }, [profile, loading, router]);
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton } from "@/components/skeletons";
 
 interface AdminStats {
@@ -13,8 +15,17 @@ interface AdminStats {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
+  const { profile } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Guard: redirect non-admins to dashboard
+  useEffect(() => {
+    if (profile && profile.role !== "admin") {
+      router.push("/dashboard");
+    }
+  }, [profile, router]);
 
   useEffect(() => {
     const fetchStats = async () => {

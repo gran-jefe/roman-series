@@ -179,8 +179,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(meResponse.data.data.user);
       setProfile(userProfile);
 
-      // Redirect based on subject combination status
-      if (!userProfile?.subject_combination?.length) {
+      // Redirect based on role and onboarding status
+      if (userProfile?.role === "admin") {
+        router.push("/admin");
+      } else if (!userProfile?.subject_combination?.length) {
         router.push("/onboarding");
       } else {
         router.push("/dashboard");
