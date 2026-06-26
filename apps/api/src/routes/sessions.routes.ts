@@ -540,19 +540,35 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Fetch full question data with subject info
-      const { data: questions, error: qError } = await supabaseAdmin
-        .from("questions")
-        .select("id, subject_id, university_id, topic_id, body, options(*)")
-        .in("id", uniqueQuestionIds);
-
-      if (qError) {
-        console.error("[wrong-questions] Questions fetch error:", qError);
+      // Batch the IDs to avoid headers overflow — max 50 per batch
+      const batchSize = 50;
+      const batches = [];
+      for (let i = 0; i < uniqueQuestionIds.length; i += batchSize) {
+        batches.push(uniqueQuestionIds.slice(i, i + batchSize));
       }
 
-      console.log("[wrong-questions] Questions fetched:", questions?.length || 0);
+      console.log("[wrong-questions] Batching", uniqueQuestionIds.length, "IDs into", batches.length, "batches of", batchSize);
 
-      if (qError || !questions) {
+      // Fetch full question data with subject info in batches
+      const allQuestions: any[] = [];
+      for (const batch of batches) {
+        const { data: batchQuestions, error: qError } = await supabaseAdmin
+          .from("questions")
+          .select("id, subject_id, university_id, topic_id, body, options(*)")
+          .in("id", batch);
+
+        if (qError) {
+          console.error("[wrong-questions] Batch fetch error:", qError);
+        }
+
+        if (batchQuestions) {
+          allQuestions.push(...batchQuestions);
+        }
+      }
+
+      console.log("[wrong-questions] Questions fetched from all batches:", allQuestions.length);
+
+      if (allQuestions.length === 0) {
         res.status(500).json({
           status: "error",
           message: "Failed to fetch question details",
@@ -560,6 +576,17 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         });
         return;
       }
+
+      // Sort by most recent wrong answer and limit to top 50
+      const sortedQuestions = allQuestions
+        .sort((a: any, b: any) => {
+          const aTime = new Date(questionMap.get(a.id)?.last_seen_at || 0).getTime();
+          const bTime = new Date(questionMap.get(b.id)?.last_seen_at || 0).getTime();
+          return bTime - aTime; // Most recent first
+        })
+        .slice(0, 50);
+
+      const questions = sortedQuestions;
 
       // Fetch subject info for each question
       const subjectIds = [...new Set(questions.map((q: any) => q.subject_id))];
