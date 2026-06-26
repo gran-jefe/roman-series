@@ -430,7 +430,7 @@ export default function MockSessionPage() {
         <div className="flex-1 flex flex-col min-w-0">
 
           {/* SUBJECT TABS - Sticky below navbar */}
-          <div className="sticky top-14 z-30 bg-white border-b border-gray-200 overflow-x-auto flex-shrink-0">
+          <div className="sticky top-14 z-40 bg-white border-b border-gray-200 overflow-x-auto flex-shrink-0">
             <div className="flex">
               {subjects.map((subject, idx) => {
                 const startQ = idx * 25;
@@ -532,7 +532,7 @@ export default function MockSessionPage() {
             className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
           >
             <span>←</span>
-            <span className="hidden sm:inline">Prev</span>
+            <span>Prev</span>
           </button>
 
           {/* Flag */}
@@ -562,7 +562,7 @@ export default function MockSessionPage() {
             disabled={currentQuestion === questions.length - 1}
             className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
           >
-            <span className="hidden sm:inline">Next</span>
+            <span>Next</span>
             <span>→</span>
           </button>
         </div>
