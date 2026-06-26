@@ -546,16 +546,16 @@ export default function LandingPage() {
           {/* Stats Row - Enhanced */}
           <div className="grid grid-cols-3 gap-8 pt-16 border-t border-white/20">
             <div className="group">
-              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">1000+</div>
-              <div className="text-gray-300 font-medium">Authentic Past Questions</div>
+              <div className="md-text-5xl text-2xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">1000+</div>
+              <div className="text-gray-300 font-medium text-xs md-text-base">Authentic Past Questions</div>
             </div>
             <div className="group">
-              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">9</div>
-              <div className="text-gray-300 font-medium">Top Universities Covered</div>
+              <div className="md-text-5xl text-3xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">9</div>
+              <div className="text-gray-300 font-medium text-xs md-text-base">Top Universities Covered</div>
             </div>
             <div className="group">
-              <div className="text-5xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">8</div>
-              <div className="text-gray-300 font-medium">Core UTME Subjects</div>
+              <div className="md-text-5xl text-3xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">8</div>
+              <div className="text-gray-300 font-medium text-xs md-text-base">Core UTME Subjects</div>
             </div>
           </div>
         </div>
