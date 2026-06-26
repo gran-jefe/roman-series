@@ -491,7 +491,7 @@ export default function MockSessionPage() {
           </div>
 
           {/* QUESTION */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-16">
+          <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-14">
             <div className="max-w-2xl mx-auto">
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-4">
                 <p className="text-navy font-semibold text-base leading-relaxed select-none">
@@ -524,12 +524,12 @@ export default function MockSessionPage() {
       {/* BOTTOM NAV - Fixed */}
       {/* BOTTOM NAVIGATION - Mobile optimized */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-        <div className="flex items-center justify-between gap-1 px-2 py-2 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between gap-1 px-2 py-1.5 max-w-7xl mx-auto">
           {/* Previous */}
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestion === 0}
-            className="flex items-center justify-center gap-1 px-3 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
+            className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
           >
             <span>←</span>
             <span className="hidden sm:inline">Prev</span>
@@ -538,7 +538,7 @@ export default function MockSessionPage() {
           {/* Flag */}
           <button
             onClick={handleToggleFlag}
-            className={`flex items-center justify-center px-3 py-2 rounded-lg font-medium transition text-sm flex-1 min-w-0 ${
+            className={`flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-sm flex-1 min-w-0 ${
               flaggedQuestions.has(currentQ?.id)
                 ? "bg-amber-400 text-white"
                 : "border border-gray-300 text-navy hover:bg-gray-50"
@@ -551,7 +551,7 @@ export default function MockSessionPage() {
           {/* Submit */}
           <button
             onClick={() => setShowSubmitDialog(true)}
-            className="flex items-center justify-center px-3 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition text-sm flex-1 min-w-0"
+            className="flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition text-sm flex-1 min-w-0"
           >
             Submit
           </button>
@@ -560,7 +560,7 @@ export default function MockSessionPage() {
           <button
             onClick={handleNextQuestion}
             disabled={currentQuestion === questions.length - 1}
-            className="flex items-center justify-center gap-1 px-3 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
+            className="flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition text-sm flex-1 min-w-0"
           >
             <span className="hidden sm:inline">Next</span>
             <span>→</span>
