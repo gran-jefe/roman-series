@@ -28,14 +28,6 @@ export default function AdminLayout({
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-navy text-white shadow-lg">
-        <div className="p-6 border-b border-rose/30">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-forest rounded-full" />
-            <span className="font-bold text-lg">Roman Series</span>
-          </Link>
-          <p className="text-xs text-gray-300 mt-2">Admin Panel</p>
-        </div>
-
         <nav className="p-6 space-y-2">
           <Link
             href="/admin"
@@ -78,7 +70,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-8">
+        <div className="px-8 py-6">
           {children}
         </div>
       </main>
