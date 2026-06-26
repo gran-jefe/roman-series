@@ -82,7 +82,7 @@ Tables (with RLS policies):
 | Hard mode exams | ✗ | ✗ | ✓ |
 
 ### Pricing
-- **Explorer (Free)**: 1–2 subjects, 20 questions/day, 2 mock exams (lifetime), basic analytics
+- **Explorer (Free)**: 1–2 subjects, 20 questions/day, 1 mock exam (lifetime), basic analytics
 - **Scholar (₦3,500/6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics, leaderboard ranking
 - **Elite (₦5,000/6 months)**: Scholar features + percentile ranking, cohort insights, recalled questions, hard-mode exams, advanced analytics
 
@@ -117,7 +117,7 @@ Tables (with RLS policies):
 
 ### Mock Exams
 - Mock exam mode with full-length test
-- Plan-based access (Explorer: 2 lifetime, Scholar: 3/week, Elite: unlimited)
+- Plan-based access (Explorer: 1 lifetime, Scholar: 3/week, Elite: unlimited)
 - Mock exam gating with upgrade prompts
 - Hard mode exams (Elite only)
 

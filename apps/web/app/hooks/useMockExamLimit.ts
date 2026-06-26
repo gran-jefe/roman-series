@@ -13,7 +13,7 @@ export function useMockExamLimit(subscriptionStatus?: string): MockExamLimitInfo
   const [completedMocks, setCompletedMocks] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  const mockLimit = subscriptionStatus === "explorer" ? 2 : null; // Explorer has 2, Scholar has 3/week, Elite unlimited
+  const mockLimit = subscriptionStatus === "explorer" ? 1 : null; // Explorer has 1, Scholar has 3/week, Elite unlimited
   const hasExhausted = mockLimit !== null && completedMocks >= mockLimit;
   const canTakeMock = !hasExhausted;
 
