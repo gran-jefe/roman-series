@@ -709,15 +709,15 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { icon: Target, title: feature.title, desc: feature.desc },
-              { icon: BarChart3, title: feature.title, desc: feature.desc },
-              { icon: Clipboard, title: feature.title, desc: feature.desc },
-              { icon: Trophy, title: feature.title, desc: feature.desc },
-              { icon: Clock, title: feature.title, desc: feature.desc },
-              { icon: Zap, title: feature.title, desc: feature.desc },
-            ].map((feature, idx) => {
-              const IconComponent = feature.icon;
-              const actualFeature = FEATURES[idx];
+              { icon: Target },
+              { icon: BarChart3 },
+              { icon: Clipboard },
+              { icon: Trophy },
+              { icon: Clock },
+              { icon: Zap },
+            ].map((item, idx) => {
+              const IconComponent = item.icon;
+              const feature = FEATURES[idx];
               return (
               <div key={idx}
                 className="group bg-white/95 border border-gray-100 rounded-2xl p-6 hover:border-forest/30 hover:shadow-xl hover:shadow-forest/5 transition-all duration-300">
@@ -725,10 +725,10 @@ export default function LandingPage() {
                   <IconComponent className="w-6 h-6 text-forest" />
                 </div>
                 <h3 className="font-bold text-navy mb-2 text-base leading-tight">
-                  {actualFeature.title}
+                  {feature.title}
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
-                  {actualFeature.desc}
+                  {feature.desc}
                 </p>
               </div>
             );

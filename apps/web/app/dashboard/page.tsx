@@ -10,7 +10,7 @@ import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
-import { Calendar, BarChart3, Zap, CheckCircle, ChevronRight } from "lucide-react";
+import { Calendar, BarChart3, Zap, CheckCircle, ChevronRight, Target, BookOpen, AlertCircle as ErrorIcon, TrendingUp, Flame, Activity } from "lucide-react";
 
 interface Subscription {
   subscription_status: string;
@@ -303,7 +303,7 @@ export default function DashboardPage() {
             {/* Mock Exam Section */}
             {selectedUniversity && (
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-navy mb-4">🎯 Mock PUTME Exam</h3>
+                <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy mb-4"><Target className="w-5 h-5" /> Mock PUTME Exam</h3>
                 <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
@@ -506,8 +506,8 @@ export default function DashboardPage() {
 
             {selectedUniversity && (
               <div id="subjects-section" className="animate-fadeIn">
-                <h3 className="text-lg sm:text-xl font-black text-navy mb-5">
-                  📖 Practice Subjects
+                <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy mb-5">
+                  <BookOpen className="w-5 h-5" /> Practice Subjects
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3 sm:gap-4">
                   {subjects.map(subject => (
@@ -552,7 +552,7 @@ export default function DashboardPage() {
 
             {/* Error Bank Card */}
             <div className="rounded-2xl shadow-sm border border-gray-100 p-6 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">❌ Error Bank</h3>
+              <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4"><ErrorIcon className="w-4 h-4" /> Error Bank</h3>
               {errorBank.length > 0 ? (
                 <>
                   <p className="text-4xl font-black text-ember mb-2">{errorBank.length}</p>
@@ -575,10 +575,10 @@ export default function DashboardPage() {
             {/* Motivation Card */}
             {stats && (
               <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🚀 Your Progress</h3>
+                <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4"><TrendingUp className="w-4 h-4" /> Your Progress</h3>
 
                 <div className="mb-5 flex items-center gap-3">
-                  <span className="text-3xl">🔥</span>
+                  <Flame className="w-6 h-6 text-orange-500" />
                   <div>
                     <p className="text-xs text-gray-500">Current Streak</p>
                     <p className="text-lg font-black text-navy">Keep it up!</p>
@@ -600,7 +600,7 @@ export default function DashboardPage() {
                               : 0;
                           if (avgScore < 40) return "Keep going — practice makes perfect! 💪";
                           if (avgScore < 60) return "Good progress! Focus on weak topics.";
-                          if (avgScore < 80) return "You're getting there! Push for 80%. 🎯";
+                          if (avgScore < 80) return "You're getting there! Push for 80%. 💪";
                           return "Outstanding! You're exam-ready! 🌟";
                         })()}
                   </p>
@@ -618,7 +618,7 @@ export default function DashboardPage() {
             {/* Prediction Card */}
             {prediction && prediction.locked ? (
               <div className="bg-gradient-to-br from-forest/10 to-forest/5 rounded-2xl shadow-sm border-2 border-forest/30 p-6">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">🎯 Admission Target</h3>
+                <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-3"><Target className="w-4 h-4" /> Admission Target</h3>
                 <p className="text-sm text-gray-700 mb-4">{prediction.preview_message}</p>
                 <button
                   onClick={() => router.push("/pricing")}
@@ -695,7 +695,7 @@ export default function DashboardPage() {
         {!sessionsLoaded ? (
           <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
+              <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy"><Activity className="w-5 h-5" /> Recent Practice Sessions</h3>
             </div>
             <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8" />
@@ -720,7 +720,7 @@ export default function DashboardPage() {
         ) : sessions.length > 0 ? (
           <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
+              <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy"><Activity className="w-5 h-5" /> Recent Practice Sessions</h3>
               <span className="text-sm text-gray-500">{sessions.length} total</span>
             </div>
             <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
