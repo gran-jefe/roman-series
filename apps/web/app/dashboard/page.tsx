@@ -195,35 +195,40 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-blush">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-white">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Welcome Header Band */}
-        <div className="mb-8 bg-navy text-white rounded-lg p-8 shadow-md">
-          <h2 className="text-4xl font-bold mb-2">
-            Welcome back, {userName ? userName.split(" ")[0] : "User"}
-          </h2>
-          {selectedUniversity && (
-            <p className="text-gray-300 text-sm">
-              Preparing for <span className="font-semibold text-white">{selectedUniversity.name}</span>
-              {targetCourse && <span className="text-gray-400"> • {targetCourse}</span>}
-            </p>
-          )}
+        <div className="mb-12 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-forest/15 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
+          <div className="relative z-10">
+            <h2 className="text-3xl sm:text-4xl font-black mb-2">
+              Welcome back, {userName ? userName.split(" ")[0] : "User"}! 👋
+            </h2>
+            {selectedUniversity && (
+              <p className="text-white/70 text-sm sm:text-base font-medium">
+                Preparing for <span className="font-bold text-white">{selectedUniversity.name}</span>
+                {targetCourse && <span className="text-white/60"> • {targetCourse}</span>}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {stats ? (
               <>
                 {/* Total Sessions */}
-                <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total Sessions</p>
-                      <p className="text-3xl font-bold text-navy">{stats.total_sessions}</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Total Sessions</p>
+                      <p className="text-4xl font-black text-navy">{stats.total_sessions}</p>
+                      <p className="text-xs text-gray-400 mt-2">practice sessions</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-blush flex items-center justify-center">
-                      <svg className="w-5 h-5 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 rounded-xl bg-navy/10 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
@@ -231,11 +236,11 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Average Score */}
-                <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Average Score</p>
-                      <p className="text-3xl font-bold text-navy">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Average Score</p>
+                      <p className="text-4xl font-black text-forest">
                         {stats.avg_score_by_subject.length > 0
                           ? Math.round(
                               stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
@@ -244,9 +249,10 @@ export default function DashboardPage() {
                           : 0}
                         %
                       </p>
+                      <p className="text-xs text-gray-400 mt-2">across all subjects</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-blush flex items-center justify-center">
-                      <svg className="w-5 h-5 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 rounded-xl bg-forest/10 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                     </div>
@@ -254,30 +260,32 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Best Score */}
-                <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Best Score</p>
-                      <p className="text-3xl font-bold text-navy">{stats.best_score_percentage}%</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Best Score</p>
+                      <p className="text-4xl font-black text-navy">{stats.best_score_percentage}%</p>
+                      <p className="text-xs text-gray-400 mt-2">personal record</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-blush flex items-center justify-center">
-                      <svg className="w-5 h-5 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <div className="w-12 h-12 rounded-xl bg-gold/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-gold" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
                   </div>
                 </div>
 
                 {/* Questions Answered */}
-                <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Questions Answered</p>
-                      <p className="text-3xl font-bold text-navy">{stats.total_questions_answered}</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Questions Answered</p>
+                      <p className="text-4xl font-black text-navy">{stats.total_questions_answered}</p>
+                      <p className="text-xs text-gray-400 mt-2">total attempted</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-blush flex items-center justify-center">
-                      <svg className="w-5 h-5 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div className="w-12 h-12 rounded-xl bg-green-100/50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                   </div>
@@ -296,14 +304,14 @@ export default function DashboardPage() {
 
 
         {/* Main Grid: 2/3 + 1/3 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
           {/* Left Column (2/3) */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* Mock Exam Section */}
             {selectedUniversity && (
               <div>
-                <h3 className="text-xl font-bold text-navy mb-4">Mock PUTME Exam</h3>
-                <div className="rounded-lg shadow-md p-4 md:p-8 border-t-4 border-forest bg-white hover:shadow-lg transition-all">
+                <h3 className="text-lg sm:text-xl font-black text-navy mb-4">🎯 Mock PUTME Exam</h3>
+                <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
                       <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
@@ -383,7 +391,7 @@ export default function DashboardPage() {
 
             {/* Recalled Questions Section */}
             <div>
-              <div className="rounded-lg shadow-md p-4 md:p-8 border-t-4 border-purple-600 bg-white hover:shadow-lg transition-all">
+              <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
@@ -428,7 +436,7 @@ export default function DashboardPage() {
 
             {/* Hard Mode Mock Exam Section */}
             <div>
-              <div className={`rounded-lg shadow-md p-4 md:p-8 border-t-4 bg-white hover:shadow-lg transition-all ${subscription?.subscription_status === "elite" ? "border-red-600" : "border-gray-300"}`}>
+              <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
@@ -487,42 +495,42 @@ export default function DashboardPage() {
 
             {/* Subjects Section */}
             {!selectedUniversity && (
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8 text-center">
-                <h3 className="text-xl font-bold text-navy mb-3">
+              <div className="bg-gradient-to-br from-forest/10 to-forest/5 border-2 border-forest/30 rounded-2xl p-8 sm:p-10 text-center">
+                <h3 className="text-xl sm:text-2xl font-black text-navy mb-4">
                   📚 Set Up Your Learning Path
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-600 mb-6 text-sm sm:text-base">
                   Select your target university and course to unlock personalized subject practice. This helps us recommend the right topics and resources for your exam.
                 </p>
                 <button
                   onClick={() => router.push("/onboarding")}
-                  className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
+                  className="px-6 py-3 bg-forest text-white rounded-xl font-black hover:bg-forest/90 hover:shadow-lg transition-all"
                 >
-                  Complete Setup
+                  Complete Setup →
                 </button>
               </div>
             )}
 
             {selectedUniversity && (
               <div id="subjects-section" className="animate-fadeIn">
-                <h3 className="text-xl font-bold text-navy mb-4">
-                  Practice Subjects
+                <h3 className="text-lg sm:text-xl font-black text-navy mb-5">
+                  📖 Practice Subjects
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3 sm:gap-4">
                   {subjects.map(subject => (
                     <div
                       key={subject.id}
                       onClick={() => handleSelectSubject(subject)}
-                      className="rounded-lg p-6 text-white cursor-pointer shadow-sm hover:shadow-lg transition-all transform hover:scale-105 min-h-[120px] flex flex-col justify-between"
+                      className="rounded-xl p-5 sm:p-6 text-white cursor-pointer shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 min-h-[100px] sm:min-h-[120px] flex flex-col justify-between border border-opacity-30 border-white/40"
                       style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
                     >
                       <div>
-                        <h4 className="font-bold text-lg mb-1">{subject.name}</h4>
-                        <p className="text-sm text-white opacity-90">Tap to start practice</p>
+                        <h4 className="font-black text-base sm:text-lg mb-1">{subject.name}</h4>
+                        <p className="text-xs sm:text-sm text-white/85">Tap to practice</p>
                       </div>
                       <div className="text-right">
-                        <svg className="w-5 h-5 inline-block opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg className="w-5 h-5 inline-block opacity-85" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                     </div>
@@ -533,48 +541,41 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Column (1/3) */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-5 sm:space-y-6">
             {/* Target University Card */}
             {selectedUniversity && (
-              <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">Target University</h3>
-                <div className="flex items-start justify-between">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎓 Target University</h3>
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h4 className="text-lg font-bold text-navy mb-1">{selectedUniversity.name}</h4>
-                    <p className="text-xs font-semibold text-gray-500 mb-3 uppercase">{selectedUniversity.short_code}</p>
+                    <h4 className="text-lg font-black text-navy mb-1">{selectedUniversity.name}</h4>
+                    <p className="text-xs font-bold text-forest mb-3 uppercase">{selectedUniversity.short_code}</p>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Course</p>
-                      <p className="text-sm font-medium text-navy">{profile?.target_course}</p>
+                      <p className="text-sm font-bold text-navy">{profile?.target_course}</p>
                     </div>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-blush flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg">🎓</span>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Error Bank Card */}
-            <div className={`rounded-lg shadow-md border-t-4 p-6 ${
-              errorBank.length > 0
-                ? "bg-white border-ember"
-                : "bg-white border-gray-300"
-            }`}>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">Error Bank</h3>
+            <div className="rounded-2xl shadow-sm border border-gray-100 p-6 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">❌ Error Bank</h3>
               {errorBank.length > 0 ? (
                 <>
-                  <p className="text-4xl font-bold text-navy mb-2">{errorBank.length}</p>
-                  <p className="text-sm text-gray-600 mb-4">Questions to review</p>
+                  <p className="text-4xl font-black text-ember mb-2">{errorBank.length}</p>
+                  <p className="text-sm text-gray-600 mb-4">questions to review</p>
                   <button
                     onClick={() => router.push("/error-bank")}
-                    className="w-full bg-ember text-white px-4 py-2 rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                    className="w-full bg-ember text-white px-4 py-2.5 rounded-xl font-bold hover:bg-ember/90 hover:shadow-md transition-all text-sm"
                   >
-                    Review Now
+                    Review Now →
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-2xl font-bold text-navy mb-2">0</p>
+                  <p className="text-4xl font-black text-forest mb-2">0</p>
                   <p className="text-sm text-gray-600">No mistakes yet — keep practicing! 🎉</p>
                 </>
               )}
@@ -582,19 +583,19 @@ export default function DashboardPage() {
 
             {/* Motivation Card */}
             {stats && (
-              <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">Your Progress</h3>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🚀 Your Progress</h3>
 
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="text-2xl">🔥</span>
+                <div className="mb-5 flex items-center gap-3">
+                  <span className="text-3xl">🔥</span>
                   <div>
                     <p className="text-xs text-gray-500">Current Streak</p>
-                    <p className="text-lg font-bold text-navy">Keep it up!</p>
+                    <p className="text-lg font-black text-navy">Keep it up!</p>
                   </div>
                 </div>
 
-                <div className="mb-4 p-3 bg-blush rounded-lg">
-                  <p className="text-xs font-semibold text-forest mb-2 uppercase">Motivational Message</p>
+                <div className="mb-5 p-4 bg-gradient-to-br from-forest/5 to-forest/10 rounded-xl border border-forest/10">
+                  <p className="text-xs font-bold text-forest mb-2 uppercase tracking-widest">Tip</p>
                   <p className="text-sm text-navy font-medium">
                     {stats.avg_score_by_subject.length === 0
                       ? "Start your first practice session!"
@@ -616,30 +617,28 @@ export default function DashboardPage() {
 
                 <button
                   onClick={() => router.push("/analytics")}
-                  className="w-full px-4 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
                 >
-                  View Full Analytics
+                  View Full Analytics →
                 </button>
               </div>
             )}
 
             {/* Prediction Card */}
             {prediction && prediction.locked ? (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md border-2 border-blue-200 p-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Admission Target</h3>
+              <div className="bg-gradient-to-br from-forest/10 to-forest/5 rounded-2xl shadow-sm border-2 border-forest/30 p-6">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">🎯 Admission Target</h3>
                 <p className="text-sm text-gray-700 mb-4">{prediction.preview_message}</p>
                 <button
                   onClick={() => router.push("/pricing")}
-                  className="w-full px-4 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
                 >
                   Upgrade to Scholar
                 </button>
               </div>
             ) : prediction && prediction.status !== "no_data" && (
-              <div className={`bg-white rounded-lg shadow-md border-t-4 p-6 ${
-                prediction.status === "on_track" ? "border-green-500" : "border-amber-500"
-              }`}>
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">Admission Target</h3>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
 
                 <div className="space-y-3 mb-4">
                   <div>
@@ -677,24 +676,24 @@ export default function DashboardPage() {
 
                 <button
                   onClick={() => router.push("/analytics")}
-                  className="w-full px-4 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
                 >
-                  View Detailed Prediction
+                  View Detailed Prediction →
                 </button>
               </div>
             )}
 
             {prediction?.status === "no_data" && (
-              <div className="bg-white rounded-lg shadow-md border-t-4 border-gray-300 p-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-4">Admission Target</h3>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Complete your profile with UTME score to see your admission prediction
                 </p>
                 <button
                   onClick={() => router.push("/profile")}
-                  className="w-full px-4 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all text-sm"
+                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
                 >
-                  Set UTME Score
+                  Set UTME Score →
                 </button>
               </div>
             )}
@@ -703,11 +702,11 @@ export default function DashboardPage() {
 
         {/* Recent Sessions */}
         {!sessionsLoaded ? (
-          <div className="mt-8">
+          <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
+              <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8" />
               <table className="w-full min-w-full">
                 <thead className="bg-gray-50 border-b sticky top-0">
@@ -728,12 +727,12 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : sessions.length > 0 ? (
-          <div className="mt-8">
+          <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-navy">Recent Practice Sessions</h3>
+              <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
               <span className="text-sm text-gray-500">{sessions.length} total</span>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
               <table className="w-full min-w-full">
                 <thead className="bg-gray-50 border-b sticky top-0 z-20">
@@ -796,9 +795,9 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-8">
-            <h3 className="text-xl font-bold text-navy mb-6">Recent Practice Sessions</h3>
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="mt-12">
+            <h3 className="text-lg sm:text-xl font-black text-navy mb-6">📊 Recent Practice Sessions</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center hover:shadow-lg hover:border-forest/30 transition-all">
               <p className="text-gray-500 text-sm">No practice sessions yet. Start with a subject above to begin!</p>
             </div>
           </div>
