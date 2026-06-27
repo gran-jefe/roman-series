@@ -195,7 +195,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAF7F4]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Welcome Header Band */}
         <div className="mb-12 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
@@ -315,7 +315,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div className="flex-1">
                       <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
-                      <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete UTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
+                      <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete PUTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
 
                       {subscription?.subscription_status === "explorer" && mockExamLimit.hasExhausted && (
                         <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
@@ -544,7 +544,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-1 space-y-5 sm:space-y-6">
             {/* Target University Card */}
             {selectedUniversity && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎓 Target University</h3>
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -583,7 +583,7 @@ export default function DashboardPage() {
 
             {/* Motivation Card */}
             {stats && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🚀 Your Progress</h3>
 
                 <div className="mb-5 flex items-center gap-3">
@@ -637,7 +637,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             ) : prediction && prediction.status !== "no_data" && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
 
                 <div className="space-y-3 mb-4">
@@ -684,7 +684,7 @@ export default function DashboardPage() {
             )}
 
             {prediction?.status === "no_data" && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
+              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Complete your profile with UTME score to see your admission prediction
@@ -706,7 +706,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
+            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8" />
               <table className="w-full min-w-full">
                 <thead className="bg-gray-50 border-b sticky top-0">
@@ -732,7 +732,7 @@ export default function DashboardPage() {
               <h3 className="text-lg sm:text-xl font-black text-navy">📊 Recent Practice Sessions</h3>
               <span className="text-sm text-gray-500">{sessions.length} total</span>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
+            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
               <table className="w-full min-w-full">
                 <thead className="bg-gray-50 border-b sticky top-0 z-20">
@@ -797,7 +797,7 @@ export default function DashboardPage() {
         ) : (
           <div className="mt-12">
             <h3 className="text-lg sm:text-xl font-black text-navy mb-6">📊 Recent Practice Sessions</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center hover:shadow-lg hover:border-forest/30 transition-all">
+            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-12 text-center hover:shadow-lg hover:border-forest/30 transition-all">
               <p className="text-gray-500 text-sm">No practice sessions yet. Start with a subject above to begin!</p>
             </div>
           </div>

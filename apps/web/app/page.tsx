@@ -436,7 +436,7 @@ export default function LandingPage() {
   `;
 
   return (
-    <div className="min-h-screen bg-white font-[var(--font-jakarta)]">
+    <div className="min-h-screen bg-[#FAF7F4] font-[var(--font-jakarta)]">
       <style>{floatingStyle}</style>
 
       {/* ──── NAVBAR ──── */}
