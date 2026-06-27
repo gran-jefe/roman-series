@@ -25,10 +25,10 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex pt-14 min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-navy text-white shadow-lg">
-        <nav className="p-6 space-y-2">
+      <aside className="w-64 bg-navy text-white shadow-lg fixed left-0 top-14 h-[calc(100vh-56px)] overflow-y-auto">
+        <nav className="p-6 space-y-1">
           <Link
             href="/admin"
             className="block px-4 py-3 rounded-lg hover:bg-rose/20 transition-colors text-sm font-medium"
@@ -69,8 +69,8 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="px-8 py-6">
+      <main className="flex-1 overflow-auto ml-64">
+        <div className="px-8 py-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>

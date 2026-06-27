@@ -86,7 +86,7 @@ export default function AdminPage() {
     <div>
       <h1 className="text-3xl font-bold text-navy mb-8">Admin Overview</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {loading ? (
           <>
             <StatCardSkeleton />
@@ -99,10 +99,10 @@ export default function AdminPage() {
           metricCards.map((card) => (
             <div
               key={card.label}
-              className={`border-l-4 rounded-lg p-6 ${colorClasses[card.color as keyof typeof colorClasses]}`}
+              className={`border-2 rounded-lg p-6 transition-shadow hover:shadow-md ${colorClasses[card.color as keyof typeof colorClasses]}`}
             >
-              <p className="text-sm font-medium opacity-90 mb-2">{card.label}</p>
-              <p className="text-3xl font-bold">{card.value}</p>
+              <p className="text-xs uppercase tracking-wider font-semibold opacity-75 mb-3">{card.label}</p>
+              <p className="text-4xl font-bold">{card.value}</p>
             </div>
           ))
         )}
