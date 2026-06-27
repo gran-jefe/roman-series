@@ -230,7 +230,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       )}
-      <div className={shouldShowNavbar ? "pt-[54px]" : ""}>{children}</div>
+      <div className={shouldShowNavbar ? "pt-[60px]" : ""}>{children}</div>
     </>
   );
 }

@@ -59,10 +59,16 @@ export default function LandingPage() {
     { name: "Government", color: "bg-government" },
     { name: "Chemistry", color: "bg-chemistry" },
     { name: "Literature", color: "bg-literature" },
-    { name: "CRS", color: "bg-crs" },
-    { name: "IRS", color: "bg-irs" },
+    { name: "C.R.S.", color: "bg-crs" },
+    { name: "I.R.S.", color: "bg-irs" },
     { name: "English", color: "bg-english" },
     { name: "Physics", color: "bg-physics" },
+    { name: "Mathematics", color: "bg-mathematics" },
+    { name: "Economics", color: "bg-economics" },
+    { name: "Commerce", color: "bg-commerce" },
+    { name: "Accounting", color: "bg-accounting" },
+    { name: "Yoruba", color: "bg-yoruba" },
+    { name: "Music", color: "bg-music" },
   ];
 
   const UNIVERSITIES = [
@@ -422,369 +428,497 @@ export default function LandingPage() {
     },
   ];
 
+  const floatingStyle = `
+    @keyframes float-smooth {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+  `;
+
   return (
-    <div className="min-h-screen bg-blush" style={{ colorScheme: 'light' }}>
-      {/* Navbar - Blush with Subject Color Gradient */}
-      <nav className="sticky top-0 z-50 bg-gradient-to-r from-blush via-[#F5E8F0] to-blush shadow-md border-b border-gray-300/40">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-90 transition flex items-center group relative">
-            <div className="absolute -inset-2 bg-gradient-to-r from-biology via-government to-chemistry opacity-0 group-hover:opacity-5 transition-opacity rounded-lg blur"></div>
+    <div className="min-h-screen bg-white font-[var(--font-jakarta)]">
+      <style>{floatingStyle}</style>
+
+      {/* ──── NAVBAR ──── */}
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
-              width={180}
-              height={70}
-              className="h-9 w-auto relative"
+              width={140}
+              height={56}
+              className="h-10 w-auto"
             />
           </Link>
-          <div className="flex gap-4 items-center">
-            {/* Subject color indicator bar - gradient of all subject colors */}
-            <div className="hidden md:flex gap-1 h-7 rounded-full p-1 bg-white/40 backdrop-blur-sm border border-white/70 shadow-sm">
-              <div className="w-4 h-5 rounded-sm bg-biology"></div>
-              <div className="w-4 h-5 rounded-sm bg-government"></div>
-              <div className="w-4 h-5 rounded-sm bg-chemistry"></div>
-              <div className="w-4 h-5 rounded-sm bg-literature"></div>
-              <div className="w-4 h-5 rounded-sm bg-crs"></div>
-              <div className="w-4 h-5 rounded-sm bg-english"></div>
-            </div>
-            <div className="flex gap-3">
-              {!user ? (
-                <>
-                  <Link
-                    href="/login"
-                    className="text-sm text-navy/70 hover:text-navy transition-colors font-medium"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
-                  >
-                    Get Started
-                  </Link>
-                </>
-              ) : (
+          <div className="flex items-center gap-3">
+            {!user ? (
+              <>
                 <Link
-                  href="/dashboard"
-                  className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
+                  href="/login"
+                  className="hidden sm:block text-sm text-gray-500 hover:text-gray-900 font-medium transition-colors px-3 py-2"
                 >
-                  Dashboard
+                  Sign In
                 </Link>
-              )}
-            </div>
+                <Link
+                  href="/register"
+                  className="text-sm bg-navy text-white px-5 py-2.5 rounded-xl font-bold hover:bg-navy/90 transition-all hover:shadow-lg hover:shadow-navy/20"
+                >
+                  Get Started Free →
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="text-sm bg-forest text-white px-5 py-2.5 rounded-xl font-bold hover:bg-forest/90 transition-all"
+              >
+                Dashboard →
+              </Link>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* Hero Section - Navy with premium feel */}
-      <section className="bg-gradient-to-br from-navy via-[#0D1B2A] to-[#051014] text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(26,122,74,0.1), rgba(26,122,74,0.1) 1px, transparent 1px)', backgroundSize: '60px 60px'}}></div>
-        <div className="absolute top-0 left-0 w-96 h-96 bg-forest/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-forest/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+      {/* ──── COUNTDOWN BANNER ──── */}
+      {timeLeft && (
+        <div className="bg-gradient-to-r from-ember via-orange-500 to-amber-500 text-white py-2.5 px-4 text-center text-sm font-semibold">
+          <span className="inline-flex items-center gap-2">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse inline-block"></span>
+            🔥 Launch Week Special – {timeLeft}
+            <Link href="#pricing" className="underline underline-offset-2 hover:no-underline ml-1">
+              Claim discount →
+            </Link>
+          </span>
+        </div>
+      )}
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-40 text-center">
+      {/* ──── HERO ──── */}
+      <section className="relative bg-navy overflow-hidden">
+        {/* Warm gradient overlays */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-forest/20 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/3"></div>
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-ember/15 rounded-full blur-[100px] translate-x-[-20%] translate-y-1/3"></div>
+          <div className="absolute top-1/2 left-1/2 w-[500px] h-[300px] bg-gold/10 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
 
-          {/* Logo - Bouncing animation */}
-          <div className="mb-12 animate-bounce-soft">
-            <Image src="/assets/logos/roman-series-full.png"
-              alt="Roman Series" width={240} height={96}
-              className="h-20 w-auto mx-auto brightness-0 invert drop-shadow-2xl" priority />
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)`,
+            backgroundSize: "60px 60px"
+          }}>
+        </div>
+
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-24 sm:pt-28 sm:pb-32 text-center">
+
+          {/* Logo */}
+          <div className="mb-12 animate-float inline-block">
+            <Image
+              src="/assets/logos/roman-series-full.png"
+              alt="Roman Series"
+              width={180}
+              height={72}
+              className="h-14 w-auto mx-auto brightness-0 invert drop-shadow-[0_0_30px_rgba(26,122,74,0.4)]"
+              priority
+            />
           </div>
 
-          {/* Launch badge */}
-          {timeLeft && (
-            <div className="inline-flex items-center gap-3 mb-8 px-5 py-3 bg-white/5 border border-forest/30 rounded-full backdrop-blur-sm">
-              <span className="w-2.5 h-2.5 bg-forest rounded-full animate-pulse"></span>
-              <span className="text-sm font-semibold text-forest">⏰ {timeLeft}</span>
-            </div>
-          )}
+          {/* UI-first badge */}
+          <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 bg-white/10 border border-white/20 rounded-full backdrop-blur-sm">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            <span className="text-white/80 text-sm font-semibold tracking-wide">
+              NOW LIVE – University of Ibadan · Other schools coming soon
+            </span>
+          </div>
 
-          {/* Headline - Premium serif */}
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif font-bold mb-6 leading-[0.95] tracking-tight text-white">
-            Ace Your<br/>
-            <span className="text-forest">Post-UTME</span>
+          {/* Main headline */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white mb-6 leading-[1.05] tracking-tight">
+            You Want UI.<br/>
+            <span className="bg-gradient-to-r from-green-400 via-emerald-300 to-forest bg-clip-text text-transparent">
+              We'll Get You There.
+            </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-white/75 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
-            9,600+ authentic past questions. AI-powered analytics. Predicted scores. Real admissions.
+          <p className="text-lg sm:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+            Practice with <strong className="text-white/90">9,600+ authentic UI Post-UTME questions</strong>. AI-powered analytics, real-time score prediction, and personalised study plans – everything you need to get admitted.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-24">
+          {/* CTA buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Link href={user ? "/dashboard" : "/register"}
-              className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-gradient-to-r from-forest to-forest/90 text-white font-bold rounded-xl text-lg hover:shadow-2xl hover:shadow-forest/40 transition-all hover:-translate-y-1 border border-forest/50 relative overflow-hidden group">
-              <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></span>
-              <span className="relative">{user ? "Go to Dashboard" : "Start Free Today"} →</span>
+              className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-forest text-white font-black text-lg rounded-2xl hover:bg-forest/90 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-forest/30">
+              {user ? "Go to Dashboard" : "Start Practicing Free"}
+              <span className="group-hover:translate-x-1 transition-transform">
+                →
+              </span>
             </Link>
             <Link href="#pricing"
-              className="inline-flex items-center justify-center gap-2 px-10 py-4 border-2 border-white/40 text-white font-semibold rounded-xl text-lg hover:bg-white/10 hover:border-white/70 transition-all backdrop-blur-sm hover:backdrop-blur-md group">
-              <span className="group-hover:translate-x-1 transition-transform">View Pricing</span>
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-white/20 text-white/80 font-bold text-lg rounded-2xl hover:bg-white/10 hover:border-white/40 transition-all">
+              See Pricing
             </Link>
           </div>
 
-          {/* Stats - Premium layout */}
-          <div className="grid grid-cols-3 gap-6 sm:gap-12 pt-16 border-t border-white/10 max-w-2xl mx-auto">
-            <div>
-              <div className="text-4xl sm:text-5xl font-serif font-black text-forest mb-2">9,600+</div>
-              <div className="text-xs sm:text-sm text-white/50 font-medium tracking-wide">Questions</div>
-            </div>
-            <div>
-              <div className="text-4xl sm:text-5xl font-serif font-black text-forest mb-2">9</div>
-              <div className="text-xs sm:text-sm text-white/50 font-medium tracking-wide">Universities</div>
-            </div>
-            <div>
-              <div className="text-4xl sm:text-5xl font-serif font-black text-forest mb-2">14</div>
-              <div className="text-xs sm:text-sm text-white/50 font-medium tracking-wide">Subjects</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section - Blush background */}
-      <section className="bg-blush py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Why Roman Series</p>
-            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-5">Everything You Need to Succeed</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">Built specifically for Nigerian Post-UTME preparation</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, idx) => (
-              <div key={idx} className="group bg-white p-8 rounded-2xl border-2 border-gray-100 hover:border-forest/30 hover:shadow-2xl hover:shadow-forest/10 transition-all duration-300 cursor-default relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-forest/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-forest/15 to-forest/5 flex items-center justify-center text-3xl mb-5 group-hover:from-forest/25 group-hover:to-forest/10 transition-all shadow-sm">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-lg font-serif font-bold text-navy mb-3">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{feature.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works - White background */}
-      <section className="bg-white py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Getting Started</p>
-            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy">Three Simple Steps</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connector line */}
-            <div className="hidden md:block absolute top-12 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] h-0.5 bg-gradient-to-r from-transparent via-forest/30 to-transparent z-0"></div>
+          {/* Stats */}
+          <div className="inline-grid grid-cols-3 gap-0 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm overflow-hidden">
             {[
-              {icon: "1", title: "Create Account", desc: "Sign up and pick your target university"},
-              {icon: "2", title: "Select Subjects", desc: "Choose from 14 subjects to practice"},
-              {icon: "3", title: "Track Progress", desc: "Get AI analytics and admission predictions"},
-            ].map((step, idx) => (
-              <div key={idx} className="relative z-10 bg-blush rounded-2xl p-8 border border-forest/10 text-center">
-                <div className="w-14 h-14 bg-forest text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-serif font-bold ring-4 ring-white shadow-lg">
-                  {step.icon}
+              { number: "9,600+", label: "UI Questions" },
+              { number: "14", label: "Subjects" },
+              { number: "5,000+", label: "Students" },
+            ].map((stat, i) => (
+              <div key={i} className={`px-6 sm:px-10 py-6 text-center ${i < 2 ? "border-r border-white/10" : ""}`}>
+                <div className="text-2xl sm:text-4xl font-black text-white mb-1">
+                  {stat.number}
                 </div>
-                <h3 className="font-serif font-bold text-navy text-lg mb-2">{step.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
+                <div className="text-xs sm:text-sm text-white/40 font-semibold uppercase tracking-widest">
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Subjects Section - Blush */}
-      <section className="bg-blush py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Coverage</p>
-            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-4">All Post-UTME Subjects</h2>
-            <p className="text-gray-600 text-lg">Topic-by-topic drilling with verified past questions</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {SUBJECTS.map((subject) => (
-              <Link key={subject.name} href={user ? "/dashboard" : "/register"}
-                className={`${subject.color} text-white rounded-2xl p-6 text-center font-serif font-semibold text-sm sm:text-base hover:shadow-2xl hover:shadow-black/30 transition-all hover:-translate-y-2 border border-opacity-30 border-white/40 relative overflow-hidden group`}>
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <span className="relative block">{subject.name}</span>
-              </Link>
-            ))}
-          </div>
+      {/* ──── SOCIAL PROOF BAR ──── */}
+      <section className="bg-gray-50 border-y border-gray-100 py-5 px-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-10 text-center">
+          {[
+            { icon: "📈", text: "98% admission success rate" },
+            { icon: "⭐", text: "4.9★ average student rating" },
+            { icon: "✓", text: "Trusted since 2019" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm text-gray-600 font-semibold">
+              <span>{item.icon}</span>
+              <span>{item.text}</span>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Universities Section - White */}
-      <section className="bg-white py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Partner Universities</p>
-          <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-4">Nigeria&apos;s Leading Institutions</h2>
-          <p className="text-gray-600 text-lg mb-12">Practice questions specific to your target university</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {UNIVERSITIES.map((uni) => (
-              <div key={uni.code} title={uni.name} className="bg-blush text-navy text-sm font-semibold px-6 py-3 rounded-full border-2 border-forest/30 hover:border-forest hover:bg-forest hover:text-white transition-all cursor-default">
-                {uni.code}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section - Blush */}
-      <section className="bg-blush py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Success Stories</p>
-            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-4">Student Testimonials</h2>
-            <p className="text-gray-600 text-lg">Real students, real results, real admissions</p>
+      {/* ──── TESTIMONIALS ──── */}
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+              Real Results
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-navy mb-3">
+              They Got In. You Can Too.
+            </h2>
+            <p className="text-gray-500 text-lg">
+              Over 5,000 students admitted using Roman Series
+            </p>
           </div>
 
-          {/* Testimonial Card */}
-          <div className="relative">
-            <div key={currentTestimonialIdx} className="bg-white border-2 border-forest/25 rounded-3xl p-10 sm:p-12 relative overflow-hidden shadow-2xl shadow-forest/10">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-forest via-forest/60 to-forest/20"></div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-forest/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+          {/* Testimonial card */}
+          <div className="relative max-w-2xl mx-auto">
+            <div key={currentTestimonialIdx}
+              className="relative bg-navy rounded-3xl p-8 sm:p-10 overflow-hidden">
+
+              {/* Decorative background */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
               {/* Stars */}
-              <div className="flex gap-1 mb-8 text-yellow-400 text-xl">★★★★★</div>
+              <div className="text-gold text-xl mb-6 relative z-10">⭐⭐⭐⭐⭐</div>
 
               {/* Quote */}
-              <p className="text-gray-700 text-lg leading-relaxed mb-10 italic font-light min-h-[100px]">
+              <p className="text-white/85 text-base sm:text-lg leading-relaxed mb-8 italic min-h-[100px] relative z-10">
                 &ldquo;{TESTIMONIALS[currentTestimonialIdx].text}&rdquo;
               </p>
 
-              {/* Author */}
-              <div className="flex items-center gap-4 pt-6 border-t border-gray-200">
-                <div className="w-14 h-14 bg-navy text-white rounded-full flex items-center justify-center font-serif font-bold text-lg flex-shrink-0 shadow-md">
-                  {TESTIMONIALS[currentTestimonialIdx].initial}
-                </div>
-                <div className="flex-1">
-                  <p className="font-serif font-bold text-navy text-lg">
-                    {TESTIMONIALS[currentTestimonialIdx].author}
-                  </p>
-                  <p className="text-sm text-forest font-medium">
-                    {TESTIMONIALS[currentTestimonialIdx].role}
-                  </p>
+              {/* Author row */}
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-forest rounded-full flex items-center justify-center font-black text-white text-base flex-shrink-0">
+                    {TESTIMONIALS[currentTestimonialIdx].initial}
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-sm">
+                      {TESTIMONIALS[currentTestimonialIdx].author}
+                    </p>
+                    <p className="text-white/50 text-xs">
+                      {TESTIMONIALS[currentTestimonialIdx].role}
+                    </p>
+                  </div>
                 </div>
                 {TESTIMONIALS[currentTestimonialIdx].score && (
-                  <span className="text-xs font-bold px-3 py-2 bg-forest/10 text-forest rounded-lg whitespace-nowrap">
+                  <span className="text-xs font-black px-3 py-1.5 bg-forest/30 text-green-300 rounded-full border border-green-500/30">
                     {TESTIMONIALS[currentTestimonialIdx].score}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between mt-8">
+            {/* Nav */}
+            <div className="flex items-center justify-between mt-6 px-2">
               <button
-                onClick={() => setCurrentTestimonialIdx((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)}
-                className="w-11 h-11 rounded-full border-2 border-forest/40 hover:border-forest hover:bg-forest hover:text-white transition-all flex items-center justify-center text-forest font-bold">
+                onClick={() => setCurrentTestimonialIdx(
+                  p => (p - 1 + TESTIMONIALS.length) % TESTIMONIALS.length
+                )}
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy text-gray-400 hover:text-navy transition-all flex items-center justify-center font-bold text-lg">
                 ←
               </button>
 
-              <div className="flex gap-2">
-                {TESTIMONIALS.slice(
-                  Math.max(0, Math.min(currentTestimonialIdx - 3, TESTIMONIALS.length - 7)),
-                  Math.max(7, Math.min(currentTestimonialIdx + 4, TESTIMONIALS.length))
-                ).map((_, i) => {
-                  const actualIdx = Math.max(0, Math.min(currentTestimonialIdx - 3, TESTIMONIALS.length - 7)) + i;
+              {/* Max 7 dots */}
+              <div className="flex gap-1.5">
+                {Array.from({length: 7}, (_, i) => {
+                  const offset = Math.max(0,
+                    Math.min(currentTestimonialIdx - 3, TESTIMONIALS.length - 7))
+                  const idx = offset + i
                   return (
-                    <button key={actualIdx}
-                      onClick={() => setCurrentTestimonialIdx(actualIdx)}
-                      className={`h-2.5 rounded-full transition-all ${
-                        actualIdx === currentTestimonialIdx
-                          ? "bg-forest w-7"
-                          : "bg-forest/30 w-2.5 hover:bg-forest/50"
+                    <button key={idx}
+                      onClick={() => setCurrentTestimonialIdx(idx)}
+                      className={`h-2 rounded-full transition-all ${
+                        idx === currentTestimonialIdx
+                          ? "bg-navy w-6"
+                          : "bg-gray-200 w-2 hover:bg-gray-400"
                       }`}/>
-                  );
+                  )
                 })}
               </div>
 
               <button
-                onClick={() => setCurrentTestimonialIdx((prev) => (prev + 1) % TESTIMONIALS.length)}
-                className="w-11 h-11 rounded-full border-2 border-forest/40 hover:border-forest hover:bg-forest hover:text-white transition-all flex items-center justify-center text-forest font-bold">
+                onClick={() => setCurrentTestimonialIdx(
+                  p => (p + 1) % TESTIMONIALS.length
+                )}
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy text-gray-400 hover:text-navy transition-all flex items-center justify-center font-bold text-lg">
                 →
               </button>
-            </div>
-          </div>
-
-          {/* Trust Stats */}
-          <div className="mt-16 grid grid-cols-3 gap-4 text-center">
-            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <p className="text-3xl font-serif font-black text-forest relative">5,000+</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium relative">Active Students</p>
-            </div>
-            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <p className="text-3xl font-serif font-black text-forest relative">98%</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium relative">Success Rate</p>
-            </div>
-            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <p className="text-3xl font-serif font-black text-forest relative">4.9★</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium relative">Rating</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section - White */}
-      <section id="pricing" className="bg-white py-24 sm:py-32 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-
-          {/* Discount banner */}
-          <div className="mb-12 p-5 bg-forest/5 border-2 border-forest/30 rounded-2xl text-center">
-            <p className="text-forest font-semibold text-sm">
-              🎉 Limited-Time Launch Pricing
-              {timeLeft && <span className="text-forest/60"> · {timeLeft}</span>}
+      {/* ──── FEATURES ──── */}
+      <section className="bg-gray-50 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+              Platform Features
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-navy mb-3">
+              Built for Serious UI Aspirants
+            </h2>
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
+              Not just another past questions app – a complete preparation system
             </p>
           </div>
 
-          <div className="text-center mb-16">
-            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-4">Pricing</p>
-            <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-4">Transparent, Fair Pricing</h2>
-            <p className="text-gray-600 text-lg">Start free. Upgrade when you&apos;re ready.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map((feature, idx) => (
+              <div key={idx}
+                className="group bg-white border border-gray-100 rounded-2xl p-6 hover:border-forest/30 hover:shadow-xl hover:shadow-forest/5 transition-all duration-300">
+                <div className="w-12 h-12 rounded-xl bg-navy/5 flex items-center justify-center text-2xl mb-5 group-hover:bg-forest/10 transition-colors">
+                  {feature.icon}
+                </div>
+                <h3 className="font-bold text-navy mb-2 text-base leading-tight">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  {feature.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──── HOW IT WORKS ──── */}
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+              How It Works
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-navy">
+              Start in Under 2 Minutes
+            </h2>
           </div>
 
-          {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PLANS.map((plan) => (
-              <div key={plan.name} className={`rounded-3xl overflow-hidden flex flex-col transition-all duration-300 ${plan.highlighted ? "ring-3 ring-forest shadow-2xl shadow-forest/30 bg-gradient-to-b from-white via-white to-blush border border-white/60 scale-105" : "bg-white border-2 border-gray-200/60 hover:border-forest/30 hover:shadow-2xl hover:shadow-forest/10 hover:scale-102"}`}>
-                {plan.badge && (
-                  <div className="bg-gradient-to-r from-forest to-forest/80 text-white text-center py-3 px-6 text-xs font-serif font-bold uppercase tracking-widest relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)'}}></div>
-                    <span className="relative">⭐ {plan.badge}</span>
+            {[
+              {
+                num: "01",
+                title: "Create Free Account",
+                desc: "Sign up and select University of Ibadan as your target school",
+                color: "bg-navy",
+              },
+              {
+                num: "02",
+                title: "Choose Your Subjects",
+                desc: "Pick from 14 Post-UTME subjects and start topic-by-topic drilling",
+                color: "bg-forest",
+              },
+              {
+                num: "03",
+                title: "Track & Improve",
+                desc: "Get AI analytics, see your predicted score, and crush the exam",
+                color: "bg-ember",
+              },
+            ].map((step, i) => (
+              <div key={i}
+                className="relative bg-gray-50 rounded-2xl p-7 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all">
+                <div className={`${step.color} text-white text-xs font-black w-10 h-10 rounded-xl flex items-center justify-center mb-5 tracking-widest`}>
+                  {step.num}
+                </div>
+                <h3 className="font-black text-navy text-lg mb-2">{step.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
+                {i < 2 && (
+                  <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold">
+                    →
                   </div>
                 )}
-                <div className="p-8 flex flex-col flex-1">
-                  <div className="mb-8">
-                    <h3 className="text-2xl font-serif font-bold text-navy mb-2">{plan.name}</h3>
-                    <p className="text-gray-500 text-sm">{plan.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──── SUBJECTS ──── */}
+      <section className="bg-gray-50 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+              Subjects
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-navy mb-3">
+              All 14 Post-UTME Subjects
+            </h2>
+            <p className="text-gray-500 text-lg">
+              9,600+ questions across every subject – topic by topic
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {SUBJECTS.map((subject) => (
+              <Link key={subject.name}
+                href={user ? "/dashboard" : "/register"}
+                className={`${subject.color} text-white rounded-2xl p-5 text-center font-black text-sm sm:text-base hover:opacity-90 hover:shadow-xl transition-all hover:-translate-y-1 active:translate-y-0`}>
+                {subject.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──── UNIVERSITIES ──── */}
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+            Universities
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-black text-navy mb-3">
+            Starting With UI. Expanding Fast.
+          </h2>
+          <p className="text-gray-500 text-lg mb-10">
+            Live now for University of Ibadan.
+            More schools launching soon – join the waitlist.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2.5">
+            {UNIVERSITIES.map((uni) => (
+              <div key={uni.code} title={uni.name}
+                className={`px-5 py-2.5 rounded-full text-sm font-black border-2 transition-all cursor-default
+                  ${uni.code === "UI"
+                    ? "bg-navy text-white border-navy"
+                    : "bg-white text-gray-300 border-gray-100 line-through"
+                  }`}>
+                {uni.code}
+                {uni.code === "UI" && (
+                  <span className="ml-1.5 text-xs font-bold text-green-400">
+                    ✓ Live
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-gray-400 mt-6">
+            OAU, UNILAG, ABU and more coming soon.
+            <Link href="/register" className="text-forest font-bold hover:underline ml-1">
+              Get notified →
+            </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* ──── PRICING ──── */}
+      <section id="pricing" className="bg-gray-50 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+
+          {timeLeft && (
+            <div className="mb-10 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl text-center">
+              <p className="text-amber-800 font-bold text-sm">
+                🎉 Launch Week Discount · Ends in: {timeLeft}
+              </p>
+            </div>
+          )}
+
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
+              Pricing
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-navy mb-3">
+              Start Free. Upgrade When Ready.
+            </h2>
+            <p className="text-gray-500">
+              No tricks, no hidden fees. Cancel anytime.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+            {PLANS.map((plan) => (
+              <div key={plan.name}
+                className={`rounded-2xl overflow-hidden flex flex-col transition-all duration-300
+                  ${plan.highlighted
+                    ? "ring-2 ring-forest shadow-2xl shadow-forest/10 bg-white"
+                    : "bg-white border border-gray-100 hover:shadow-lg"
+                  }`}>
+
+                {plan.badge && (
+                  <div className="bg-forest text-white text-center py-2.5 text-xs font-black uppercase tracking-[0.15em]">
+                    ⭐ {plan.badge}
+                  </div>
+                )}
+
+                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-black text-navy mb-1">
+                      {plan.name}
+                    </h3>
+                    <p className="text-gray-400 text-sm">{plan.description}</p>
                   </div>
 
-                  <div className="mb-10">
+                  <div className="mb-8">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-5xl font-serif font-black text-navy">
+                      <span className="text-4xl sm:text-5xl font-black text-navy">
                         {plan.price}
                       </span>
                       {plan.originalPrice && (
-                        <span className="text-gray-400 line-through text-lg">
+                        <span className="text-gray-300 line-through text-base font-medium">
                           {plan.originalPrice}
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-500 text-sm mt-2">/ {plan.duration}</p>
+                    <p className="text-gray-400 text-sm mt-1">/ {plan.duration}</p>
                   </div>
 
-                  <Link href={user ? "/dashboard" : "/register"} className={`block w-full py-3 rounded-xl font-semibold text-center text-base transition-all mb-10 font-serif ${plan.highlighted ? "bg-forest text-white hover:bg-forest/90 shadow-lg" : "border-2 border-forest text-forest hover:bg-forest hover:text-white"}`}>
-                    {user ? "Go to Dashboard" : "Get Started"}
+                  <Link href={user ? "/dashboard" : "/register"}
+                    className={`block w-full py-3.5 rounded-xl font-black text-center text-sm transition-all mb-8
+                      ${plan.highlighted
+                        ? "bg-forest text-white hover:bg-forest/90 hover:shadow-lg hover:shadow-forest/20"
+                        : "border-2 border-gray-200 text-navy hover:border-forest hover:text-forest"
+                      }`}>
+                    {plan.name === "Explorer" ? "Start Free" :
+                     plan.name === "Scholar" ? "Get Scholar" : "Go Elite"}
                   </Link>
 
                   <div className="space-y-3 flex-1">
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <span className="text-forest font-bold flex-shrink-0 mt-0.5">✓</span>
-                        <span className="text-gray-700 text-sm font-light">{feature}</span>
+                      <div key={idx} className="flex items-start gap-2.5">
+                        <span className="text-forest text-sm font-black flex-shrink-0 mt-0.5">
+                          ✓
+                        </span>
+                        <span className="text-sm text-gray-600 leading-snug">
+                          {feature}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -793,79 +927,110 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Free trial note */}
-          <div className="mt-12 text-center p-8 bg-blush rounded-2xl border-2 border-forest/20">
-            <p className="text-navy font-serif font-bold text-lg mb-2">Start for free, no credit card needed</p>
-            <p className="text-gray-600 text-sm mb-6">
-              Try Explorer — 20 questions daily, forever free. Upgrade to Scholar or Elite whenever you&apos;re ready.
+          <div className="mt-10 text-center p-6 sm:p-8 bg-white rounded-2xl border border-gray-100">
+            <p className="font-black text-navy mb-1">Not sure yet?</p>
+            <p className="text-gray-400 text-sm mb-4">
+              Explorer is free forever – 20 questions/day, 1 mock exam.
+              No card needed.
             </p>
-            <Link href={user ? "/dashboard" : "/register"} className="text-forest font-bold font-serif text-sm hover:underline">
-              Start free →
+            <Link href={user ? "/dashboard" : "/register"}
+              className="text-forest font-black text-sm hover:underline">
+              Start with Explorer →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA Section - Navy */}
-      <section className="bg-navy py-24 px-4 sm:px-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'radial-gradient(circle at 1px 1px, white, white 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
+      {/* ──── FINAL CTA ──── */}
+      <section className="bg-navy py-20 sm:py-28 px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-forest/25 rounded-full blur-[80px] translate-x-1/3 -translate-y-1/3"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-ember/20 rounded-full blur-[60px] -translate-x-1/4 translate-y-1/3"></div>
+        </div>
         <div className="relative max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl sm:text-5xl font-serif font-bold text-white mb-6">
-            Your Admission Awaits
+          <h2 className="text-3xl sm:text-5xl font-black text-white mb-4 leading-tight">
+            Your UI Admission<br/>
+            <span className="text-green-400">Starts Here.</span>
           </h2>
-          <p className="text-white/70 text-lg mb-10 font-light">
-            Join thousands of students already preparing with Roman Series
+          <p className="text-white/50 text-lg mb-10 font-medium">
+            Join 5,000+ students already preparing.
+            Start free – upgrade only when you're ready.
           </p>
-          <Link href={user ? "/dashboard" : "/register"} className="inline-flex items-center gap-2 bg-forest text-white px-10 py-5 rounded-lg font-serif font-bold text-lg hover:bg-forest/90 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-forest/40 border border-forest">
-            {user ? "Go to Dashboard" : "Get Started Free"} →
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href={user ? "/dashboard" : "/register"}
+              className="group inline-flex items-center justify-center gap-2 bg-forest text-white px-8 py-4 rounded-2xl font-black text-lg hover:bg-forest/90 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-forest/30">
+              {user ? "Go to Dashboard" : "Start Practicing Free"}
+              <span className="group-hover:translate-x-1 transition-transform">
+                →
+              </span>
+            </Link>
+            <Link href="#pricing"
+              className="inline-flex items-center justify-center gap-2 border-2 border-white/20 text-white/70 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/10 hover:border-white/40 transition-all">
+              View Plans
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-navy text-white py-20 px-4 sm:px-6">
+      {/* ──── FOOTER ──── */}
+      <footer className="bg-[#080F16] text-white py-16 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 mb-16">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2 sm:col-span-1">
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-9 h-9 bg-forest rounded-lg flex items-center justify-center text-xs font-serif font-black">RS</div>
-                <span className="font-serif font-bold text-lg">Roman Series</span>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center text-xs font-black text-white">
+                  RS
+                </div>
+                <span className="font-black">Roman Series</span>
               </div>
-              <p className="text-white/50 text-xs leading-relaxed font-light">
-                Nigeria&apos;s most trusted Post-UTME preparation platform, built for Nigerian students.
+              <p className="text-white/30 text-xs leading-relaxed">
+                Nigeria's most trusted UI Post-UTME preparation platform.
+                Built for Nigerian students who are serious about getting admitted.
               </p>
             </div>
             <div>
-              <p className="text-white/70 text-xs font-serif font-bold uppercase tracking-widest mb-6">Product</p>
-              <ul className="space-y-3 text-sm text-white/60 font-light">
+              <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">
+                Platform
+              </p>
+              <ul className="space-y-2.5 text-sm text-white/30">
                 <li><Link href="/" className="hover:text-white transition">Home</Link></li>
                 <li><Link href="#pricing" className="hover:text-white transition">Pricing</Link></li>
                 <li><Link href="/analytics" className="hover:text-white transition">Analytics</Link></li>
               </ul>
             </div>
             <div>
-              <p className="text-white/70 text-xs font-serif font-bold uppercase tracking-widest mb-6">Account</p>
-              <ul className="space-y-3 text-sm text-white/60 font-light">
+              <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">
+                Account
+              </p>
+              <ul className="space-y-2.5 text-sm text-white/30">
                 <li><Link href="/login" className="hover:text-white transition">Sign In</Link></li>
                 <li><Link href="/register" className="hover:text-white transition">Register</Link></li>
                 <li><Link href="/feedback" className="hover:text-white transition">Feedback</Link></li>
               </ul>
             </div>
             <div>
-              <p className="text-white/70 text-xs font-serif font-bold uppercase tracking-widest mb-6">Universities</p>
-              <ul className="space-y-3 text-sm text-white/60 font-light">
-                {UNIVERSITIES.slice(0, 5).map(uni => (
-                  <li key={uni.code} className="hover:text-white/80 transition cursor-default">{uni.code}</li>
+              <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">
+                Schools
+              </p>
+              <ul className="space-y-2.5 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                  <span className="text-white/60 font-bold">UI – Live Now</span>
+                </li>
+                {["OAU", "UNILAG", "ABU", "FUTA"].map(code => (
+                  <li key={code} className="text-white/20 text-sm">
+                    {code} – Coming Soon
+                  </li>
                 ))}
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/10 pt-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-white/40 text-xs font-light">
+          <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-white/20 text-xs">
               © 2025 Roman Series. All rights reserved.
             </p>
-            <p className="text-white/30 text-xs font-light">
-              Built with intention for Nigerian students 🇳🇬
+            <p className="text-white/15 text-xs">
+              Built with ❤️ for Nigerian students 🇳🇬
             </p>
           </div>
         </div>
