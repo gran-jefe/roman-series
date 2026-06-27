@@ -10,7 +10,7 @@ import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
-import { Calendar, BarChart3, Zap, CheckCircle } from "lucide-react";
+import { Calendar, BarChart3, Zap, CheckCircle, ChevronRight } from "lucide-react";
 
 interface Subscription {
   subscription_status: string;
@@ -522,9 +522,7 @@ export default function DashboardPage() {
                         <p className="text-xs sm:text-sm text-white/85">Tap to practice</p>
                       </div>
                       <div className="text-right">
-                        <svg className="w-5 h-5 inline-block opacity-85" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <ChevronRight className="w-5 h-5 inline-block opacity-85 text-white" />
                       </div>
                     </div>
                   ))}
