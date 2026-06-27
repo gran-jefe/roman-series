@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
+import { Lock, Calendar, AlertCircle } from "lucide-react";
 
 interface RecalledQuestion {
   id: string;
@@ -121,39 +122,49 @@ export default function RecalledQuestionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">⭐</span>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-navy">
-                Recalled UI-POSTUTME Questions
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Questions confirmed to have appeared in past Post-UTME exams
-              </p>
+    <div className="min-h-screen bg-[#FAF7F4]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Hero Header */}
+        <div className="mb-10 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-forest/15 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-4xl">🔐</span>
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-black">Recalled Questions 🎯</h1>
+                <p className="text-white/70 text-sm sm:text-base mt-1">Authentic UI Post-UTME questions from 2019-2025</p>
+              </div>
             </div>
-          </div>
-          <div className="inline-block bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-semibold">
-            Elite Exclusive
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-400/20 border border-green-400/50 rounded-full">
+              <Lock className="w-4 h-4 text-green-300" />
+              <span className="text-sm font-bold text-green-300">Elite Exclusive</span>
+            </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-lg font-bold text-navy mb-4">Filter Questions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Warning Banner */}
+        <div className="mb-8 p-4 sm:p-5 bg-amber-50 border-2 border-amber-200 rounded-2xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-amber-900 text-sm">No official answers</p>
+            <p className="text-amber-800 text-sm mt-0.5">These questions have no official answers yet. Study them to understand question patterns and exam style — they&apos;re authentic questions recalled by students.</p>
+          </div>
+        </div>
+
+        {/* Filters Card */}
+        <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-10 hover:shadow-lg hover:border-forest/30 transition-all">
+          <h2 className="text-lg sm:text-xl font-black text-navy mb-6">Filter Questions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Subject Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
                 Subject
               </label>
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 text-gray-800 focus:ring-forest focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-all"
               >
                 <option value="">All Subjects</option>
                 {subjects.map((subject) => (
@@ -166,13 +177,13 @@ export default function RecalledQuestionsPage() {
 
             {/* University Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
                 University
               </label>
               <select
                 value={selectedUniversity}
                 onChange={(e) => setSelectedUniversity(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest text-gray-800 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-all"
               >
                 <option value="">All Universities</option>
                 {universities.map((uni) => (
@@ -185,13 +196,13 @@ export default function RecalledQuestionsPage() {
 
             {/* Year Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
                 Year
               </label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 text-gray-800 focus:ring-forest focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-all"
               >
                 <option value="">All Years</option>
                 {Array.from({ length: 10 }, (_, i) => {
@@ -208,83 +219,91 @@ export default function RecalledQuestionsPage() {
         </div>
 
         {/* Questions List */}
-        <div className="space-y-4">
+        <div>
           {isLoading ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16">
               <div className="inline-block">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest"></div>
               </div>
-              <p className="text-gray-600 mt-4">Loading questions...</p>
+              <p className="text-gray-600 mt-4 font-medium">Loading authentic questions...</p>
             </div>
           ) : questions.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-12 text-center">
-              <p className="text-gray-600 text-lg">
-                No recalled questions found. Try adjusting your filters or check back soon!
-              </p>
+            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+              <p className="text-gray-600 text-lg">No recalled questions found. Try adjusting your filters or check back soon!</p>
             </div>
           ) : (
-            questions.map((question, idx) => (
-              <div key={question.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="inline-block bg-forest text-white px-3 py-1 rounded-full text-sm font-bold">
-                        Q{idx + 1}
+            <div className="space-y-4">
+              {questions.map((question, idx) => (
+                <div key={question.id} className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-7 hover:shadow-lg hover:border-forest/30 transition-all">
+                  {/* Question Header */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-navy text-white font-black text-sm">
+                        {idx + 1}
                       </span>
-                      <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {question.year}
-                      </span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                        question.difficulty_level === 'hard' ? 'bg-red-100 text-red-800' :
-                        question.difficulty_level === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {question.difficulty_level}
-                      </span>
+                      {question.year && (
+                        <div className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 rounded-lg">
+                          <Calendar className="w-4 h-4 text-gray-600" />
+                          <span className="text-xs font-bold text-gray-700">{question.year}</span>
+                        </div>
+                      )}
+                      {question.difficulty_level && (
+                        <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                          question.difficulty_level === 'hard' ? 'bg-red-100 text-red-800' :
+                          question.difficulty_level === 'medium' ? 'bg-amber-100 text-amber-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {question.difficulty_level}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-base text-navy font-medium">{question.body}</p>
                   </div>
-                </div>
 
-                {/* Options */}
-                <div className="space-y-2 mb-4">
-                  {question.recalled_question_options.map((option) => (
-                    <div
-                      key={option.id}
-                      className={`p-3 rounded-lg border-2 ${
-                        option.is_correct
-                          ? "border-green-500 bg-green-50"
-                          : "border-gray-200 bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="font-bold text-navy min-w-fit">{option.label}.</span>
-                        <span className="text-gray-700">{option.body}</span>
-                        {option.is_correct && (
-                          <span className="text-green-600 font-bold ml-auto">✓ Correct</span>
-                        )}
-                      </div>
+                  {/* Question Body */}
+                  <p className="text-navy font-medium text-base leading-relaxed mb-5">{question.body}</p>
+
+                  {/* Options */}
+                  {question.recalled_question_options.length > 0 && (
+                    <div className="space-y-2 mb-5">
+                      {question.recalled_question_options.map((option) => (
+                        <div
+                          key={option.id}
+                          className={`p-3.5 rounded-xl border-2 transition-all ${
+                            option.is_correct
+                              ? "border-green-300 bg-green-50/50"
+                              : "border-gray-200 bg-gray-50/30 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="font-black text-navy text-sm min-w-fit">{option.label}.</span>
+                            <span className="text-gray-700 text-sm">{option.body}</span>
+                            {option.is_correct && (
+                              <span className="text-xs font-black text-green-600 ml-auto flex-shrink-0">✓ Correct</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
 
-                {/* Explanation */}
-                {question.explanation && (
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-                    <p className="text-sm font-semibold text-blue-900 mb-2">Explanation:</p>
-                    <p className="text-sm text-blue-800">{question.explanation}</p>
-                  </div>
-                )}
-              </div>
-            ))
+                  {/* Explanation */}
+                  {question.explanation && (
+                    <div className="bg-blue-50/50 border-l-4 border-blue-400 p-4 rounded-lg">
+                      <p className="text-xs font-bold text-blue-900 mb-1.5">💡 Explanation</p>
+                      <p className="text-sm text-blue-800 leading-relaxed">{question.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
         {/* Footer CTA */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-12 pt-8 border-t border-gray-200">
           <Link
             href="/dashboard"
-            className="inline-block text-forest font-semibold hover:underline transition-colors"
+            className="text-forest font-black text-sm hover:underline transition-colors"
           >
             ← Back to Dashboard
           </Link>
