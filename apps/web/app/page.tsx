@@ -5,20 +5,6 @@ import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 
-const floatingStyle = `
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-20px);
-    }
-  }
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-`;
-
 export default function LandingPage() {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<string>("");
@@ -441,9 +427,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white" style={{ colorScheme: 'light' }}>
-      <style>{floatingStyle}</style>
       {/* Navbar */}
-      <nav className="bg-blush text-navy shadow-sm sticky top-0 z-50 border-b border-rose-100">
+      <nav className="bg-white text-navy shadow-sm sticky top-0 z-50 border-b border-gray-200/80">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="hover:opacity-90 transition flex items-center">
             <Image
@@ -451,21 +436,21 @@ export default function LandingPage() {
               alt="Roman Series"
               width={180}
               height={70}
-              className="h-14 w-auto"
+              className="h-10 w-auto"
             />
           </Link>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             {!user ? (
               <>
                 <Link
                   href="/login"
-                  className="text-sm text-navy hover:text-forest transition-colors font-medium"
+                  className="text-sm text-navy/70 hover:text-navy transition-colors font-medium"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  className="text-sm bg-forest text-white px-5 py-2 rounded-lg hover:bg-opacity-90 transition-opacity font-medium"
+                  className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
                 >
                   Get Started
                 </Link>
@@ -473,7 +458,7 @@ export default function LandingPage() {
             ) : (
               <Link
                 href="/dashboard"
-                className="text-sm bg-forest text-white px-5 py-2 rounded-lg hover:bg-opacity-90 transition-opacity font-medium"
+                className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
               >
                 Dashboard
               </Link>
@@ -483,107 +468,83 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-navy via-[#1a3a52] to-navy text-white py-32 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-96 h-96 bg-forest rounded-full mix-blend-multiply filter blur-3xl"></div>
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl"></div>
-        </div>
-        <div className="max-w-6xl mx-auto text-center relative z-10">
-          <div className="inline-block mb-8 animate-float">
-            <Image
-              src="/assets/logos/roman-series-full.png"
-              alt="Roman Series"
-              width={320}
-              height={130}
-              className="h-28 w-auto mx-auto brightness-0 invert drop-shadow-lg"
-              priority
-            />
+      <section className="bg-navy text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32 text-center">
+
+          {/* Logo */}
+          <div className="mb-10">
+            <Image src="/assets/logos/roman-series-full.png"
+              alt="Roman Series" width={200} height={80}
+              className="h-16 w-auto mx-auto brightness-0 invert" priority />
           </div>
 
+          {/* Launch badge */}
           {timeLeft && (
-            <div className="inline-block mb-8 px-6 py-3 bg-gradient-to-r from-ember to-amber-600 rounded-full border border-amber-400 backdrop-blur-sm">
-              <p className="text-sm font-bold tracking-wide text-white">
-                ⏰ {timeLeft}
-              </p>
+            <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 bg-ember/20 border border-ember/40 rounded-full">
+              <span className="w-2 h-2 bg-ember rounded-full animate-pulse"></span>
+              <span className="text-sm font-medium text-ember">⏰ {timeLeft}</span>
             </div>
           )}
 
-          <div className="inline-block mb-8 px-6 py-3 bg-gradient-to-r from-forest/30 to-blue-500/30 rounded-full border border-forest/60 backdrop-blur-sm">
-            <p className="text-sm font-bold tracking-wide">
-              🎯 5000+ STUDENTS PREPARING FOR SUCCESS
-            </p>
-          </div>
-
-          <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight tracking-tight">
-            Ace Post-UTME,<br />
-            <span className="bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent">
-              Secure Your Admission
-            </span>
+          {/* Headline */}
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 leading-[1.1] tracking-tight">
+            Ace Your Post-UTME.<br/>
+            <span className="text-forest">Get Admitted.</span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
-            Practice with 1000+ authentic past questions from Nigeria&apos;s top universities.
-            Get real-time analytics, AI-powered insights, and predictive scoring to guarantee your success.
+          {/* Subheadline */}
+          <p className="text-lg sm:text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Practice with authentic past questions from Nigeria&apos;s top universities. AI-powered analytics. Real-time score prediction.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
-            <Link
-              href={user ? "/dashboard" : "/register"}
-              className="group relative inline-flex items-center justify-center px-10 py-4 text-lg font-bold text-white bg-gradient-to-r from-forest to-emerald-600 rounded-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-            >
-              <span className="relative z-10">
-                {user ? "📊 Go to Dashboard" : "🚀 Start Free Today"}
-              </span>
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
+            <Link href={user ? "/dashboard" : "/register"}
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-forest text-white font-bold rounded-xl text-lg hover:bg-forest/90 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-forest/30">
+              {user ? "Go to Dashboard" : "Start Free Today"} →
             </Link>
-            <Link
-              href="#pricing"
-              className="inline-flex items-center justify-center px-10 py-4 text-lg font-bold text-white border-2 border-white/40 rounded-xl hover:bg-white/10 hover:border-white/80 transition-all duration-300 backdrop-blur-sm"
-            >
-              View Plans & Pricing
+            <Link href="#pricing"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-white/20 text-white/80 font-semibold rounded-xl text-lg hover:bg-white/10 hover:border-white/40 transition-all">
+              View Pricing
             </Link>
           </div>
 
-          {/* Stats Row - Enhanced */}
-          <div className="grid grid-cols-3 gap-8 pt-16 border-t border-white/20">
-            <div className="group">
-              <div className="md-text-5xl text-2xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">1000+</div>
-              <div className="text-gray-300 font-medium text-xs md-text-base">Authentic Past Questions</div>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 sm:gap-8 pt-12 border-t border-white/10 max-w-lg mx-auto">
+            <div>
+              <div className="text-3xl sm:text-5xl font-black text-forest mb-1">9,600+</div>
+              <div className="text-xs sm:text-sm text-white/50 font-medium">Questions</div>
             </div>
-            <div className="group">
-              <div className="md-text-5xl text-3xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">9</div>
-              <div className="text-gray-300 font-medium text-xs md-text-base">Top Universities Covered</div>
+            <div>
+              <div className="text-3xl sm:text-5xl font-black text-forest mb-1">9</div>
+              <div className="text-xs sm:text-sm text-white/50 font-medium">Universities</div>
             </div>
-            <div className="group">
-              <div className="md-text-5xl text-3xl font-black bg-gradient-to-r from-forest to-blue-400 bg-clip-text text-transparent mb-2">8</div>
-              <div className="text-gray-300 font-medium text-xs md-text-base">Core UTME Subjects</div>
+            <div>
+              <div className="text-3xl sm:text-5xl font-black text-forest mb-1">14</div>
+              <div className="text-xs sm:text-sm text-white/50 font-medium">Subjects</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="bg-white py-24 px-6">
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-navy mb-4">
-              Powerful Features for Success
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Everything you need to ace your Post-UTME exam
-            </p>
+          <div className="text-center mb-14">
+            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">Features</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">Built for Nigerian Students</h2>
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">Everything you need to ace your Post-UTME — in one platform</p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((feature, idx) => (
-              <div
-                key={idx}
-                className="bg-gray-50 rounded-xl p-8 border border-gray-200 hover:border-forest hover:shadow-lg transition-all"
-              >
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold text-navy mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600">{feature.desc}</p>
+              <div key={idx} className="group p-6 rounded-2xl border border-gray-100 hover:border-forest/20 hover:shadow-lg hover:shadow-forest/5 transition-all duration-300 bg-white cursor-default">
+                <div className="w-12 h-12 rounded-xl bg-forest/10 flex items-center justify-center text-2xl mb-5 group-hover:bg-forest/20 transition-colors">
+                  {feature.icon}
+                </div>
+                <h3 className="text-base font-bold text-navy mb-2">{feature.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -591,44 +552,26 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="bg-gray-50 py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-bold text-navy text-center mb-16">
-            Three Simple Steps
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
+      <section className="bg-gray-50/80 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">How It Works</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-navy">Get Started in Minutes</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            {/* Connector line - desktop only */}
+            <div className="hidden md:block absolute top-10 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] h-0.5 bg-forest/20 z-0"></div>
             {[
-              {
-                icon: "1",
-                title: "Create Account",
-                desc: "Sign up and select your target university",
-              },
-              {
-                icon: "2",
-                title: "Choose Subjects",
-                desc: "Pick the subjects you need to practice",
-              },
-              {
-                icon: "3",
-                title: "Start Practicing",
-                desc: "Take timed exams and track your progress",
-              },
+              {icon: "1", title: "Create Account", desc: "Sign up free and select your target university and course"},
+              {icon: "2", title: "Choose Subjects", desc: "Pick from 14 subjects and start topic-by-topic drilling"},
+              {icon: "3", title: "Track Progress", desc: "Get AI analytics, predicted scores and admission probability"},
             ].map((step, idx) => (
-              <div key={idx} className="relative">
-                <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-                  <div className="w-14 h-14 bg-forest text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
-                    {step.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-navy mb-3">
-                    {step.title}
-                  </h3>
-                  <p className="text-gray-600">{step.desc}</p>
+              <div key={idx} className="relative z-10 bg-white rounded-2xl p-6 border border-gray-100 text-center shadow-sm">
+                <div className="w-12 h-12 bg-navy text-white rounded-full flex items-center justify-center mx-auto mb-5 text-xl font-bold ring-4 ring-white">
+                  {step.icon}
                 </div>
-                {idx < 2 && (
-                  <div className="hidden md:block absolute top-1/3 -right-4 text-forest text-3xl">
-                    →
-                  </div>
-                )}
+                <h3 className="font-bold text-navy mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -636,23 +579,17 @@ export default function LandingPage() {
       </section>
 
       {/* Subjects Section */}
-      <section className="bg-white py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-navy mb-4">
-              Practice All Subjects
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Comprehensive coverage of all Post-UTME subjects
-            </p>
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">Subjects</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">All Post-UTME Subjects Covered</h2>
+            <p className="text-gray-500">14 subjects, 9,600+ questions, topic-by-topic drilling</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {SUBJECTS.map((subject) => (
-              <Link
-                key={subject.name}
-                href={user ? "/dashboard" : "/register"}
-                className={`${subject.color} text-white p-8 rounded-xl text-center font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105`}
-              >
+              <Link key={subject.name} href={user ? "/dashboard" : "/register"}
+                className={`${subject.color} text-white rounded-xl p-5 text-center font-semibold text-sm sm:text-base hover:opacity-90 hover:shadow-lg transition-all hover:-translate-y-0.5`}>
                 {subject.name}
               </Link>
             ))}
@@ -661,23 +598,14 @@ export default function LandingPage() {
       </section>
 
       {/* Universities Section */}
-      <section className="bg-blush py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-navy mb-4">
-              Top Nigerian Universities
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Practice with questions from universities you&apos;re applying to
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3">
+      <section className="bg-gray-50/80 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">Universities</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">Nigeria&apos;s Top Universities</h2>
+          <p className="text-gray-500 mb-10">Practice questions tailored to your target school</p>
+          <div className="flex flex-wrap justify-center gap-2">
             {UNIVERSITIES.map((uni) => (
-              <div
-                key={uni.code}
-                className="bg-white text-navy px-6 py-3 rounded-full text-sm font-semibold border-2 border-forest hover:bg-forest hover:text-white transition-all"
-                title={uni.name}
-              >
+              <div key={uni.code} title={uni.name} className="bg-white text-navy text-sm font-bold px-5 py-2.5 rounded-full border-2 border-gray-200 hover:border-forest hover:text-forest transition-all cursor-default">
                 {uni.code}
               </div>
             ))}
@@ -685,167 +613,158 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials - Social Proof */}
-      <section className="bg-gradient-to-br from-blush via-pink-50/40 to-blush py-32 px-6 relative">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 right-20 w-72 h-72 bg-forest rounded-full filter blur-3xl"></div>
-        </div>
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-bold text-navy mb-6">
-              Students Like You Are Succeeding
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Join thousands of students who have already secured admission to their dream universities
-            </p>
+      {/* Testimonials Section */}
+      <section className="bg-white py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">Testimonials</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">Students Who Made It</h2>
+            <p className="text-gray-500">Real results from Roman Series students</p>
           </div>
 
-          {/* Auto-scrolling Testimonial */}
-          <div className="max-w-2xl mx-auto">
-            <div
-              key={currentTestimonialIdx}
-              className="group relative bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:border-forest/30 animate-in fade-in-50"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-forest to-blue-500"></div>
-              <div className="p-8">
-                {/* Stars */}
-                <div className="flex gap-1 mb-6">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-400 text-xl">★</span>
-                  ))}
-                </div>
+          {/* Testimonial Card */}
+          <div className="relative">
+            <div key={currentTestimonialIdx} className="bg-gray-50 border border-gray-100 rounded-2xl p-8 sm:p-10 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-forest rounded-l-2xl"></div>
 
-                {/* Quote */}
-                <p className="text-gray-700 text-lg mb-8 leading-relaxed italic min-h-[120px]">
-                  &ldquo;{TESTIMONIALS[currentTestimonialIdx].text}&rdquo;
-                </p>
+              {/* Stars */}
+              <div className="flex gap-1 mb-6 text-yellow-400 text-lg">★★★★★</div>
 
-                {/* Author */}
-                <div className="flex items-center gap-4 pt-6 border-t border-gray-200">
-                  <div className="w-14 h-14 bg-gradient-to-br from-forest to-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-md group-hover:scale-110 transition-transform">
-                    {TESTIMONIALS[currentTestimonialIdx].initial}
-                  </div>
-                  <div>
-                    <p className="font-bold text-navy text-lg">{TESTIMONIALS[currentTestimonialIdx].author}</p>
-                    <p className="text-sm text-forest font-semibold">{TESTIMONIALS[currentTestimonialIdx].role}</p>
-                    {TESTIMONIALS[currentTestimonialIdx].score && (
-                      <p className="text-xs text-gray-500 mt-1">{TESTIMONIALS[currentTestimonialIdx].score}</p>
-                    )}
-                  </div>
+              {/* Quote */}
+              <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-8 italic min-h-[96px]">
+                &ldquo;{TESTIMONIALS[currentTestimonialIdx].text}&rdquo;
+              </p>
+
+              {/* Author */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-navy text-white rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0">
+                  {TESTIMONIALS[currentTestimonialIdx].initial}
                 </div>
+                <div>
+                  <p className="font-bold text-navy">
+                    {TESTIMONIALS[currentTestimonialIdx].author}
+                  </p>
+                  <p className="text-sm text-forest font-medium">
+                    {TESTIMONIALS[currentTestimonialIdx].role}
+                  </p>
+                </div>
+                {TESTIMONIALS[currentTestimonialIdx].score && (
+                  <span className="ml-auto text-xs font-bold px-3 py-1.5 bg-forest/10 text-forest rounded-full">
+                    {TESTIMONIALS[currentTestimonialIdx].score}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Carousel Indicators */}
-            <div className="flex justify-center gap-2 mt-8">
-              {TESTIMONIALS.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentTestimonialIdx(idx)}
-                  className={`h-2 rounded-full transition-all ${
-                    idx === currentTestimonialIdx ? "bg-forest w-8" : "bg-gray-300 w-2"
-                  }`}
-                  aria-label={`Go to testimonial ${idx + 1}`}
-                />
-              ))}
+            {/* Navigation */}
+            <div className="flex items-center justify-between mt-6">
+              <button
+                onClick={() => setCurrentTestimonialIdx((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)}
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-forest hover:text-forest transition-all flex items-center justify-center text-gray-400 font-bold">
+                ←
+              </button>
+
+              {/* Dots - max 7 visible */}
+              <div className="flex gap-1.5">
+                {TESTIMONIALS.slice(
+                  Math.max(0, Math.min(currentTestimonialIdx - 3, TESTIMONIALS.length - 7)),
+                  Math.max(7, Math.min(currentTestimonialIdx + 4, TESTIMONIALS.length))
+                ).map((_, i) => {
+                  const actualIdx = Math.max(0, Math.min(currentTestimonialIdx - 3, TESTIMONIALS.length - 7)) + i;
+                  return (
+                    <button key={actualIdx}
+                      onClick={() => setCurrentTestimonialIdx(actualIdx)}
+                      className={`h-2 rounded-full transition-all ${
+                        actualIdx === currentTestimonialIdx
+                          ? "bg-forest w-6"
+                          : "bg-gray-300 w-2 hover:bg-gray-400"
+                      }`}/>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentTestimonialIdx((prev) => (prev + 1) % TESTIMONIALS.length)}
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-forest hover:text-forest transition-all flex items-center justify-center text-gray-400 font-bold">
+                →
+              </button>
             </div>
           </div>
 
-          {/* Trust Badges */}
-          <div className="mt-20 pt-12 border-t border-gray-200 text-center">
-            <p className="text-gray-600 font-semibold mb-8">Trusted by leading universities</p>
-            <div className="flex flex-wrap justify-center gap-8 items-center">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-forest">5000+</p>
-                <p className="text-sm text-gray-600">Active Students</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-forest">98%</p>
-                <p className="text-sm text-gray-600">Success Rate</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-forest">4.9★</p>
-                <p className="text-sm text-gray-600">Average Rating</p>
-              </div>
+          {/* Trust Stats */}
+          <div className="mt-14 grid grid-cols-3 gap-4 text-center">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-2xl font-bold text-forest">5,000+</p>
+              <p className="text-xs text-gray-500 mt-1">Active Students</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-2xl font-bold text-forest">98%</p>
+              <p className="text-xs text-gray-500 mt-1">Success Rate</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-2xl font-bold text-forest">4.9★</p>
+              <p className="text-xs text-gray-500 mt-1">Avg Rating</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="bg-gray-50 py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-12 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-center">
-            <p className="text-amber-900 font-semibold">🎉 Launch Week Special! Limited-time discount pricing available</p>
-            {timeLeft && <p className="text-sm text-amber-800 mt-1">Ends in: {timeLeft}</p>}
-          </div>
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-navy mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Choose the plan that fits your prep timeline
+      {/* Pricing Section */}
+      <section id="pricing" className="bg-gray-50/80 py-20 sm:py-28 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+
+          {/* Discount banner */}
+          <div className="mb-10 p-4 bg-amber-50 border border-amber-200/80 rounded-xl text-center">
+            <p className="text-amber-800 font-semibold text-sm">
+              🎉 Launch Week — Discounted prices active
+              {timeLeft && <span className="text-amber-600"> · {timeLeft}</span>}
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
+
+          <div className="text-center mb-14">
+            <p className="text-forest font-semibold text-sm uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-navy mb-4">Simple, Honest Pricing</h2>
+            <p className="text-gray-500">Start free. Upgrade when you&apos;re ready.</p>
+          </div>
+
+          {/* Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {PLANS.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-xl overflow-hidden transition-all ${
-                  plan.highlighted
-                    ? "ring-2 ring-forest shadow-2xl transform md:scale-105 bg-white"
-                    : "bg-white shadow-md hover:shadow-lg"
-                }`}
-              >
+              <div key={plan.name} className={`rounded-2xl overflow-hidden flex flex-col transition-all ${plan.highlighted ? "ring-2 ring-forest shadow-xl shadow-forest/10 bg-white" : "bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
                 {plan.badge && (
-                  <div className="bg-forest text-white text-center py-3 text-sm font-bold uppercase tracking-wide">
+                  <div className="bg-forest text-white text-center py-2.5 text-xs font-bold uppercase tracking-widest">
                     ⭐ {plan.badge}
                   </div>
                 )}
-                <div className="p-8">
-                  <h3 className="text-2xl font-bold text-navy mb-2">
-                    {plan.name}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-6">
-                    {plan.description}
-                  </p>
+                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-navy mb-1">{plan.name}</h3>
+                    <p className="text-gray-400 text-sm">{plan.description}</p>
+                  </div>
+
                   <div className="mb-8">
-                    <div className="flex items-baseline gap-2 flex-wrap mb-2">
-                      <span className="text-5xl font-bold text-forest">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="text-4xl font-black text-navy">
                         {plan.price}
                       </span>
                       {plan.originalPrice && (
-                        <>
-                          <span className="text-lg text-gray-400 line-through">
-                            {plan.originalPrice}
-                          </span>
-                          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
-                            DISCOUNT
-                          </span>
-                        </>
+                        <span className="text-gray-400 line-through text-base">
+                          {plan.originalPrice}
+                        </span>
                       )}
                     </div>
-                    <span className="text-gray-600">
-                      / {plan.duration}
-                    </span>
+                    <p className="text-gray-400 text-sm mt-1">/ {plan.duration}</p>
                   </div>
-                  <Link
-                    href={user ? "/dashboard" : "/register"}
-                    className={`block w-full py-3 px-4 rounded-lg font-bold text-center transition-all mb-8 ${
-                      plan.highlighted
-                        ? "bg-forest text-white hover:bg-opacity-90 hover:shadow-lg"
-                        : "border-2 border-forest text-forest hover:bg-forest hover:text-white"
-                    }`}
-                  >
+
+                  <Link href={user ? "/dashboard" : "/register"} className={`block w-full py-3 rounded-xl font-bold text-center text-sm transition-all mb-8 ${plan.highlighted ? "bg-forest text-white hover:bg-forest/90" : "border-2 border-gray-200 text-navy hover:border-forest hover:text-forest"}`}>
                     {user ? "Go to Dashboard" : "Get Started"}
                   </Link>
-                  <div className="space-y-3">
+
+                  <div className="space-y-2.5 flex-1">
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <span className="text-forest font-bold flex-shrink-0">
-                          ✓
-                        </span>
-                        <span className="text-sm text-gray-700">{feature}</span>
+                      <div key={idx} className="flex items-start gap-2.5">
+                        <span className="text-forest text-sm font-bold flex-shrink-0 mt-0.5">✓</span>
+                        <span className="text-sm text-gray-600">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -854,128 +773,78 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Free Trial */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-10 text-center max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-navy mb-2">Not Sure Yet?</h3>
-            <p className="text-gray-700 mb-2">
-              Start with our <strong>Explorer plan</strong> for free and
-              practice 20 questions per day to see how Roman Series works.
+          {/* Free trial note */}
+          <div className="mt-10 text-center p-6 bg-white rounded-2xl border border-gray-100">
+            <p className="text-navy font-semibold mb-1">Not ready to upgrade?</p>
+            <p className="text-gray-500 text-sm mb-4">
+              Start with Explorer — free forever, 20 questions/day, no credit card needed.
             </p>
-            <p className="text-sm text-gray-600 mb-6">
-              No credit card required. Upgrade anytime to Scholar or Elite.
-            </p>
-            <Link
-              href={user ? "/dashboard" : "/register"}
-              className="inline-block text-forest font-bold hover:underline"
-            >
-              Start for Free →
+            <Link href={user ? "/dashboard" : "/register"} className="text-forest font-bold text-sm hover:underline">
+              Start for free →
             </Link>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-navy text-white py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Ace Your Post-UTME?
+      <section className="bg-navy py-20 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Your Admission Starts Here
           </h2>
-          <p className="text-xl text-gray-300 mb-8">
-            Join thousands of students already improving their scores
+          <p className="text-white/60 text-lg mb-8">
+            Join thousands of students already preparing with Roman Series
           </p>
-          <Link
-            href={user ? "/dashboard" : "/register"}
-            className="inline-block bg-forest text-white px-8 py-4 rounded-lg font-bold hover:bg-opacity-90 transition-all hover:shadow-lg"
-          >
-            Get Started Now
+          <Link href={user ? "/dashboard" : "/register"} className="inline-flex items-center gap-2 bg-forest text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-forest/90 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-forest/30">
+            {user ? "Go to Dashboard" : "Get Started Free"} →
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-navy text-white py-16 px-6">
+      <footer className="bg-[#0A1520] text-white py-16 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 mb-12">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-forest rounded-full flex items-center justify-center font-bold">
-                  RS
-                </div>
-                <h4 className="text-xl font-bold">Roman Series</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
+            <div className="col-span-2 sm:col-span-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center text-xs font-black">RS</div>
+                <span className="font-bold">Roman Series</span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Ace Post-UTME past questions with timed practice, instant
-                scoring, and detailed performance analytics to predict your
-                admission likelihood.
+              <p className="text-white/40 text-xs leading-relaxed">
+                Nigeria&apos;s most trusted Post-UTME preparation platform. Built for Nigerian students, by Nigerians.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <p className="font-bold mb-4 text-forest">Product</p>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li>
-                    <Link
-                      href="/"
-                      className="hover:text-white transition-colors"
-                    >
-                      Home
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="#pricing"
-                      className="hover:text-white transition-colors"
-                    >
-                      Pricing
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/analytics"
-                      className="hover:text-white transition-colors"
-                    >
-                      Analytics
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="font-bold mb-4 text-forest">Account</p>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li>
-                    <Link
-                      href="/login"
-                      className="hover:text-white transition-colors"
-                    >
-                      Sign In
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/register"
-                      className="hover:text-white transition-colors"
-                    >
-                      Register
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/profile"
-                      className="hover:text-white transition-colors"
-                    >
-                      Profile
-                    </Link>
-                  </li>
-                </ul>
-              </div>
+            <div>
+              <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4">Product</p>
+              <ul className="space-y-2 text-sm text-white/40">
+                <li><Link href="/" className="hover:text-white transition">Home</Link></li>
+                <li><Link href="#pricing" className="hover:text-white transition">Pricing</Link></li>
+                <li><Link href="/analytics" className="hover:text-white transition">Analytics</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4">Account</p>
+              <ul className="space-y-2 text-sm text-white/40">
+                <li><Link href="/login" className="hover:text-white transition">Sign In</Link></li>
+                <li><Link href="/register" className="hover:text-white transition">Register</Link></li>
+                <li><Link href="/feedback" className="hover:text-white transition">Feedback</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-4">Universities</p>
+              <ul className="space-y-2 text-sm text-white/40">
+                {UNIVERSITIES.slice(0, 5).map(uni => (
+                  <li key={uni.code} className="hover:text-white/60 transition cursor-default">{uni.code}</li>
+                ))}
+              </ul>
             </div>
           </div>
-          <div className="border-t border-gray-700 pt-8 text-center">
-            <p className="text-gray-400 text-sm mb-2">
+          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-white/30 text-xs">
               © 2025 Roman Series. All rights reserved.
             </p>
-            <p className="text-gray-500 text-xs">
-              Built by Habeeb K. Ademola | 🇳🇬 Made with ❤️ for Nigerian students
+            <p className="text-white/20 text-xs">
+              Built with ❤️ for Nigerian students 🇳🇬
             </p>
           </div>
         </div>
