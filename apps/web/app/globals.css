@@ -39,3 +39,16 @@ body {
     text-wrap: balance;
   }
 }
+
+@keyframes bounce-soft {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.animate-bounce-soft {
+  animation: bounce-soft 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

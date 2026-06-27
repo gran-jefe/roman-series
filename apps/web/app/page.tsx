@@ -424,54 +424,68 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-blush" style={{ colorScheme: 'light' }}>
-      {/* Navbar */}
-      <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-200/60">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-90 transition flex items-center">
+      {/* Navbar - Blush with Subject Color Gradient */}
+      <nav className="sticky top-0 z-50 bg-gradient-to-r from-blush via-[#F5E8F0] to-blush shadow-md border-b border-gray-300/40">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <Link href="/" className="hover:opacity-90 transition flex items-center group relative">
+            <div className="absolute -inset-2 bg-gradient-to-r from-biology via-government to-chemistry opacity-0 group-hover:opacity-5 transition-opacity rounded-lg blur"></div>
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
               width={180}
               height={70}
-              className="h-10 w-auto"
+              className="h-9 w-auto relative"
             />
           </Link>
-          <div className="flex gap-3">
-            {!user ? (
-              <>
+          <div className="flex gap-4 items-center">
+            {/* Subject color indicator bar - gradient of all subject colors */}
+            <div className="hidden md:flex gap-1 h-7 rounded-full p-1 bg-white/40 backdrop-blur-sm border border-white/70 shadow-sm">
+              <div className="w-4 h-5 rounded-sm bg-biology"></div>
+              <div className="w-4 h-5 rounded-sm bg-government"></div>
+              <div className="w-4 h-5 rounded-sm bg-chemistry"></div>
+              <div className="w-4 h-5 rounded-sm bg-literature"></div>
+              <div className="w-4 h-5 rounded-sm bg-crs"></div>
+              <div className="w-4 h-5 rounded-sm bg-english"></div>
+            </div>
+            <div className="flex gap-3">
+              {!user ? (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-sm text-navy/70 hover:text-navy transition-colors font-medium"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              ) : (
                 <Link
-                  href="/login"
-                  className="text-sm text-navy/70 hover:text-navy transition-colors font-medium"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
+                  href="/dashboard"
                   className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
                 >
-                  Get Started
+                  Dashboard
                 </Link>
-              </>
-            ) : (
-              <Link
-                href="/dashboard"
-                className="text-sm bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-opacity font-semibold"
-              >
-                Dashboard
-              </Link>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Hero Section - Navy with premium feel */}
-      <section className="bg-gradient-to-b from-navy via-navy to-[#0A1520] text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.02]" style={{backgroundImage: 'radial-gradient(circle at 1px 1px, white, white 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
+      <section className="bg-gradient-to-br from-navy via-[#0D1B2A] to-[#051014] text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(26,122,74,0.1), rgba(26,122,74,0.1) 1px, transparent 1px)', backgroundSize: '60px 60px'}}></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-forest/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-forest/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-36 text-center">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-40 text-center">
 
-          {/* Logo */}
-          <div className="mb-12">
+          {/* Logo - Bouncing animation */}
+          <div className="mb-12 animate-bounce-soft">
             <Image src="/assets/logos/roman-series-full.png"
               alt="Roman Series" width={240} height={96}
               className="h-20 w-auto mx-auto brightness-0 invert drop-shadow-2xl" priority />
@@ -497,14 +511,15 @@ export default function LandingPage() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-24">
             <Link href={user ? "/dashboard" : "/register"}
-              className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-forest text-white font-bold rounded-lg text-lg hover:bg-forest/90 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-forest/40 border border-forest">
-              {user ? "Go to Dashboard" : "Start Free Today"} →
+              className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-gradient-to-r from-forest to-forest/90 text-white font-bold rounded-xl text-lg hover:shadow-2xl hover:shadow-forest/40 transition-all hover:-translate-y-1 border border-forest/50 relative overflow-hidden group">
+              <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></span>
+              <span className="relative">{user ? "Go to Dashboard" : "Start Free Today"} →</span>
             </Link>
             <Link href="#pricing"
-              className="inline-flex items-center justify-center gap-2 px-10 py-4 border-2 border-white/30 text-white font-semibold rounded-lg text-lg hover:bg-white/10 hover:border-white/60 transition-all backdrop-blur-sm">
-              View Pricing
+              className="inline-flex items-center justify-center gap-2 px-10 py-4 border-2 border-white/40 text-white font-semibold rounded-xl text-lg hover:bg-white/10 hover:border-white/70 transition-all backdrop-blur-sm hover:backdrop-blur-md group">
+              <span className="group-hover:translate-x-1 transition-transform">View Pricing</span>
             </Link>
           </div>
 
@@ -536,12 +551,15 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((feature, idx) => (
-              <div key={idx} className="group bg-white p-8 rounded-2xl border border-gray-200 hover:border-forest/40 hover:shadow-xl transition-all duration-300 cursor-default">
-                <div className="w-14 h-14 rounded-xl bg-forest/10 flex items-center justify-center text-3xl mb-5 group-hover:bg-forest/20 transition-colors">
-                  {feature.icon}
+              <div key={idx} className="group bg-white p-8 rounded-2xl border-2 border-gray-100 hover:border-forest/30 hover:shadow-2xl hover:shadow-forest/10 transition-all duration-300 cursor-default relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-forest/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-forest/15 to-forest/5 flex items-center justify-center text-3xl mb-5 group-hover:from-forest/25 group-hover:to-forest/10 transition-all shadow-sm">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-lg font-serif font-bold text-navy mb-3">{feature.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{feature.desc}</p>
                 </div>
-                <h3 className="text-lg font-serif font-bold text-navy mb-3">{feature.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -583,11 +601,12 @@ export default function LandingPage() {
             <h2 className="text-4xl sm:text-5xl font-serif font-bold text-navy mb-4">All Post-UTME Subjects</h2>
             <p className="text-gray-600 text-lg">Topic-by-topic drilling with verified past questions</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {SUBJECTS.map((subject) => (
               <Link key={subject.name} href={user ? "/dashboard" : "/register"}
-                className={`${subject.color} text-white rounded-2xl p-6 text-center font-serif font-semibold text-sm sm:text-base hover:shadow-lg transition-all hover:-translate-y-1 border border-opacity-20 border-white`}>
-                {subject.name}
+                className={`${subject.color} text-white rounded-2xl p-6 text-center font-serif font-semibold text-sm sm:text-base hover:shadow-2xl hover:shadow-black/30 transition-all hover:-translate-y-2 border border-opacity-30 border-white/40 relative overflow-hidden group`}>
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <span className="relative block">{subject.name}</span>
               </Link>
             ))}
           </div>
@@ -621,8 +640,9 @@ export default function LandingPage() {
 
           {/* Testimonial Card */}
           <div className="relative">
-            <div key={currentTestimonialIdx} className="bg-white border-2 border-forest/20 rounded-2xl p-10 sm:p-12 relative overflow-hidden shadow-lg">
-              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-forest to-forest/40"></div>
+            <div key={currentTestimonialIdx} className="bg-white border-2 border-forest/25 rounded-3xl p-10 sm:p-12 relative overflow-hidden shadow-2xl shadow-forest/10">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-forest via-forest/60 to-forest/20"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-forest/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
 
               {/* Stars */}
               <div className="flex gap-1 mb-8 text-yellow-400 text-xl">★★★★★</div>
@@ -689,17 +709,20 @@ export default function LandingPage() {
 
           {/* Trust Stats */}
           <div className="mt-16 grid grid-cols-3 gap-4 text-center">
-            <div className="bg-white rounded-2xl p-6 border border-forest/10">
-              <p className="text-3xl font-serif font-black text-forest">5,000+</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium">Active Students</p>
+            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <p className="text-3xl font-serif font-black text-forest relative">5,000+</p>
+              <p className="text-xs text-gray-600 mt-2 font-medium relative">Active Students</p>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-forest/10">
-              <p className="text-3xl font-serif font-black text-forest">98%</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium">Success Rate</p>
+            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <p className="text-3xl font-serif font-black text-forest relative">98%</p>
+              <p className="text-xs text-gray-600 mt-2 font-medium relative">Success Rate</p>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-forest/10">
-              <p className="text-3xl font-serif font-black text-forest">4.9★</p>
-              <p className="text-xs text-gray-600 mt-2 font-medium">Rating</p>
+            <div className="bg-white rounded-2xl p-8 border-2 border-forest/15 hover:border-forest/30 transition-all shadow-md hover:shadow-lg relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-forest/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <p className="text-3xl font-serif font-black text-forest relative">4.9★</p>
+              <p className="text-xs text-gray-600 mt-2 font-medium relative">Rating</p>
             </div>
           </div>
         </div>
@@ -726,10 +749,11 @@ export default function LandingPage() {
           {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {PLANS.map((plan) => (
-              <div key={plan.name} className={`rounded-2xl overflow-hidden flex flex-col transition-all ${plan.highlighted ? "ring-3 ring-forest shadow-2xl shadow-forest/20 bg-gradient-to-b from-white to-blush" : "bg-white border-2 border-gray-200 hover:border-forest/40 hover:shadow-xl"}`}>
+              <div key={plan.name} className={`rounded-3xl overflow-hidden flex flex-col transition-all duration-300 ${plan.highlighted ? "ring-3 ring-forest shadow-2xl shadow-forest/30 bg-gradient-to-b from-white via-white to-blush border border-white/60 scale-105" : "bg-white border-2 border-gray-200/60 hover:border-forest/30 hover:shadow-2xl hover:shadow-forest/10 hover:scale-102"}`}>
                 {plan.badge && (
-                  <div className="bg-forest text-white text-center py-3 text-xs font-serif font-bold uppercase tracking-widest">
-                    ⭐ {plan.badge}
+                  <div className="bg-gradient-to-r from-forest to-forest/80 text-white text-center py-3 px-6 text-xs font-serif font-bold uppercase tracking-widest relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)'}}></div>
+                    <span className="relative">⭐ {plan.badge}</span>
                   </div>
                 )}
                 <div className="p-8 flex flex-col flex-1">
