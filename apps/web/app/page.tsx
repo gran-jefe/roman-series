@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
+import { TrendingUp, Star, CheckCircle, Target, BarChart3, Clipboard, Trophy, Clock, Zap, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -582,16 +583,18 @@ export default function LandingPage() {
       {/* ──── SOCIAL PROOF BAR ──── */}
       <section className="bg-gray-50 border-y border-gray-100 py-5 px-4">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-10 text-center">
-          {[
-            { icon: "📈", text: "98% admission success rate" },
-            { icon: "⭐", text: "4.9★ average student rating" },
-            { icon: "✓", text: "Trusted since 2019" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-gray-600 font-semibold">
-              <span>{item.icon}</span>
-              <span>{item.text}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2 text-sm text-gray-600 font-semibold">
+            <TrendingUp className="w-5 h-5 text-forest" />
+            <span>98% admission success rate</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600 font-semibold">
+            <Star className="w-5 h-5 text-forest" />
+            <span>4.9★ average student rating</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600 font-semibold">
+            <CheckCircle className="w-5 h-5 text-forest" />
+            <span>Trusted since 2019</span>
+          </div>
         </div>
       </section>
 
@@ -655,8 +658,8 @@ export default function LandingPage() {
                 onClick={() => setCurrentTestimonialIdx(
                   p => (p - 1 + TESTIMONIALS.length) % TESTIMONIALS.length
                 )}
-                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy text-gray-400 hover:text-navy transition-all flex items-center justify-center font-bold text-lg">
-                ←
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy hover:bg-navy/5 transition-all flex items-center justify-center">
+                <ChevronLeft className="w-5 h-5 text-gray-400 hover:text-navy" />
               </button>
 
               {/* Max 7 dots */}
@@ -681,8 +684,8 @@ export default function LandingPage() {
                 onClick={() => setCurrentTestimonialIdx(
                   p => (p + 1) % TESTIMONIALS.length
                 )}
-                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy text-gray-400 hover:text-navy transition-all flex items-center justify-center font-bold text-lg">
-                →
+                className="w-10 h-10 rounded-full border-2 border-gray-200 hover:border-navy hover:bg-navy/5 transition-all flex items-center justify-center">
+                <ChevronRight className="w-5 h-5 text-gray-400 hover:text-navy" />
               </button>
             </div>
           </div>
@@ -705,20 +708,31 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FEATURES.map((feature, idx) => (
+            {[
+              { icon: Target, title: feature.title, desc: feature.desc },
+              { icon: BarChart3, title: feature.title, desc: feature.desc },
+              { icon: Clipboard, title: feature.title, desc: feature.desc },
+              { icon: Trophy, title: feature.title, desc: feature.desc },
+              { icon: Clock, title: feature.title, desc: feature.desc },
+              { icon: Zap, title: feature.title, desc: feature.desc },
+            ].map((feature, idx) => {
+              const IconComponent = feature.icon;
+              const actualFeature = FEATURES[idx];
+              return (
               <div key={idx}
-                className="group bg-white border border-gray-100 rounded-2xl p-6 hover:border-forest/30 hover:shadow-xl hover:shadow-forest/5 transition-all duration-300">
-                <div className="w-12 h-12 rounded-xl bg-navy/5 flex items-center justify-center text-2xl mb-5 group-hover:bg-forest/10 transition-colors">
-                  {feature.icon}
+                className="group bg-white/95 border border-gray-100 rounded-2xl p-6 hover:border-forest/30 hover:shadow-xl hover:shadow-forest/5 transition-all duration-300">
+                <div className="w-12 h-12 rounded-xl bg-forest/10 flex items-center justify-center mb-5 group-hover:bg-forest/20 transition-colors">
+                  <IconComponent className="w-6 h-6 text-forest" />
                 </div>
                 <h3 className="font-bold text-navy mb-2 text-base leading-tight">
-                  {feature.title}
+                  {actualFeature.title}
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
-                  {feature.desc}
+                  {actualFeature.desc}
                 </p>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       </section>
@@ -764,8 +778,8 @@ export default function LandingPage() {
                 <h3 className="font-black text-navy text-lg mb-2">{step.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
                 {i < 2 && (
-                  <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 text-xs font-bold">
-                    →
+                  <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center">
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
                   </div>
                 )}
               </div>

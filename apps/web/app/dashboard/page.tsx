@@ -10,6 +10,7 @@ import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
 import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
+import { Calendar, BarChart3, Zap, CheckCircle } from "lucide-react";
 
 interface Subscription {
   subscription_status: string;
@@ -228,9 +229,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-400 mt-2">practice sessions</p>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-navy/10 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                      <Calendar className="w-6 h-6 text-forest" />
                     </div>
                   </div>
                 </div>
@@ -252,9 +251,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-400 mt-2">across all subjects</p>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-forest/10 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-forest" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
+                      <BarChart3 className="w-6 h-6 text-forest" />
                     </div>
                   </div>
                 </div>
@@ -268,9 +265,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-400 mt-2">personal record</p>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-gold/20 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-gold" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
+                      <Zap className="w-6 h-6 text-gold" />
                     </div>
                   </div>
                 </div>
@@ -284,9 +279,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-400 mt-2">total attempted</p>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-green-100/50 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <CheckCircle className="w-6 h-6 text-green-600" />
                     </div>
                   </div>
                 </div>
