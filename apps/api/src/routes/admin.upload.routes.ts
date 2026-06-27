@@ -57,17 +57,25 @@ const optionSchema = z.object({
   is_correct: z.boolean().optional().default(false),
 });
 
+const passageSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+});
+
 const questionSchema = z.object({
   number: z.number(),
   body: z.string(),
-  explanation: z.string().nullable(),
-  answer: z.enum(["A", "B", "C", "D", "E"]).nullable(),
+  explanation: z.string().nullable().optional(),
+  answer: z.enum(["A", "B", "C", "D", "E"]).nullable().optional(),
   options: z.array(optionSchema),
-  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  difficulty: z.enum(["easy", "medium", "hard"]).optional().default("medium"),
+  passage_title: z.string().optional(),
+  group_id: z.string().optional(),
 });
 
 const topicSchema = z.object({
   name: z.string(),
+  passage: passageSchema.optional(),
   questions: z.array(questionSchema),
 });
 
@@ -218,6 +226,28 @@ export function registerUploadRoutes(app: Express, deps: UploadDeps) {
         const topicId = topicRow.id;
         totalTopics++;
 
+        // Create passage if topic has one
+        let passageId: string | null = null;
+        if (topic.passage) {
+          const { data: passageData, error: passageError } = await supabaseAdmin
+            .from("passages")
+            .insert({
+              subject_id: subjectId,
+              topic_id: topicId,
+              title: topic.passage.title,
+              body: topic.passage.body,
+            })
+            .select("id")
+            .single();
+
+          if (passageError || !passageData) {
+            console.warn(`[upload-json] Failed to create passage for topic "${topic.name}":`, passageError);
+          } else {
+            passageId = passageData.id;
+            console.log(`[upload-json] Created passage "${topic.passage.title}" for topic "${topic.name}"`);
+          }
+        }
+
         // Bulk insert questions - preserve mapping to source questions
         const questionsWithMapping = topic.questions
           .map((q, idx) => ({ q, idx }))
@@ -242,6 +272,8 @@ export function registerUploadRoutes(app: Express, deps: UploadDeps) {
               body: q.body,
               explanation: q.explanation,
               difficulty: q.difficulty || "medium",
+              passage_id: passageId,
+              question_group_id: q.group_id || null,
             },
             sourceIndex: idx,
           }));

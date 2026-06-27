@@ -199,7 +199,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
 
       const { data: questions, error: qError } = await supabaseAdmin
         .from("questions")
-        .select("*, options(*)")
+        .select("id, body, subject_id, university_id, topic_id, passage_id, question_group_id, options(id, label, body), passages(id, title, body)")
         .in("id", selectedIds);
 
       if (qError || !questions) {

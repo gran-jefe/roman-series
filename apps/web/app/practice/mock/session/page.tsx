@@ -15,11 +15,20 @@ interface Answer {
   selected_option_id: string | null;
 }
 
+interface Passage {
+  id: string;
+  title: string;
+  body: string;
+}
+
 interface Question {
   id: string;
   body: string;
   subject_name: string;
   subject_colour_token: string;
+  passage_id?: string;
+  passage?: Passage;
+  question_group_id?: string;
   options: Array<{
     id: string;
     label: string;
@@ -47,6 +56,7 @@ export default function MockSessionPage() {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
+  const [showPassage, setShowPassage] = useState(true);
   const hasSubmittedRef = useRef(false);
   const answersRef = useRef<Answer[]>([]);
   const sessionIdRef = useRef<string | null>(null);
@@ -326,6 +336,16 @@ export default function MockSessionPage() {
     }
   }, [user, loading]);
 
+  // Auto-open passage when navigating to a question with a passage
+  useEffect(() => {
+    if (questions.length > 0 && currentQuestion < questions.length) {
+      const q = questions[currentQuestion];
+      if (q?.passage) {
+        setShowPassage(true);
+      }
+    }
+  }, [currentQuestion, questions]);
+
   const handleNextQuestion = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -493,6 +513,24 @@ export default function MockSessionPage() {
           {/* QUESTION */}
           <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-14">
             <div className="max-w-2xl mx-auto">
+              {/* Passage Display */}
+              {currentQ?.passage && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowPassage(!showPassage)}
+                    className="w-full flex items-center justify-between p-3 bg-blue-100 text-blue-900 font-semibold text-sm hover:bg-blue-200 transition-colors"
+                  >
+                    <span>📖 {currentQ.passage.title}</span>
+                    <span>{showPassage ? "▲ Hide" : "▼ Read Passage"}</span>
+                  </button>
+                  {showPassage && (
+                    <div className="p-4 text-sm text-gray-700 leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap">
+                      {currentQ.passage.body}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-4">
                 <p className="text-navy font-semibold text-base leading-relaxed select-none">
                   {currentQ?.body}

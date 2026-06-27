@@ -316,6 +316,15 @@ export interface StudentOption {
 }
 
 /**
+ * Passage model for comprehension questions
+ */
+export interface Passage {
+  id: string;
+  title: string;
+  body: string;
+}
+
+/**
  * Student-facing question without is_correct or explanation
  */
 export interface StudentQuestion {
@@ -326,6 +335,9 @@ export interface StudentQuestion {
   topic_name?: string;
   body: string;
   options: StudentOption[];
+  passage_id?: string;
+  passage?: Passage;
+  question_group_id?: string;
 }
 
 /**

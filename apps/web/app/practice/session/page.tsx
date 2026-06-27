@@ -24,6 +24,7 @@ export default function PracticeSessionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [timeUp, setTimeUp] = useState(false);
+  const [showPassage, setShowPassage] = useState(true);
 
   // Refs for timer callback
   const answersRef = useRef(answers);
@@ -85,6 +86,15 @@ export default function PracticeSessionPage() {
 
     // Reset for current question
     questionStartTime.current = Date.now();
+  }, [currentIndex, questions]);
+
+  // Auto-open passage when navigating to a question with a passage
+  useEffect(() => {
+    if (questions.length === 0 || !questions[currentIndex]) return;
+    const currentQ = questions[currentIndex];
+    if (currentQ.passage) {
+      setShowPassage(true);
+    }
   }, [currentIndex, questions]);
 
   // Load session data from sessionStorage
@@ -209,7 +219,17 @@ export default function PracticeSessionPage() {
       .padStart(2, "0")}`;
   };
 
+  // Extract context and clean body for grouped questions
+  const extractContext = (body: string) => {
+    const contextMatch = body.match(/^\[Context: (.+?)\]([\s\S]*)/);
+    return {
+      context: contextMatch ? contextMatch[1] : null,
+      cleanBody: contextMatch ? contextMatch[2].trim() : body,
+    };
+  };
+
   const currentQuestion = questions[currentIndex];
+  const { context, cleanBody } = currentQuestion ? extractContext(currentQuestion.body) : { context: null, cleanBody: "" };
 
   // Question option selection
   const handleSelectOption = (optionId: string) => {
@@ -418,10 +438,36 @@ export default function PracticeSessionPage() {
         {/* Question Area */}
         <main className="flex-1 pb-32 overflow-y-auto">
           <div className="max-w-3xl mx-auto px-4 py-8">
+            {/* Passage Display */}
+            {currentQuestion.passage && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowPassage(!showPassage)}
+                  className="w-full flex items-center justify-between p-3 bg-blue-100 text-blue-900 font-semibold text-sm hover:bg-blue-200 transition-colors"
+                >
+                  <span>📖 {currentQuestion.passage.title}</span>
+                  <span>{showPassage ? "▲ Hide" : "▼ Read Passage"}</span>
+                </button>
+                {showPassage && (
+                  <div className="p-4 text-sm text-gray-700 leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap">
+                    {currentQuestion.passage.body}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Question Body */}
             <div className="bg-white rounded-lg shadow-lg p-8 mb-6 select-none">
+              {/* Instruction/Context Box */}
+              {context && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                  <span className="font-semibold">📋 Instruction: </span>
+                  {context}
+                </div>
+              )}
+
               <h2 className="text-lg font-semibold text-navy mb-6">
-                {currentQuestion.body}
+                {cleanBody || currentQuestion.body}
               </h2>
 
               {/* Options */}
