@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import type { Topic, Subject, University, SessionHistoryItem } from "types";
 import toast from "react-hot-toast";
 import { CardSkeleton } from "@/components/skeletons";
+import { ArrowLeft, BookOpen, Zap } from "lucide-react";
 
 const subjectColours: Record<string, string> = {
   Biology: "#1A7A4A",
@@ -91,64 +92,68 @@ export default function TopicsPage() {
   const subjectColour = subject ? subjectColours[subject.name] || "#7B68EE" : "#7B68EE";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF7F4]">
       {/* Header */}
-      <div style={{ backgroundColor: loading ? "#7B68EE" : subjectColour }} className="text-white py-6 shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+      <div style={{ backgroundColor: loading ? "rgb(107, 114, 128)" : subjectColour }} className="text-white py-8 sm:py-12 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between relative z-10">
           <div>
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-sm mb-2 hover:opacity-80 flex items-center gap-1"
+              className="text-sm mb-3 hover:opacity-80 flex items-center gap-2 transition-opacity"
             >
-              ← Back
+              <ArrowLeft className="w-4 h-4" />
+              Back
             </button>
             {loading ? (
-              <div className="h-8 w-48 bg-gray-300 rounded animate-pulse" />
+              <div className="h-8 w-48 bg-white/20 rounded-lg animate-pulse" />
             ) : (
-              <h1 className="text-2xl font-bold">
-                {subject?.name} — {university?.short_code}
+              <h1 className="text-3xl sm:text-4xl font-black">
+                {subject?.name}
               </h1>
             )}
           </div>
           <button
             onClick={handlePracticeAll}
             disabled={loading}
-            className="px-6 py-2 bg-white text-gray-900 rounded-lg font-medium hover:shadow-lg transition disabled:opacity-50"
+            className="px-6 py-2.5 bg-white text-navy rounded-xl font-bold hover:shadow-lg transition disabled:opacity-50 flex items-center gap-2"
           >
-            Practice All Topics
+            <Zap className="w-4 h-4" />
+            Practice All
           </button>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {loading ? (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
           </div>
         ) : topics.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-600">No questions uploaded yet for this subject</p>
+          <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+            <p className="text-gray-600 text-lg">No questions uploaded yet for this subject</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {topics.map(topic => {
               const avgScore = getTopicAvgScore(topic.id);
               return (
-                <div key={topic.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
+                <div key={topic.id} className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-7 hover:shadow-lg hover:border-forest/30 transition-all">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-bold text-navy">{topic.name}</h3>
+                      <h3 className="text-lg sm:text-xl font-black text-navy">{topic.name}</h3>
                     </div>
                   </div>
 
                   {avgScore !== null ? (
-                    <div className="mb-4">
+                    <div className="mb-5">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-600">Your average</span>
-                        <span className="text-sm font-bold text-green-600">{avgScore}%</span>
+                        <span className="text-sm font-medium text-gray-600">Your average</span>
+                        <span className="text-sm font-bold text-forest">{avgScore}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
@@ -158,22 +163,20 @@ export default function TopicsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mb-4 py-2">
-                      <p className="text-sm text-gray-500">Not attempted</p>
+                    <div className="mb-5 py-2">
+                      <p className="text-sm text-gray-500">Not attempted yet</p>
                     </div>
                   )}
 
                   <button
                     onClick={() => handlePracticeTopic(topic.id)}
-                    className="w-full py-2 rounded-lg font-medium transition"
+                    className="w-full py-3 rounded-xl font-bold transition text-white flex items-center justify-center gap-2"
                     style={{
                       backgroundColor: subjectColour,
-                      color: "white",
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
                   >
-                    Practice
+                    <BookOpen className="w-4 h-4" />
+                    Start Practice
                   </button>
                 </div>
               );

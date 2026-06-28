@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import type { StudentQuestion } from "types";
 import { QuestionSkeleton } from "@/components/skeletons";
+import { ChevronLeft, ChevronRight, Flag, BookOpen, Clock, Loader2 } from "lucide-react";
 
 export default function PracticeSessionPage() {
   useContentProtection();
@@ -392,9 +393,9 @@ export default function PracticeSessionPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="min-h-screen bg-[#FAF7F4] flex">
         <main className="flex-1 pb-32 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
             <QuestionSkeleton />
           </div>
         </main>
@@ -404,8 +405,8 @@ export default function PracticeSessionPage() {
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">No questions found</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F4]">
+        <div className="text-gray-600 font-medium">No questions found</div>
       </div>
     );
   }
@@ -420,15 +421,16 @@ export default function PracticeSessionPage() {
   const flaggedCount = flagged.size;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#FAF7F4] flex flex-col">
       {/* Top Bar with Time */}
-      <div className="bg-navy text-white px-4 py-4 flex items-center justify-between shadow-lg z-40">
-        <div className="text-sm font-medium">
-          Question {currentIndex + 1} of {questions.length}
+      <div className="bg-navy text-white px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-lg z-40">
+        <div className="text-xs sm:text-sm font-bold flex items-center gap-2">
+          <span>Question {currentIndex + 1} of {questions.length}</span>
         </div>
         <div
-          className={`text-lg font-bold ${isTimeRunningOut ? "text-ember" : ""}`}
+          className={`flex items-center gap-2 text-base sm:text-lg font-bold transition-colors ${isTimeRunningOut ? "text-ember" : ""}`}
         >
+          <Clock className="w-5 h-5" />
           {formatTime(timeLeft)}
         </div>
       </div>
@@ -437,19 +439,22 @@ export default function PracticeSessionPage() {
       <div className="flex-1 flex">
         {/* Question Area */}
         <main className="flex-1 pb-32 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             {/* Passage Display */}
             {currentQuestion.passage && (
-              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl overflow-hidden">
                 <button
                   onClick={() => setShowPassage(!showPassage)}
-                  className="w-full flex items-center justify-between p-3 bg-blue-100 text-blue-900 font-semibold text-sm hover:bg-blue-200 transition-colors"
+                  className="w-full flex items-center justify-between p-4 sm:p-5 bg-blue-100 text-blue-900 font-bold text-sm sm:text-base hover:bg-blue-200 transition-colors"
                 >
-                  <span>📖 {currentQuestion.passage.title}</span>
-                  <span>{showPassage ? "▲ Hide" : "▼ Read Passage"}</span>
+                  <span className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    {currentQuestion.passage.title}
+                  </span>
+                  <span className="text-xs sm:text-sm font-medium">{showPassage ? "Hide" : "Read Passage"}</span>
                 </button>
                 {showPassage && (
-                  <div className="p-4 text-sm text-gray-700 leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap">
+                  <div className="p-4 sm:p-5 text-sm text-gray-700 leading-relaxed max-h-64 overflow-y-auto whitespace-pre-wrap">
                     {currentQuestion.passage.body}
                   </div>
                 )}
@@ -457,16 +462,16 @@ export default function PracticeSessionPage() {
             )}
 
             {/* Question Body */}
-            <div className="bg-white rounded-lg shadow-lg p-8 mb-6 select-none">
+            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 select-none hover:shadow-lg transition-shadow">
               {/* Instruction/Context Box */}
               {context && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
-                  <span className="font-semibold">📋 Instruction: </span>
-                  {context}
+                <div className="mb-5 p-4 sm:p-4 bg-amber-50 border-l-4 border-amber-400 rounded-lg text-sm text-amber-900">
+                  <p className="font-bold mb-1.5">Instructions</p>
+                  <p>{context}</p>
                 </div>
               )}
 
-              <h2 className="text-lg font-semibold text-navy mb-6">
+              <h2 className="text-base sm:text-lg font-bold text-navy mb-6">
                 {cleanBody || currentQuestion.body}
               </h2>
 
@@ -475,27 +480,27 @@ export default function PracticeSessionPage() {
                 {currentQuestion.options.map((option, idx) => {
                   const isSelected =
                     answers.get(currentQuestion.id) === option.id;
-                  const optionLabel = String.fromCharCode(65 + idx); // A, B, C, D
+                  const optionLabel = String.fromCharCode(65 + idx);
 
                   return (
                     <button
                       key={option.id}
                       onClick={() => handleSelectOption(option.id)}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                         isSelected
-                          ? "bg-forest text-white border-forest"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-forest"
+                          ? "bg-forest text-white border-forest shadow-md"
+                          : "bg-gray-50 text-gray-700 border-gray-200 hover:border-forest hover:bg-white"
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold flex-shrink-0 ${
-                            isSelected ? "bg-white text-forest" : "bg-gray-100"
+                          className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold flex-shrink-0 text-sm ${
+                            isSelected ? "bg-white text-forest" : "bg-gray-200 text-gray-700"
                           }`}
                         >
                           {optionLabel}
                         </div>
-                        <div>{option.body}</div>
+                        <div className="text-sm sm:text-base">{option.body}</div>
                       </div>
                     </button>
                   );
@@ -504,61 +509,61 @@ export default function PracticeSessionPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex gap-2 md:gap-4">
+            <div className="flex gap-2 sm:gap-3">
               {/* Left Arrow (Mobile) */}
               <button
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="md:hidden p-3 border border-gray-300 text-navy rounded-xl font-medium hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
                 title="Previous question"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="w-5 h-5" />
               </button>
 
               <button
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="hidden md:flex px-5 py-2.5 border border-gray-300 text-navy rounded-xl font-bold hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed transition-all items-center gap-2"
               >
-                ← Previous
+                <ChevronLeft className="w-4 h-4" />
+                Previous
               </button>
 
               <button
                 onClick={handleToggleFlag}
-                className={`px-4 md:px-6 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-4 md:px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 ${
                   isFlagged
-                    ? "bg-crs text-white"
-                    : "border border-gray-300 text-navy hover:bg-gray-50"
+                    ? "bg-crs text-white shadow-md"
+                    : "border border-gray-300 text-navy hover:bg-white/95"
                 }`}
               >
-                {isFlagged ? "✓ Flagged" : "Flag"}
+                <Flag className="w-4 h-4" />
+                {isFlagged ? "Flagged" : "Flag"}
               </button>
 
               <button
                 onClick={handleNext}
                 disabled={currentIndex === questions.length - 1}
-                className="hidden md:block px-6 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="hidden md:flex px-5 py-2.5 border border-gray-300 text-navy rounded-xl font-bold hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed transition-all items-center gap-2"
               >
-                Next →
+                Next
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               {/* Right Arrow (Mobile) */}
               <button
                 onClick={handleNext}
                 disabled={currentIndex === questions.length - 1}
-                className="md:hidden p-3 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="md:hidden p-3 border border-gray-300 text-navy rounded-xl font-medium hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
                 title="Next question"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
             {/* Question Palette (Mobile & Tablet - Wrapped) */}
-            <div className="lg:hidden mt-6 bg-white rounded-lg shadow-lg p-3">
+            <div className="lg:hidden mt-8 bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-4">
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-3">Questions</p>
               <div className="flex flex-wrap gap-2">
                 {questions.map((q, idx) => {
                   const isCurrentQuestion = idx === currentIndex;
@@ -566,19 +571,19 @@ export default function PracticeSessionPage() {
                     answers.has(q.id) && answers.get(q.id) !== null;
                   const isQuestionFlagged = flagged.has(q.id);
 
-                  let bgColor = "bg-white border border-gray-300";
+                  let bgColor = "bg-gray-100 border border-gray-300 text-gray-600";
                   if (isQuestionAnswered && !isQuestionFlagged) {
-                    bgColor = "bg-forest text-white";
+                    bgColor = "bg-forest text-white border-forest";
                   } else if (isQuestionFlagged) {
-                    bgColor = "bg-crs text-white";
+                    bgColor = "bg-crs text-white border-crs";
                   }
 
                   return (
                     <button
                       key={q.id}
                       onClick={() => handleGoToQuestion(idx)}
-                      className={`w-10 h-10 rounded text-xs font-bold text-gray-400 flex items-center justify-center transition-all ${bgColor} ${
-                        isCurrentQuestion ? "ring-2 ring-navy" : ""
+                      className={`w-10 h-10 rounded-lg text-xs font-bold flex items-center justify-center transition-all border ${bgColor} ${
+                        isCurrentQuestion ? "ring-2 ring-navy ring-offset-2" : ""
                       }`}
                       title={`Question ${idx + 1}`}
                     >
@@ -592,7 +597,7 @@ export default function PracticeSessionPage() {
         </main>
 
         {/* Question Palette Sidebar */}
-        <aside className="hidden lg:block w-20 bg-white shadow-lg border-l border-gray-200 p-2 fixed right-0 top-16 bottom-24 overflow-y-auto">
+        <aside className="hidden lg:block w-24 bg-white/95 shadow-sm border-l border-gray-100 p-3 fixed right-0 top-16 bottom-24 overflow-y-auto">
           <div className="grid grid-cols-2 gap-2">
             {questions.map((q, idx) => {
               const isCurrentQuestion = idx === currentIndex;
@@ -600,19 +605,19 @@ export default function PracticeSessionPage() {
                 answers.has(q.id) && answers.get(q.id) !== null;
               const isQuestionFlagged = flagged.has(q.id);
 
-              let bgColor = "bg-white border border-gray-300";
+              let bgColor = "bg-gray-100 border border-gray-300 text-gray-600";
               if (isQuestionAnswered && !isQuestionFlagged) {
-                bgColor = "bg-forest text-white";
+                bgColor = "bg-forest text-white border-forest";
               } else if (isQuestionFlagged) {
-                bgColor = "bg-crs text-white";
+                bgColor = "bg-crs text-white border-crs";
               }
 
               return (
                 <button
                   key={q.id}
                   onClick={() => handleGoToQuestion(idx)}
-                  className={`w-8 h-8 rounded text-xs font-bold text-gray-400 flex items-center justify-center transition-all ${bgColor} ${
-                    isCurrentQuestion ? "ring-2 ring-navy" : ""
+                  className={`w-9 h-9 rounded-lg text-xs font-bold flex items-center justify-center transition-all border ${bgColor} ${
+                    isCurrentQuestion ? "ring-2 ring-navy ring-offset-1" : ""
                   }`}
                 >
                   {idx + 1}
@@ -628,48 +633,66 @@ export default function PracticeSessionPage() {
         <button
           onClick={() => setShowSubmitDialog(true)}
           disabled={submitting}
-          className="px-6 py-3 bg-ember text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg"
+          className="px-6 py-3 bg-ember text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center gap-2"
         >
-          {submitting ? "Submitting..." : "Submit"}
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Submitting
+            </>
+          ) : (
+            "Submit"
+          )}
         </button>
       </div>
 
       {/* Submit Confirmation Dialog */}
       {showSubmitDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-xl font-bold text-navy mb-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 sm:p-8">
+            <h3 className="text-xl sm:text-2xl font-black text-navy mb-5">
               Submit Practice Session?
             </h3>
 
-            <div className="space-y-2 mb-6 text-sm text-gray-700">
-              <p>
-                <strong>Answered:</strong> {answeredCount} questions
-              </p>
-              <p>
-                <strong>Unanswered:</strong> {unansweredCount} questions
-              </p>
-              <p>
-                <strong>Flagged:</strong> {flaggedCount} questions
-              </p>
-              <p>
-                <strong>Time taken:</strong> {formatTime(totalTime - timeLeft)}
-              </p>
+            <div className="space-y-3 mb-6 text-sm text-gray-700">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="font-medium">Answered:</span>
+                <span className="font-bold text-forest">{answeredCount} questions</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="font-medium">Unanswered:</span>
+                <span className="font-bold text-gray-600">{unansweredCount} questions</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="font-medium">Flagged:</span>
+                <span className="font-bold text-crs">{flaggedCount} questions</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="font-medium">Time taken:</span>
+                <span className="font-bold text-navy">{formatTime(totalTime - timeLeft)}</span>
+              </div>
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSubmitDialog(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-navy rounded-xl font-bold hover:bg-gray-50 transition-colors"
               >
                 Continue
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting
+                  </>
+                ) : (
+                  "Submit"
+                )}
               </button>
             </div>
           </div>
@@ -678,31 +701,13 @@ export default function PracticeSessionPage() {
 
       {/* Time's Up Overlay */}
       {timeUp && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-            <p className="text-2xl font-bold text-ember mb-2">⏰ Time&apos;s Up!</p>
-            <p className="text-gray-600 mb-4">Submitting your answers...</p>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-sm">
+            <Clock className="w-12 h-12 text-ember mx-auto mb-3" />
+            <p className="text-2xl font-black text-ember mb-2">Time&apos;s Up!</p>
+            <p className="text-gray-600 mb-6">Submitting your answers...</p>
             <div className="flex justify-center">
-              <svg
-                className="animate-spin h-8 w-8 text-forest"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+              <Loader2 className="animate-spin h-8 w-8 text-forest" />
             </div>
           </div>
         </div>
@@ -710,31 +715,12 @@ export default function PracticeSessionPage() {
 
       {/* Submission Loader */}
       {submitting && !timeUp && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 mb-4">
-              <svg
-                className="animate-spin h-8 w-8 text-forest"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-sm">
+            <div className="flex justify-center mb-4">
+              <Loader2 className="animate-spin h-10 w-10 text-forest" />
             </div>
-            <p className="text-lg font-semibold text-navy">Submitting your session...</p>
+            <p className="text-lg font-bold text-navy">Submitting your session...</p>
             <p className="text-sm text-gray-500 mt-2">Please wait while we save your answers</p>
           </div>
         </div>

@@ -9,109 +9,117 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
   const { supabaseAdmin } = deps;
 
   // GET /api/recalled-questions - Get recalled questions (Elite only)
-  app.get("/api/recalled-questions", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
+ app.get("/api/recalled-questions", async (req: Request, res: Response) => {
+   try {
+     const authHeader = req.headers.authorization;
 
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+     if (!authHeader?.startsWith("Bearer ")) {
+       return res.status(401).json({
+         status: "error",
+         message: "Missing or invalid Authorization header",
+         timestamp: new Date().toISOString(),
+       });
+     }
 
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
+     const token = authHeader.substring(7);
 
-      // Check user's subscription status
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("subscription_status")
-        .eq("id", user.id)
-        .single();
+     const {
+       data: { user },
+       error: authError,
+     } = await supabaseAdmin.auth.getUser(token);
 
-      if (profileError || !profile) {
-        res.status(404).json({
-          status: "error",
-          message: "Profile not found",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
+     if (authError || !user) {
+       return res.status(401).json({
+         status: "error",
+         message: "Invalid or expired token",
+         timestamp: new Date().toISOString(),
+       });
+     }
 
-      // Elite-only feature
-      if (profile.subscription_status !== "elite") {
-        res.status(403).json({
-          status: "error",
-          message: "Recalled questions are available for Elite members only. Upgrade your plan to access this feature.",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
+     // Check subscription
+     const { data: profile, error: profileError } = await supabaseAdmin
+       .from("profiles")
+       .select("subscription_status")
+       .eq("id", user.id)
+       .single();
 
-      const {
-        subject_id,
-        university_id,
-        year,
-      } = req.query;
+     if (profileError || !profile) {
+       return res.status(404).json({
+         status: "error",
+         message: "Profile not found",
+         timestamp: new Date().toISOString(),
+       });
+     }
 
-      let query = supabaseAdmin
-        .from("recalled_questions")
-        .select("*, recalled_question_options(*)")
-        .order("created_at", { ascending: false });
+     if (profile.subscription_status !== "elite") {
+       return res.status(403).json({
+         status: "error",
+         message:
+           "Recalled questions are available for Elite members only. Upgrade your plan to access this feature.",
+         timestamp: new Date().toISOString(),
+       });
+     }
 
-      if (subject_id) {
-        query = query.eq("subject_id", subject_id as string);
-      }
+     const { subject_id, year } = req.query;
 
-      if (university_id) {
-        query = query.eq("university_id", university_id as string);
-      }
+     let query = supabaseAdmin
+       .from("recalled_questions")
+       .select("*")
+       .order("question_number", { ascending: true });
 
-      if (year) {
-        query = query.eq("year", parseInt(year as string));
-      }
+     // Convert subject_id -> subject name
+     if (subject_id) {
+       const { data: subject, error: subjectError } = await supabaseAdmin
+         .from("subjects")
+         .select("name")
+         .eq("id", subject_id as string)
+         .single();
 
-      const { data: questions, error } = await query;
+       if (subjectError || !subject) {
+         return res.status(404).json({
+           status: "error",
+           message: "Subject not found",
+           timestamp: new Date().toISOString(),
+         });
+       }
 
-      if (error) {
-        console.error("[recalled-questions] Query error:", error);
-        res.status(500).json({
-          status: "error",
-          message: "Failed to fetch recalled questions",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
+       query = query.eq("subject", subject.name);
+     }
 
-      res.json({
-        status: "success",
-        data: {
-          questions: questions || [],
-          total: questions?.length || 0,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[recalled-questions] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
+     if (year) {
+       query = query.eq("year", Number(year));
+     }
 
+     const { data: questions, error } = await query;
+
+     if (error) {
+       console.error("[recalled-questions] Query error:", error);
+
+       return res.status(500).json({
+         status: "error",
+         message: "Failed to fetch recalled questions",
+         timestamp: new Date().toISOString(),
+       });
+     }
+
+     return res.json({
+       status: "success",
+       data: {
+         questions: questions ?? [],
+         total: questions?.length ?? 0,
+       },
+       timestamp: new Date().toISOString(),
+     });
+   } catch (error) {
+     console.error("[recalled-questions] Error:", error);
+
+     return res.status(500).json({
+       status: "error",
+       message: "Internal server error",
+       timestamp: new Date().toISOString(),
+     });
+   }
+ });
   // POST /api/admin/recalled-questions - Upload recalled question (Admin only)
   app.post("/api/admin/recalled-questions", async (req: Request, res: Response) => {
     try {
@@ -294,7 +302,7 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
 
       let query = supabaseAdmin
         .from("recalled_questions")
-        .select("*, recalled_question_options(*)", { count: "exact" })
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 

@@ -536,7 +536,7 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white mb-6 leading-[1.05] tracking-tight">
             You Want UI.<br/>
             <span className="bg-gradient-to-r from-green-400 via-emerald-300 to-forest bg-clip-text text-transparent">
-              We'll Get You There.
+              We&apos;ll Get You There.
             </span>
           </h1>
 
@@ -968,7 +968,7 @@ export default function LandingPage() {
           </h2>
           <p className="text-white/50 text-lg mb-10 font-medium">
             Join 5,000+ students already preparing.
-            Start free – upgrade only when you're ready.
+            Start free – upgrade only when you&apos;re ready.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href={user ? "/dashboard" : "/register"}
@@ -998,7 +998,7 @@ export default function LandingPage() {
                 <span className="font-black">Roman Series</span>
               </div>
               <p className="text-white/30 text-xs leading-relaxed">
-                Nigeria's most trusted UI Post-UTME preparation platform.
+                Nigeria&apos;s most trusted UI Post-UTME preparation platform.
                 Built for Nigerian students who are serious about getting admitted.
               </p>
             </div>
