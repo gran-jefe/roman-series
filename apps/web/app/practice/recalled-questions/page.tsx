@@ -11,18 +11,21 @@ import { Lock, Calendar, AlertCircle } from "lucide-react";
 
 interface RecalledQuestion {
   id: string;
-  subject_id: string;
-  university_id: string;
-  body: string;
-  explanation: string;
+  subject: string;
   year: number;
-  difficulty_level: string;
-  recalled_question_options: Array<{
-    id: string;
-    label: string;
-    body: string;
-    is_correct: boolean;
-  }>;
+  batch: string | null;
+  section_label: string | null;
+  question_number: number;
+  body: string;
+
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+
+  answer: string | null;
+  has_options: boolean;
+  note: string | null;
 }
 
 interface Subject {
@@ -31,19 +34,13 @@ interface Subject {
   colour_token: string;
 }
 
-interface University {
-  id: string;
-  name: string;
-  short_code: string;
-}
+
 
 export default function RecalledQuestionsPage() {
   const { profile, loading } = useAuth();
   const [questions, setQuestions] = useState<RecalledQuestion[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [universities, setUniversities] = useState<University[]>([]);
   const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedUniversity, setSelectedUniversity] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -59,12 +56,10 @@ export default function RecalledQuestionsPage() {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const [subjectsRes, unisRes] = await Promise.all([
+        const [subjectsRes] = await Promise.all([
           api.get("/api/subjects"),
-          api.get("/api/universities"),
         ]);
         setSubjects(subjectsRes.data.data || []);
-        setUniversities(unisRes.data.data || []);
       } catch (error) {
         console.error("Failed to fetch filter data:", error);
       }
@@ -82,7 +77,7 @@ export default function RecalledQuestionsPage() {
     try {
       const params = new URLSearchParams();
       if (selectedSubject) params.append("subject_id", selectedSubject);
-      if (selectedUniversity) params.append("university_id", selectedUniversity);
+      // if (selectedUniversity) params.append("university_id", selectedUniversity);
       if (selectedYear) params.append("year", selectedYear);
 
       const response = await api.get(`/api/recalled-questions?${params.toString()}`);
@@ -103,7 +98,7 @@ export default function RecalledQuestionsPage() {
     if (isElite) {
       fetchQuestions();
     }
-  }, [selectedSubject, selectedUniversity, selectedYear, isElite]);
+  }, [selectedSubject, selectedYear, isElite]);
 
   if (pageLoading) {
     return <PageLoader />;
@@ -132,13 +127,19 @@ export default function RecalledQuestionsPage() {
             <div className="flex items-center gap-3 mb-3">
               <span className="text-4xl">🔐</span>
               <div>
-                <h1 className="text-3xl sm:text-4xl font-black">Recalled Questions 🎯</h1>
-                <p className="text-white/70 text-sm sm:text-base mt-1">Authentic UI Post-UTME questions from 2019-2025</p>
+                <h1 className="text-3xl sm:text-4xl font-black">
+                  Recalled Questions 🎯
+                </h1>
+                <p className="text-white/70 text-sm sm:text-base mt-1">
+                  Authentic UI Post-UTME questions from 2019-2025
+                </p>
               </div>
             </div>
             <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-400/20 border border-green-400/50 rounded-full">
               <Lock className="w-4 h-4 text-green-300" />
-              <span className="text-sm font-bold text-green-300">Elite Exclusive</span>
+              <span className="text-sm font-bold text-green-300">
+                Elite Exclusive
+              </span>
             </div>
           </div>
         </div>
@@ -147,14 +148,22 @@ export default function RecalledQuestionsPage() {
         <div className="mb-8 p-4 sm:p-5 bg-amber-50 border-2 border-amber-200 rounded-2xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-amber-900 text-sm">No official answers</p>
-            <p className="text-amber-800 text-sm mt-0.5">These questions have no official answers yet. Study them to understand question patterns and exam style — they&apos;re authentic questions recalled by students.</p>
+            <p className="font-bold text-amber-900 text-sm">
+              No official answers
+            </p>
+            <p className="text-amber-800 text-sm mt-0.5">
+              These questions have no official answers yet. Study them to
+              understand question patterns and exam style — they&apos;re
+              authentic questions recalled by students.
+            </p>
           </div>
         </div>
 
         {/* Filters Card */}
         <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-10 hover:shadow-lg hover:border-forest/30 transition-all">
-          <h2 className="text-lg sm:text-xl font-black text-navy mb-6">Filter Questions</h2>
+          <h2 className="text-lg sm:text-xl font-black text-navy mb-6">
+            Filter Questions
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Subject Filter */}
             <div>
@@ -176,7 +185,7 @@ export default function RecalledQuestionsPage() {
             </div>
 
             {/* University Filter */}
-            <div>
+            {/* <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-widest mb-2">
                 University
               </label>
@@ -192,7 +201,7 @@ export default function RecalledQuestionsPage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
             {/* Year Filter */}
             <div>
@@ -225,16 +234,24 @@ export default function RecalledQuestionsPage() {
               <div className="inline-block">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest"></div>
               </div>
-              <p className="text-gray-600 mt-4 font-medium">Loading authentic questions...</p>
+              <p className="text-gray-600 mt-4 font-medium">
+                Loading authentic questions...
+              </p>
             </div>
           ) : questions.length === 0 ? (
             <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-              <p className="text-gray-600 text-lg">No recalled questions found. Try adjusting your filters or check back soon!</p>
+              <p className="text-gray-600 text-lg">
+                No recalled questions found. Try adjusting your filters or check
+                back soon!
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               {questions.map((question, idx) => (
-                <div key={question.id} className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-7 hover:shadow-lg hover:border-forest/30 transition-all">
+                <div
+                  key={question.id}
+                  className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-7 hover:shadow-lg hover:border-forest/30 transition-all"
+                >
                   {/* Question Header */}
                   <div className="flex items-start gap-3 mb-4">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -244,41 +261,45 @@ export default function RecalledQuestionsPage() {
                       {question.year && (
                         <div className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 rounded-lg">
                           <Calendar className="w-4 h-4 text-gray-600" />
-                          <span className="text-xs font-bold text-gray-700">{question.year}</span>
+                          <span className="text-xs font-bold text-gray-700">
+                            {question.year}
+                          </span>
                         </div>
                       )}
-                      {question.difficulty_level && (
-                        <span className={`text-xs font-black px-2.5 py-1 rounded-lg ${
-                          question.difficulty_level === 'hard' ? 'bg-red-100 text-red-800' :
-                          question.difficulty_level === 'medium' ? 'bg-amber-100 text-amber-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {question.difficulty_level}
-                        </span>
-                      )}
+                    
                     </div>
                   </div>
 
                   {/* Question Body */}
-                  <p className="text-navy font-medium text-base leading-relaxed mb-5">{question.body}</p>
+                  <p className="text-navy font-medium text-base leading-relaxed mb-5">
+                    {question.body}
+                  </p>
 
-                  {/* Options */}
-                  {question.recalled_question_options.length > 0 && (
+                  {question.has_options && (
                     <div className="space-y-2 mb-5">
-                      {question.recalled_question_options.map((option) => (
+                      {[
+                        { label: "A", body: question.option_a },
+                        { label: "B", body: question.option_b },
+                        { label: "C", body: question.option_c },
+                        { label: "D", body: question.option_d },
+                      ].map((option) => (
                         <div
-                          key={option.id}
-                          className={`p-3.5 rounded-xl border-2 transition-all ${
-                            option.is_correct
-                              ? "border-green-300 bg-green-50/50"
-                              : "border-gray-200 bg-gray-50/30 hover:border-gray-300"
-                          }`}
+                          key={option.label}
+                          className="p-3.5 rounded-xl border-2 border-gray-200 bg-gray-50/30"
                         >
                           <div className="flex items-start gap-3">
-                            <span className="font-black text-navy text-sm min-w-fit">{option.label}.</span>
-                            <span className="text-gray-700 text-sm">{option.body}</span>
-                            {option.is_correct && (
-                              <span className="text-xs font-black text-green-600 ml-auto flex-shrink-0">✓ Correct</span>
+                            <span className="font-black text-navy text-sm">
+                              {option.label}.
+                            </span>
+
+                            <span className="text-gray-700 text-sm">
+                              {option.body}
+                            </span>
+
+                            {question.answer === option.label && (
+                              <span className="ml-auto text-xs font-black text-green-600">
+                                ✓ Correct
+                              </span>
                             )}
                           </div>
                         </div>
@@ -287,10 +308,14 @@ export default function RecalledQuestionsPage() {
                   )}
 
                   {/* Explanation */}
-                  {question.explanation && (
+                  {question.note && (
                     <div className="bg-blue-50/50 border-l-4 border-blue-400 p-4 rounded-lg">
-                      <p className="text-xs font-bold text-blue-900 mb-1.5">💡 Explanation</p>
-                      <p className="text-sm text-blue-800 leading-relaxed">{question.explanation}</p>
+                      <p className="text-xs font-bold text-blue-900 mb-1.5">
+                        💡 Explanation
+                      </p>
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        {question.note}
+                      </p>
                     </div>
                   )}
                 </div>
