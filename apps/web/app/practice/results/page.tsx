@@ -348,7 +348,7 @@ export default function PracticeResultsPage() {
                           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
                             Question {idx + 1}
                           </div>
-                          <p className="text-navy font-medium text-sm sm:text-base line-clamp-2">
+                          <p className={`text-navy font-medium text-sm sm:text-base ${isExpanded ? "" : "line-clamp-2"}`}>
                             {answer.question_body}
                           </p>
                         </div>

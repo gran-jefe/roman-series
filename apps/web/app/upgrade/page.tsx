@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
 import toast from "react-hot-toast";
+import { getPromoTimeLeft } from "@/lib/promo";
 
 // Utility function to load Flutterwave script and open modal
 const openFlutterwaveModal = (config: any) => {
@@ -55,6 +56,18 @@ export default function UpgradePage() {
   const { user, profile, loading } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  // Countdown to the end of the Launch Week discount
+  useEffect(() => {
+    const updateCountdown = () => {
+      setTimeLeft(getPromoTimeLeft());
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -113,7 +126,7 @@ export default function UpgradePage() {
           name: profile?.full_name || "Roman Series Student",
         },
         customizations: {
-          title: "Roman Series",
+          title: "Roman Series™",
           description: "Upgrade to Elite",
           logo: "https://romanseries.com.ng/logo.png",
         },
@@ -235,6 +248,13 @@ export default function UpgradePage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
+        {timeLeft && (
+          <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
+            <p className="font-semibold">🎉 Launch Week Special! Limited-time discount pricing available</p>
+            <p className="text-sm mt-1">Ends in: {timeLeft}</p>
+          </div>
+        )}
+
         {error && (
           <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-[#C4522A]">{error}</p>

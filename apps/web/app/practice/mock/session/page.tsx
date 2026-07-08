@@ -382,9 +382,12 @@ export default function MockSessionPage() {
     <div className="min-h-screen bg-blush flex flex-col">
       {/* NAVBAR - Fixed top */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-navy text-white h-14 flex items-center justify-between px-4 shadow-lg">
-        <div>
-          <p className="font-bold text-sm">{hardMode ? "🔴 HARD MODE" : "Mock PUTME"}</p>
-          <p className="text-xs text-gray-300">{currentSubject} • Q{questionInSubject}/25</p>
+        <div className="leading-tight">
+          <p className="text-[9px] font-bold tracking-wide text-gray-400 leading-none">
+            Roman Series<sup className="text-[0.6em]">™</sup>
+          </p>
+          <p className="font-bold text-sm leading-tight">{hardMode ? "🔴 HARD MODE" : "Mock PUTME"}</p>
+          <p className="text-xs text-gray-300 leading-tight">{currentSubject} • Q{questionInSubject}/25</p>
         </div>
         <div className={`font-bold text-lg px-3 py-1 rounded ${
           isCritical ? "bg-red-600" : isTimeWarning ? "bg-yellow-600" : "bg-forest"

@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { getPromoTimeLeft } from "@/lib/promo";
 
 // Utility function to load Flutterwave script and open modal
 const openFlutterwaveModal = (config: any) => {
@@ -55,41 +56,11 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
-  const [isLaunch, setIsLaunch] = useState(true);
 
-  // Countdown to launch (June 27, 2026) or discount (7 days after launch)
+  // Countdown to the end of the Launch Week discount
   useEffect(() => {
     const updateCountdown = () => {
-      const now = new Date();
-      const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0); // June 27, 2026 at midnight
-      const discountEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days after launch
-      discountEnd.setHours(23, 59, 59, 999);
-
-      let targetDate: Date;
-      let launchMode: boolean;
-
-      if (now < launchDate) {
-        // Still countdown to launch
-        targetDate = launchDate;
-        launchMode = true;
-      } else if (now < discountEnd) {
-        // Countdown to end of discount
-        targetDate = discountEnd;
-        launchMode = false;
-      } else {
-        // Discount ended
-        setTimeLeft("");
-        return;
-      }
-
-      const diff = targetDate.getTime() - now.getTime();
-      if (diff > 0) {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setTimeLeft(`${days}d ${hours}h ${minutes}m`);
-        setIsLaunch(launchMode);
-      }
+      setTimeLeft(getPromoTimeLeft());
     };
 
     updateCountdown();
@@ -158,7 +129,7 @@ export default function PricingPage() {
           name: profile?.full_name || "Student",
         },
         customizations: {
-          title: "Roman Series",
+          title: "Roman Series™",
           description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - 6 months`,
           logo: "https://romanseries.com.ng/logo.png",
         },
@@ -314,11 +285,11 @@ export default function PricingPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
-        {/* Launch/Discount Banner */}
+        {/* Discount Banner */}
         {timeLeft && (
           <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
-            <p className="font-semibold">{isLaunch ? "🚀 Platform Launching Soon!" : "🎉 Launch Week Special! Limited-time discount pricing available"}</p>
-            <p className="text-sm mt-1">{isLaunch ? "Launching in: " : "Ends in: "}{timeLeft}</p>
+            <p className="font-semibold">🎉 Launch Week Special! Limited-time discount pricing available</p>
+            <p className="text-sm mt-1">Ends in: {timeLeft}</p>
           </div>
         )}
 

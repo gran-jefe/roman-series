@@ -115,11 +115,14 @@ export function LockedFeature({
         <div className="bg-gradient-to-br from-navy to-deep-blue rounded-2xl shadow-lg p-8 text-white mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-2xl font-bold mb-2">Roman Series Elite</h3>
+              <h3 className="text-2xl font-bold mb-2">Roman Series<sup className="text-sm align-super">™</sup> Elite</h3>
               <p className="text-gray-300">Everything you need to ace your Post-UTME</p>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold mb-2">₦5,000</div>
+              <div className="flex items-baseline gap-2 justify-end">
+                <div className="text-4xl font-bold">₦3,500</div>
+                <div className="text-lg text-gray-400 line-through">₦5,000</div>
+              </div>
               <div className="text-sm text-gray-300">6 months</div>
             </div>
           </div>

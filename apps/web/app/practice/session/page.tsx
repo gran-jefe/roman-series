@@ -424,8 +424,13 @@ export default function PracticeSessionPage() {
     <div className="min-h-screen bg-[#FAF7F4] flex flex-col">
       {/* Top Bar with Time */}
       <div className="bg-navy text-white px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-lg z-40">
-        <div className="text-xs sm:text-sm font-bold flex items-center gap-2">
-          <span>Question {currentIndex + 1} of {questions.length}</span>
+        <div className="flex flex-col">
+          <span className="text-[10px] sm:text-xs font-bold tracking-wide text-gray-400">
+            Roman Series<sup className="text-[0.6em]">™</sup>
+          </span>
+          <span className="text-xs sm:text-sm font-bold flex items-center gap-2">
+            Question {currentIndex + 1} of {questions.length}
+          </span>
         </div>
         <div
           className={`flex items-center gap-2 text-base sm:text-lg font-bold transition-colors ${isTimeRunningOut ? "text-ember" : ""}`}

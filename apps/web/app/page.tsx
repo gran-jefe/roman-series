@@ -5,41 +5,17 @@ import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { TrendingUp, Star, CheckCircle, Target, BarChart3, Clipboard, Trophy, Clock, Zap, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { getPromoTimeLeft } from "@/lib/promo";
 
 export default function LandingPage() {
   const { user } = useAuth();
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [currentTestimonialIdx, setCurrentTestimonialIdx] = useState(0);
 
-  // Countdown to launch (June 27, 2026) or discount (7 days after launch)
+  // Countdown to the end of the Launch Week discount
   useEffect(() => {
     const updateCountdown = () => {
-      const now = new Date();
-      const launchDate = new Date(2026, 5, 27, 0, 0, 0, 0);
-      const discountEnd = new Date(launchDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-      discountEnd.setHours(23, 59, 59, 999);
-
-      let targetDate: Date;
-      let label: string;
-
-      if (now < launchDate) {
-        targetDate = launchDate;
-        label = "launch";
-      } else if (now < discountEnd) {
-        targetDate = discountEnd;
-        label = "discount";
-      } else {
-        setTimeLeft("");
-        return;
-      }
-
-      const diff = targetDate.getTime() - now.getTime();
-      if (diff > 0) {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        setTimeLeft(`${label === "launch" ? "Launching in" : "Discount ends in"}: ${days}d ${hours}h ${minutes}m`);
-      }
+      setTimeLeft(getPromoTimeLeft());
     };
 
     updateCountdown();
@@ -443,7 +419,7 @@ export default function LandingPage() {
       {/* ──── NAVBAR ──── */}
       <nav className="bg-[#FAF7F4] backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center gap-1">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
@@ -451,6 +427,7 @@ export default function LandingPage() {
               height={56}
               className="h-10 w-auto"
             />
+            <sup className="text-[10px] font-bold text-gray-400 -translate-y-2">™</sup>
           </Link>
           <div className="flex items-center gap-3">
             {!user ? (
@@ -513,7 +490,7 @@ export default function LandingPage() {
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-24 sm:pt-28 sm:pb-32 text-center">
 
           {/* Logo */}
-          <div className="mb-12 animate-float inline-block">
+          <div className="mb-12 animate-float inline-flex items-start gap-1">
             <Image
               src="/assets/logos/roman-series-full.png"
               alt="Roman Series"
@@ -522,6 +499,7 @@ export default function LandingPage() {
               className="h-14 w-auto mx-auto brightness-0 invert drop-shadow-[0_0_30px_rgba(26,122,74,0.4)]"
               priority
             />
+            <sup className="text-xs font-bold text-white/50">™</sup>
           </div>
 
           {/* UI-first badge */}
@@ -995,7 +973,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-forest rounded-lg flex items-center justify-center text-xs font-black text-white">
                   RS
                 </div>
-                <span className="font-black">Roman Series</span>
+                <span className="font-black">Roman Series<sup className="text-[0.6em] text-white/40">™</sup></span>
               </div>
               <p className="text-white/30 text-xs leading-relaxed">
                 Nigeria&apos;s most trusted UI Post-UTME preparation platform.
@@ -1041,7 +1019,7 @@ export default function LandingPage() {
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-white/20 text-xs">
-              © 2025 Roman Series. All rights reserved.
+              © 2025 Roman Series™. All rights reserved.
             </p>
             <p className="text-white/15 text-xs">
               Built with ❤️ for Nigerian students 🇳🇬

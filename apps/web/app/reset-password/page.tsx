@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
               priority
             />
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">Roman Series</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Roman Series<sup className="text-sm align-super">™</sup></h1>
           <p className="text-gray-400">Ace Post-UTME Exams</p>
         </div>
 
@@ -315,7 +315,7 @@ export default function ResetPasswordPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-xs mt-8">
-          © 2025 Roman Series. All rights reserved.
+          © 2025 Roman Series™. All rights reserved.
         </p>
       </div>
     </div>

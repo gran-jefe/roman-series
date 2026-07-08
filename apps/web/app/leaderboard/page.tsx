@@ -89,7 +89,7 @@ export default function LeaderboardPage() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-forest rounded-full" />
-            <h1 className="text-xl font-bold">Roman Series</h1>
+            <h1 className="text-xl font-bold">Roman Series<sup className="text-xs align-super">™</sup></h1>
           </Link>
           <div className="text-sm">Leaderboard</div>
         </div>

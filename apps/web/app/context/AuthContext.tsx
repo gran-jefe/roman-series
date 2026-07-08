@@ -119,50 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mounted, restoreSession]);
 
-  // Proactive token refresh — schedule refresh 60s before expiry
-  useEffect(() => {
-    if (!user) return;
-
-    const expiresAt =
-      typeof window !== "undefined"
-        ? parseInt(localStorage.getItem("token_expires_at") || "0")
-        : 0;
-
-    if (!expiresAt) return;
-
-    const msUntilRefresh = expiresAt - Date.now() - 60_000; // refresh 60s before expiry
-    if (msUntilRefresh <= 0) return;
-
-    const timer = setTimeout(async () => {
-      const refreshToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("refresh_token")
-          : null;
-
-      if (!refreshToken) return;
-
-      try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const { data } = await axios.post(`${apiUrl}/api/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        if (data.status === "success") {
-          const { access_token, refresh_token: newRefresh, expires_in } =
-            data.data;
-          storeTokens(access_token, newRefresh, expires_in);
-        }
-      } catch (error) {
-        console.error("[AuthContext] Proactive refresh failed:", error);
-        clearAuth();
-        router.push("/login");
-      }
-    }, msUntilRefresh);
-
-    return () => clearTimeout(timer);
-  }, [user, router]);
-
   const login = async (email: string, password: string) => {
     const response = await api.post("/api/auth/login", { email, password });
 
