@@ -9,6 +9,11 @@ interface PaymentsDeps {
   flwWebhookHash?: string;
 }
 
+// Launch Week Special discount window — must match apps/web/app/lib/promo.ts
+// so the amount charged server-side always agrees with what the frontend advertises.
+const PROMO_END_DATE = new Date(2026, 6, 12, 23, 59, 59, 999); // Sunday, July 12, 2026
+const isPromoActive = () => Date.now() < PROMO_END_DATE.getTime();
+
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   const { supabaseAdmin, webUrl, flwWebhookHash } = deps;
 
@@ -481,12 +486,20 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      // Pricing in kobo
-      const planPricing: Record<string, number> = {
-        explorer: 0,       // Free
-        scholar: 350000,   // ₦3,500
-        elite: 500000,     // ₦5,000
-      };
+      // Pricing in kobo — use Launch Week discount prices while the promo is
+      // active (must match the Scholar/Elite prices advertised on
+      // pricing/page.tsx and upgrade/page.tsx), otherwise fall back to regular price.
+      const planPricing: Record<string, number> = isPromoActive()
+        ? {
+            explorer: 0,       // Free
+            scholar: 250000,   // ₦2,500 (discount)
+            elite: 350000,     // ₦3,500 (discount)
+          }
+        : {
+            explorer: 0,       // Free
+            scholar: 350000,   // ₦3,500 (regular)
+            elite: 500000,     // ₦5,000 (regular)
+          };
 
       const currentPlanPrice = planPricing[profile.subscription_status];
       const targetPlanPrice = planPricing[target_plan];

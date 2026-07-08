@@ -62,6 +62,9 @@ const loginSchema = z.object({
 });
 
 const app: Express = express();
+// Render sits behind a reverse proxy; trust its single hop so req.ip reflects
+// the real client IP (X-Forwarded-For) instead of the proxy's IP for everyone.
+app.set('trust proxy', 1);
 const port = process.env.PORT || 4000;
 // Use WEB_URL for backend, fallback to NEXT_PUBLIC_WEB_URL for backwards compatibility
 const webUrl = process.env.WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";

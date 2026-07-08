@@ -114,11 +114,16 @@ export default function UpgradePage() {
 
       const paymentData = res.data.data;
 
+      // Backend computes the upgrade diff off regular prices (₦5,000 - ₦3,500 = ₦1,500),
+      // not the Launch Week discount prices (₦3,500 - ₦2,500 = ₦1,000) shown on this page.
+      // Charge the discount diff directly, same pattern as the pricing page's promo override.
+      const discountUpgradeAmount = 1000;
+
       // Configure Flutterwave
       const config = {
         public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY,
         tx_ref: paymentData.tx_ref,
-        amount: paymentData.amount,
+        amount: discountUpgradeAmount,
         currency: "NGN",
         payment_options: "card,banktransfer,ussd,opay",
         customer: {
@@ -250,7 +255,9 @@ export default function UpgradePage() {
       <main className="max-w-4xl mx-auto px-6 py-12">
         {timeLeft && (
           <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
-            <p className="font-semibold">🎉 Launch Week Special! Limited-time discount pricing available</p>
+            <p className="font-semibold">
+              🎉 Launch Week Special! Limited-time discount pricing available
+            </p>
             <p className="text-sm mt-1">Ends in: {timeLeft}</p>
           </div>
         )}
@@ -278,7 +285,9 @@ export default function UpgradePage() {
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
                   Your current plan: Scholar (₦2,500){" "}
-                  <span className="text-xs text-ember font-semibold">DISCOUNT</span>
+                  <span className="text-xs text-ember font-semibold">
+                    DISCOUNT
+                  </span>
                 </p>
                 <p className="text-sm text-gray-600 mb-1">
                   Elite plan regular price:{" "}
@@ -296,11 +305,16 @@ export default function UpgradePage() {
               </div>
 
               <div className="bg-white rounded-lg p-4 mb-4 border-2 border-forest">
-                <p className="text-sm text-gray-600 mb-1">You&apos;ll pay today:</p>
+                <p className="text-sm text-gray-600 mb-1">
+                  You&apos;ll pay today:
+                </p>
                 <p className="text-5xl font-bold text-forest">₦1,000</p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Difference between Scholar (₦2,500) and Elite (₦3,500) for 6 months
+                  Difference between Scholar (₦2,500) and Elite (₦3,500) for 6
+                  months
                 </p>
+                another most important thing is too many auth attempts please
+                try again in 15 minutes, how can that be solved, we are live
               </div>
 
               <button
@@ -312,9 +326,7 @@ export default function UpgradePage() {
                     : "bg-forest hover:bg-opacity-90 shadow-lg hover:shadow-xl"
                 }`}
               >
-                {isProcessing
-                  ? "Processing..."
-                  : "Complete Upgrade (₦1,000)"}
+                {isProcessing ? "Processing..." : "Complete Upgrade (₦1,000)"}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
@@ -383,7 +395,10 @@ export default function UpgradePage() {
                 Why only ₦1,000?
               </h4>
               <p className="text-gray-600 text-sm">
-                During our discount, you&apos;re upgrading from Scholar at the discount price (₦2,500) to Elite at the discount price (₦3,500) for the same 6-month period. You only pay the difference of ₦1,000.
+                During our discount, you&apos;re upgrading from Scholar at the
+                discount price (₦2,500) to Elite at the discount price (₦3,500)
+                for the same 6-month period. You only pay the difference of
+                ₦1,000.
               </p>
             </div>
             <div>

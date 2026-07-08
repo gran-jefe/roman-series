@@ -739,11 +739,13 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       const putmeContribution = (currentPracticeAvg / 100) * cutoff.putme_weight;
       const predictedTotal = utmeContribution + putmeContribution;
 
-      // Calculate required Post-UTME score
+      // Calculate required Post-UTME score. A strong UTME score can drive the
+      // raw formula negative — clamp to 50, the minimum PUTME score required
+      // for admission regardless of how high the UTME score is.
       const requiredPutmeScore =
         cutoff.putme_weight > 0
-          ? Math.ceil(((cutoff.combined_cutoff - utmeContribution) / cutoff.putme_weight) * 100)
-          : 0;
+          ? Math.max(50, Math.ceil(((cutoff.combined_cutoff - utmeContribution) / cutoff.putme_weight) * 100))
+          : 50;
 
       // Calculate post_utme_target and gap_percentage
       const postUtmeTarget = requiredPutmeScore;
