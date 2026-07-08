@@ -52,7 +52,6 @@ export interface Question {
   id: string;
   subject_id: string;
   university_id: string;
-  year?: number;
   body: string;
   explanation?: string;
   topic_id?: string;

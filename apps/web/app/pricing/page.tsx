@@ -302,7 +302,10 @@ export default function PricingPage() {
 
         {error && (
           <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-[#C4522A]">{error}</p>
+            <p className="text-sm text-[#C4522A] mb-1">{error}</p>
+            <p className="text-xs text-[#C4522A]/80">
+              Still stuck? Call 0906 177 0885 / 0703 834 1818 or email granjefetech@gmail.com
+            </p>
           </div>
         )}
 
@@ -394,6 +397,20 @@ export default function PricingPage() {
           <Link href="/dashboard" className="text-[#1A7A4A] font-medium hover:underline">
             Start Free →
           </Link>
+        </div>
+
+        {/* Payment Support */}
+        <div className="mt-6 bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <h3 className="text-lg font-bold text-[#0D1B2A] mb-2">Having issues paying?</h3>
+          <p className="text-gray-600 mb-4">
+            If your payment doesn&apos;t go through or you run into any trouble at checkout, reach out to us directly — we&apos;ll sort it out.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-[#1A7A4A]">
+            <a href="tel:09061770885" className="hover:underline">0906 177 0885</a>
+            <a href="tel:07038341818" className="hover:underline">0703 834 1818</a>
+            <a href="mailto:granjefetech@gmail.com" className="hover:underline">granjefetech@gmail.com</a>
+            <a href="mailto:roman.series.edu@gmail.com" className="hover:underline">roman.series.edu@gmail.com</a>
+          </div>
         </div>
       </main>
     </div>

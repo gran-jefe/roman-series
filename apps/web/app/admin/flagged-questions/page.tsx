@@ -15,6 +15,16 @@ interface FlaggedQuestion {
   reason: string | null;
   created_at: string;
   updated_at: string;
+  questions: {
+    body: string;
+    topic_name: string | null;
+    subject_id: string;
+  } | null;
+  flagger: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
 }
 
 export default function AdminFlaggedQuestionsPage() {
@@ -26,6 +36,7 @@ export default function AdminFlaggedQuestionsPage() {
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   // Check admin access
   useEffect(() => {
@@ -72,6 +83,22 @@ export default function AdminFlaggedQuestionsPage() {
     }
   }, [profile, selectedUserId, offset, limit]);
 
+  const handleResolve = async (questionId: string) => {
+    setResolvingId(questionId);
+    try {
+      await api.delete(`/api/admin/flagging/${questionId}`);
+      const removed = flaggedQuestions.filter((f) => f.question_id === questionId).length;
+      setFlaggedQuestions((prev) => prev.filter((f) => f.question_id !== questionId));
+      setTotalCount((prev) => Math.max(0, prev - removed));
+      toast.success("Question resolved — it's back in the mock exam pool");
+    } catch (error) {
+      console.error("Failed to resolve flagged question:", error);
+      toast.error("Failed to resolve question");
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   if (loading || pageLoading) {
     return <PageLoader message="Loading flagged questions..." />;
   }
@@ -101,7 +128,10 @@ export default function AdminFlaggedQuestionsPage() {
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <h1 className="text-3xl font-bold text-navy">Flagged Questions</h1>
-          <p className="text-gray-600 mt-2">Review questions flagged by students for issues or concerns</p>
+          <p className="text-gray-600 mt-2">
+            Review questions flagged by students. Flagged questions are automatically excluded from mock exams
+            until marked resolved here.
+          </p>
         </div>
       </div>
 
@@ -158,40 +188,57 @@ export default function AdminFlaggedQuestionsPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {flaggedQuestions.length > 0 ? (
             <>
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">User ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Question ID</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Question</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Flagged By</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Reason</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Session</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Flagged At</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {flaggedQuestions.map((flag) => (
                     <tr key={flag.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{flag.user_id.slice(0, 8)}...</code>
+                      <td className="px-6 py-4 max-w-md">
+                        {flag.questions?.topic_name && (
+                          <span className="text-xs font-semibold text-forest uppercase tracking-wide">
+                            {flag.questions.topic_name}
+                          </span>
+                        )}
+                        <p className="text-sm text-gray-800 mt-1">
+                          {flag.questions?.body || "Question no longer exists"}
+                        </p>
+                        <code className="text-[10px] text-gray-400">{flag.question_id.slice(0, 8)}...</code>
                       </td>
                       <td className="px-6 py-4">
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{flag.question_id.slice(0, 8)}...</code>
+                        <p className="text-sm font-medium text-gray-900">
+                          {flag.flagger?.full_name || "Unknown"}
+                        </p>
+                        <p className="text-xs text-gray-500">{flag.flagger?.email || "—"}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-700">{flag.reason || "—"}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {flag.session_id ? flag.session_id.slice(0, 8) + "..." : "—"}
-                        </code>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                         {new Date(flag.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleResolve(flag.question_id)}
+                          disabled={resolvingId === flag.question_id}
+                          className="px-3 py-1.5 bg-forest text-white text-xs font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {resolvingId === flag.question_id ? "Resolving..." : "Mark Resolved"}
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
 
               {/* Pagination */}
               <div className="px-6 py-4 border-t flex items-center justify-between">

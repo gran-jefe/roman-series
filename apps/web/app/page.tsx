@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { TrendingUp, Star, CheckCircle, Target, BarChart3, Clipboard, Trophy, Clock, Zap, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { getPromoTimeLeft } from "@/lib/promo";
+import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -470,6 +471,10 @@ export default function LandingPage() {
         </div>
       )}
 
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        <MaintenanceBanner />
+      </div>
+
       {/* ──── HERO ──── */}
       <section className="relative bg-navy overflow-hidden">
         {/* Warm gradient overlays */}
@@ -541,8 +546,8 @@ export default function LandingPage() {
           {/* Stats */}
           <div className="inline-grid grid-cols-3 gap-0 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm overflow-hidden">
             {[
-              { number: "9,600+", label: "UI Questions" },
-              { number: "14", label: "Subjects" },
+              { number: "13,900+", label: "UI Questions" },
+              { number: "15", label: "Subjects" },
               { number: "5,000+", label: "Students" },
             ].map((stat, i) => (
               <div key={i} className={`px-6 sm:px-10 py-6 text-center ${i < 2 ? "border-r border-white/10" : ""}`}>

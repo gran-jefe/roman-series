@@ -329,7 +329,8 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
           session_id,
           reason,
           created_at,
-          updated_at
+          updated_at,
+          questions ( body, topic_name, subject_id )
         `,
           { count: "exact" }
         );
@@ -355,9 +356,27 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
         return;
       }
 
+      const rows = data || [];
+
+      // flagged_questions.user_id references auth.users, not profiles directly,
+      // so PostgREST can't embed it — resolve emails in a single batch query.
+      const userIds = [...new Set(rows.map((r: any) => r.user_id))];
+      const { data: profiles } = userIds.length
+        ? await supabaseAdmin
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", userIds)
+        : { data: [] as any[] };
+      const profileById = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      const enriched = rows.map((r: any) => ({
+        ...r,
+        flagger: profileById.get(r.user_id) || null,
+      }));
+
       res.json({
         status: "success",
-        data: data || [],
+        data: enriched,
         count,
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
@@ -365,6 +384,80 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
       });
     } catch (error) {
       console.error("[admin/flagging/all] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/flagging/:question_id - Admin: Resolve/clear all flags on a question
+  app.delete("/api/admin/flagging/:question_id", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const token = authHeader.substring(7);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+
+      if (authError || !user) {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
+        res.status(403).json({
+          status: "error",
+          message: "Admin access required",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { question_id } = req.params;
+
+      const { error } = await supabaseAdmin
+        .from("flagged_questions")
+        .delete()
+        .eq("question_id", question_id);
+
+      if (error) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to resolve flagged question",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        message: "Question resolved and unflagged. It will reappear in mock exams.",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/flagging/resolve] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

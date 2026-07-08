@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import { PageLoader } from "@/components/PageLoader";
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
+import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
@@ -198,6 +199,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <MaintenanceBanner />
+
         {/* Welcome Header Band */}
         <div className="mb-12 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>

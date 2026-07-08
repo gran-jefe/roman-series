@@ -268,7 +268,6 @@ export function registerUploadRoutes(app: Express, deps: UploadDeps) {
               topic_id: topicId,
               subject_id: subjectId,
               university_id: universityId,
-              year: new Date().getFullYear(),
               body: q.body,
               explanation: q.explanation,
               difficulty: q.difficulty || "medium",

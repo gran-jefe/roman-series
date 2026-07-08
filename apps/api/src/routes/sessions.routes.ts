@@ -1140,6 +1140,13 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       let allQuestions: any[] = [];
       const questionsPerSubject = 25;
 
+      // Questions currently flagged for review are excluded from mock exams
+      // until an admin rectifies and clears the flag.
+      const { data: flaggedRows } = await supabaseAdmin
+        .from("flagged_questions")
+        .select("question_id");
+      const flaggedQuestionIds = new Set((flaggedRows || []).map((f: any) => f.question_id));
+
       for (const subject of subjects) {
         let query = supabaseAdmin
           .from("questions")
@@ -1152,10 +1159,14 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           query = query.in("difficulty", ["medium", "hard"]);
         }
 
-        const { data: questionIds, error: idError } = await query
+        const { data: rawQuestionIds, error: idError } = await query
           .limit(100); // Get more than needed to have options for shuffling
 
-        if (idError || !questionIds?.length) {
+        const questionIds = (rawQuestionIds || []).filter(
+          (q: any) => !flaggedQuestionIds.has(q.id)
+        );
+
+        if (idError || !questionIds.length) {
           res.status(404).json({
             status: "error",
             message: `No questions found for subject: ${subject.name}`,

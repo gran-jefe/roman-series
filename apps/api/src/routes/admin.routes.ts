@@ -85,11 +85,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
             .select("id")
             .gte("started_at", today.toISOString()),
           supabaseAdmin.from("questions").select("id"),
+          // Total revenue is cumulative money collected — count every
+          // successfully-paid subscription, not just currently-unexpired ones.
           supabaseAdmin
             .from("subscriptions")
             .select("amount")
-            .eq("status", "active")
-            .gte("expires_at", new Date().toISOString()),
+            .eq("status", "active"),
         ]);
 
       const newUsersRes = await supabaseAdmin
@@ -427,12 +428,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     if (!userId) return;
 
     try {
-      const { subject_id, university_id, body, explanation, options, difficulty } = req.body;
+      const { subject_id, university_id, topic_id, body, explanation, options, difficulty } = req.body;
 
-      if (!subject_id || !university_id || !body || !options) {
+      if (!subject_id || !university_id || !topic_id || !body || !options) {
         res.status(400).json({
           status: "error",
-          message: "Missing required fields",
+          message: "Missing required fields (subject, university, topic, and body are required)",
           timestamp: new Date().toISOString(),
         });
         return;
@@ -448,11 +449,37 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
+      const { data: topic, error: topicError } = await supabaseAdmin
+        .from("topics")
+        .select("id, name, subject_id, university_id")
+        .eq("id", topic_id)
+        .single();
+
+      if (topicError || !topic) {
+        res.status(400).json({
+          status: "error",
+          message: "Selected topic could not be found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (topic.subject_id !== subject_id || topic.university_id !== university_id) {
+        res.status(400).json({
+          status: "error",
+          message: "Selected topic does not belong to the chosen subject/university",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const { data: questionData, error: qError } = await supabaseAdmin
         .from("questions")
         .insert({
           subject_id,
           university_id,
+          topic_id,
+          topic_name: topic.name,
           body,
           explanation: explanation || null,
           difficulty: difficulty || "medium",
@@ -513,21 +540,6 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
-      // Update question answer
-      const { error: updateError } = await supabaseAdmin
-        .from("questions")
-        .update({ answer_letter })
-        .eq("id", id);
-
-      if (updateError) {
-        res.status(400).json({
-          status: "error",
-          message: updateError.message,
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get all options for this question
       const { data: options, error: fetchError } = await supabaseAdmin
         .from("options")
@@ -581,18 +593,11 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         .from("questions")
         .select(`
           id,
-          number,
           body,
-          answer_letter,
           topic_id,
-          topics(name, subject_id),
-          subjects:topics(subjects(id, name)),
+          topics(name, subject_id, subjects(id, name)),
           options(id, label, body, is_correct)
-        `)
-        .is("answer_letter", null)
-        .order("topics.subjects.name", { ascending: true })
-        .order("topics.name", { ascending: true })
-        .order("number", { ascending: true });
+        `);
 
       if (error) {
         res.status(400).json({
@@ -603,9 +608,23 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
+      // "Unanswered" means no option on the question is marked correct —
+      // there is no answer_letter column on questions, correctness lives
+      // solely on options.is_correct.
+      const unanswered = (data || []).filter(
+        (q: any) => !(q.options || []).some((o: any) => o.is_correct)
+      );
+
+      unanswered.sort((a: any, b: any) => {
+        const subjA = a.topics?.subjects?.name || "";
+        const subjB = b.topics?.subjects?.name || "";
+        if (subjA !== subjB) return subjA.localeCompare(subjB);
+        return (a.topics?.name || "").localeCompare(b.topics?.name || "");
+      });
+
       res.json({
         status: "success",
-        data: data || [],
+        data: unanswered,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -628,7 +647,8 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       const limit = Math.min(parseInt((req.query.limit as string) || "20"), 100);
       const subjectId = req.query.subjectId as string;
       const universityId = req.query.universityId as string;
-      const year = req.query.year as string;
+      const topicId = req.query.topicId as string;
+      const noTopic = req.query.noTopic === "true";
 
       let query = supabaseAdmin
         .from("questions")
@@ -640,8 +660,10 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       if (universityId) {
         query = query.eq("university_id", universityId);
       }
-      if (year) {
-        query = query.eq("year", parseInt(year));
+      if (noTopic) {
+        query = query.is("topic_id", null);
+      } else if (topicId) {
+        query = query.eq("topic_id", topicId);
       }
 
       const start = (page - 1) * limit;
@@ -664,6 +686,420 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     } catch (error) {
       console.error("[admin/questions] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // PATCH /api/admin/questions/bulk-assign-topic - assign a topic to many topic-less questions at once
+  // Must be registered before the generic /api/admin/questions/:id routes below,
+  // otherwise Express would match "bulk-assign-topic" as an :id.
+  app.patch("/api/admin/questions/bulk-assign-topic", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { question_ids, topic_id } = req.body;
+
+      if (!Array.isArray(question_ids) || question_ids.length === 0 || !topic_id) {
+        res.status(400).json({
+          status: "error",
+          message: "question_ids (array) and topic_id are required",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: topic, error: topicError } = await supabaseAdmin
+        .from("topics")
+        .select("id, name")
+        .eq("id", topic_id)
+        .single();
+
+      if (topicError || !topic) {
+        res.status(400).json({
+          status: "error",
+          message: "Selected topic could not be found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from("questions")
+        .update({ topic_id: topic.id, topic_name: topic.name })
+        .in("id", question_ids);
+
+      if (updateError) throw updateError;
+
+      res.json({
+        status: "success",
+        message: `${question_ids.length} question(s) assigned to "${topic.name}"`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/questions/bulk-assign-topic] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/questions/:id - fetch a single question with its options, for editing
+  app.get("/api/admin/questions/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+      const { data, error } = await supabaseAdmin
+        .from("questions")
+        .select("*, topics(id, name), subjects(id, name), universities(id, name), options(id, label, body, is_correct)")
+        .eq("id", id)
+        .single();
+
+      if (error || !data) {
+        res.status(404).json({
+          status: "error",
+          message: "Question not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({ status: "success", data, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/questions/:id GET] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // PATCH /api/admin/questions/:id - edit a question's content, topic, and options
+  app.patch("/api/admin/questions/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+      const { body, explanation, difficulty, topic_id, options } = req.body;
+
+      const updates: Record<string, unknown> = {};
+
+      if (body !== undefined) updates.body = body;
+      if (explanation !== undefined) updates.explanation = explanation || null;
+      if (difficulty !== undefined) updates.difficulty = difficulty;
+
+      if (topic_id !== undefined) {
+        const { data: topic, error: topicError } = await supabaseAdmin
+          .from("topics")
+          .select("id, name")
+          .eq("id", topic_id)
+          .single();
+
+        if (topicError || !topic) {
+          res.status(400).json({
+            status: "error",
+            message: "Selected topic could not be found",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        updates.topic_id = topic.id;
+        updates.topic_name = topic.name;
+      }
+
+      if (options !== undefined) {
+        if (!Array.isArray(options) || options.length === 0) {
+          res.status(400).json({
+            status: "error",
+            message: "Options must be a non-empty array",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const correctCount = options.filter((o: any) => o.is_correct).length;
+        if (correctCount !== 1) {
+          res.status(400).json({
+            status: "error",
+            message: "Exactly one option must be marked as correct",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        for (const option of options) {
+          if (!option.id) continue;
+          const { error: optError } = await supabaseAdmin
+            .from("options")
+            .update({ label: option.label, body: option.body, is_correct: !!option.is_correct })
+            .eq("id", option.id)
+            .eq("question_id", id);
+
+          if (optError) throw optError;
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const { error: qError } = await supabaseAdmin
+          .from("questions")
+          .update(updates)
+          .eq("id", id);
+
+        if (qError) throw qError;
+      }
+
+      const { data: updated, error: fetchError } = await supabaseAdmin
+        .from("questions")
+        .select("*, topics(id, name), subjects(id, name), universities(id, name), options(id, label, body, is_correct)")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      res.json({ status: "success", data: updated, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/questions/:id PATCH] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/questions/:id - delete a question (blocked if students have already answered it)
+  app.delete("/api/admin/questions/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+
+      const { count: answeredCount, error: countError } = await supabaseAdmin
+        .from("session_answers")
+        .select("id", { count: "exact", head: true })
+        .eq("question_id", id);
+
+      if (countError) throw countError;
+
+      if ((answeredCount || 0) > 0) {
+        res.status(409).json({
+          status: "error",
+          message: `This question has already been answered by students in ${answeredCount} session(s) and can't be deleted. Edit it instead to fix any issues.`,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("questions")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) throw deleteError;
+
+      res.json({ status: "success", message: "Question deleted", timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/questions/:id DELETE] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/topics - list topics with live question counts
+  app.get("/api/admin/topics", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const subjectId = req.query.subjectId as string;
+      const universityId = req.query.universityId as string;
+
+      let query = supabaseAdmin
+        .from("topics")
+        .select("id, name, subject_id, university_id, subjects(name), universities(name)");
+
+      if (subjectId) query = query.eq("subject_id", subjectId);
+      if (universityId) query = query.eq("university_id", universityId);
+
+      const { data: topics, error } = await query.order("name", { ascending: true });
+      if (error) throw error;
+
+      // Live question counts — the denormalized topics.question_count column
+      // is stale/unmaintained, so count directly instead of trusting it.
+      const { data: counts, error: countsError } = await supabaseAdmin
+        .from("questions")
+        .select("topic_id");
+
+      if (countsError) throw countsError;
+
+      const countByTopic = new Map<string, number>();
+      (counts || []).forEach((q: any) => {
+        if (!q.topic_id) return;
+        countByTopic.set(q.topic_id, (countByTopic.get(q.topic_id) || 0) + 1);
+      });
+
+      const enriched = (topics || []).map((t: any) => ({
+        ...t,
+        question_count: countByTopic.get(t.id) || 0,
+      }));
+
+      res.json({ status: "success", data: enriched, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/topics GET] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/admin/topics - create a new topic
+  app.post("/api/admin/topics", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { name, subject_id, university_id } = req.body;
+
+      if (!name || !subject_id || !university_id) {
+        res.status(400).json({
+          status: "error",
+          message: "name, subject_id, and university_id are required",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: existing } = await supabaseAdmin
+        .from("topics")
+        .select("id")
+        .eq("name", name)
+        .eq("subject_id", subject_id)
+        .eq("university_id", university_id)
+        .maybeSingle();
+
+      if (existing) {
+        res.status(409).json({
+          status: "error",
+          message: "A topic with this name already exists for this subject/university",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from("topics")
+        .insert({ name, subject_id, university_id })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      res.status(201).json({ status: "success", data, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/topics POST] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // PATCH /api/admin/topics/:id - rename a topic (cascades to questions.topic_name)
+  app.patch("/api/admin/topics/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+      const { name } = req.body;
+
+      if (!name) {
+        res.status(400).json({
+          status: "error",
+          message: "name is required",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from("topics")
+        .update({ name })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      // Keep the denormalized topic_name on questions in sync
+      const { error: cascadeError } = await supabaseAdmin
+        .from("questions")
+        .update({ topic_name: name })
+        .eq("topic_id", id);
+
+      if (cascadeError) throw cascadeError;
+
+      res.json({ status: "success", message: "Topic renamed", timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/topics/:id PATCH] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/topics/:id - delete a topic (blocked if it still has questions)
+  app.delete("/api/admin/topics/:id", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const { id } = req.params;
+
+      const { count, error: countError } = await supabaseAdmin
+        .from("questions")
+        .select("id", { count: "exact", head: true })
+        .eq("topic_id", id);
+
+      if (countError) throw countError;
+
+      if ((count || 0) > 0) {
+        res.status(409).json({
+          status: "error",
+          message: `This topic still has ${count} question(s). Reassign or delete them first.`,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("topics")
+        .delete()
+        .eq("id", id);
+
+      if (deleteError) throw deleteError;
+
+      res.json({ status: "success", message: "Topic deleted", timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error("[admin/topics/:id DELETE] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

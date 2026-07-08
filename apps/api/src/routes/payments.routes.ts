@@ -233,6 +233,12 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 180);
 
+      // Record the amount Flutterwave actually charged (in kobo), not the
+      // placeholder full-price estimate stored at initiate time — the client
+      // may have charged a discounted/promo price, and admin revenue figures
+      // must reflect what was really collected.
+      const amountChargedKobo = Math.round((flwResponse.data.amount || 0) * 100);
+
       console.log("[Verify] Updating subscription status to active, expires:", expiresAt.toISOString());
 
       // Update subscription status
@@ -241,6 +247,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         .update({
           status: "active",
           expires_at: expiresAt.toISOString(),
+          amount: amountChargedKobo,
         })
         .eq("paystack_reference", tx_ref);
 
