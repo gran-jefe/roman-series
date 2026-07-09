@@ -1,5 +1,6 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface FlaggingDeps {
   supabaseAdmin: SupabaseClient;
@@ -9,33 +10,8 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   const { supabaseAdmin } = deps;
 
   // POST /api/flagging/flag - Flag a question
-  app.post("/api/flagging/flag", async (req: Request, res: Response) => {
+  app.post("/api/flagging/flag", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { question_id, session_id, reason } = req.body;
 
       if (!question_id) {
@@ -52,7 +28,7 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
         .from("flagged_questions")
         .upsert(
           {
-            user_id: user.id,
+            user_id: req.userId,
             question_id,
             session_id: session_id || null,
             reason: reason || null,
@@ -90,39 +66,14 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   });
 
   // DELETE /api/flagging/flag/:question_id - Unflag a question
-  app.delete("/api/flagging/flag/:question_id", async (req: Request, res: Response) => {
+  app.delete("/api/flagging/flag/:question_id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { question_id } = req.params;
 
       const { error } = await supabaseAdmin
         .from("flagged_questions")
         .delete()
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("question_id", question_id);
 
       if (error) {
@@ -150,37 +101,12 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   });
 
   // GET /api/flagging/flags - Get user's flagged questions
-  app.get("/api/flagging/flags", async (req: Request, res: Response) => {
+  app.get("/api/flagging/flags", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { data, error } = await supabaseAdmin
         .from("flagged_questions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -208,39 +134,14 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   });
 
   // GET /api/flagging/flags/:question_id - Check if question is flagged by user
-  app.get("/api/flagging/flags/:question_id", async (req: Request, res: Response) => {
+  app.get("/api/flagging/flags/:question_id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { question_id } = req.params;
 
       const { data, error } = await supabaseAdmin
         .from("flagged_questions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("question_id", question_id)
         .single();
 
@@ -273,41 +174,9 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   });
 
   // GET /api/admin/flagging/all - Admin: Get all flagged questions (with filters)
-  app.get("/api/admin/flagging/all", async (req: Request, res: Response) => {
+  app.get("/api/admin/flagging/all", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check admin role
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Admin access required",
@@ -393,40 +262,9 @@ export function registerFlaggingRoutes(app: Express, deps: FlaggingDeps) {
   });
 
   // DELETE /api/admin/flagging/:question_id - Admin: Resolve/clear all flags on a question
-  app.delete("/api/admin/flagging/:question_id", async (req: Request, res: Response) => {
+  app.delete("/api/admin/flagging/:question_id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Admin access required",

@@ -1,5 +1,6 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface PlansDeps {
   supabaseAdmin: SupabaseClient;
@@ -9,38 +10,13 @@ export function registerPlansRoutes(app: Express, deps: PlansDeps) {
   const { supabaseAdmin } = deps;
 
   // GET /api/plans/limits - Get current user's plan limits
-  app.get("/api/plans/limits", async (req: Request, res: Response) => {
+  app.get("/api/plans/limits", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get user's profile to find their subscription status
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {

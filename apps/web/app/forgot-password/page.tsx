@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import api from "@/lib/api";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 import toast from "react-hot-toast";
 
 export default function ForgotPasswordPage() {
@@ -18,17 +19,33 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/forgot-password", { email });
+      try {
+        await sendPasswordResetEmail(firebaseAuth, email);
+      } catch (err: any) {
+        if (err.code !== "auth/user-not-found") throw err;
 
-      if (response.data.status === "success") {
-        setSubmitted(true);
-        toast.success("Check your email for password reset instructions");
+        // Not on Firebase yet — migrate if this is a pre-migration account,
+        // then send the reset email now that a Firebase account exists.
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const res = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+
+        if (data.migrated) {
+          await sendPasswordResetEmail(firebaseAuth, email);
+        }
+        // If not migrated (no such account), stay silent — avoids confirming
+        // or denying account existence to the caller.
       }
+
+      setSubmitted(true);
+      toast.success("Check your email for password reset instructions");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to send reset email";
+      const errorMessage = err.message || "Failed to send reset email";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

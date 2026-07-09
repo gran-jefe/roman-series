@@ -12,6 +12,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { registerAuthRoutes } from "./routes/auth.routes";
+import { registerAuthMigrationRoutes } from "./routes/auth-migration.routes";
 import { registerDataRoutes } from "./routes/data.routes";
 import { registerSessionsRoutes } from "./routes/sessions.routes";
 import { registerAdminRoutes } from "./routes/admin.routes";
@@ -49,16 +50,9 @@ const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Zod schemas for validation
 const registerSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
   full_name: z.string().min(1, "Full name is required").max(100),
   target_university_id: z.string().uuid("Invalid university ID").optional(),
   target_course: z.string().min(1, "Course of study is required").max(100).optional(),
-});
-
-const loginSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
 });
 
 const app: Express = express();
@@ -147,11 +141,14 @@ app.get("/", (req: Request, res: Response) => {
 // Register all routes with dependency injection
 registerAuthRoutes(app, {
   supabaseAdmin,
+  authLimiter,
+  registerSchema,
+});
+
+registerAuthMigrationRoutes(app, {
+  supabaseAdmin,
   supabaseClient,
   authLimiter,
-  webUrl,
-  registerSchema,
-  loginSchema,
 });
 
 registerDataRoutes(app, { supabaseAdmin });

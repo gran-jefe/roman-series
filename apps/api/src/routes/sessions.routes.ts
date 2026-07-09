@@ -1,7 +1,8 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { shuffleArray } from "../utils/helpers";
 import { batchQuery } from "../lib/supabase";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface SessionsDeps {
   supabaseAdmin: SupabaseClient;
@@ -11,40 +12,15 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   const { supabaseAdmin } = deps;
 
   // POST /api/sessions/start
-  app.post("/api/sessions/start", async (req: Request, res: Response) => {
+  app.post("/api/sessions/start", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const {
         data: profile,
         error: profileError,
       } = await supabaseAdmin
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {
@@ -96,7 +72,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { data: usedSubjects, error: subjectError } = await supabaseAdmin
           .from("sessions")
           .select("subject_id")
-          .eq("user_id", user.id)
+          .eq("user_id", req.userId)
           .eq("completed", true);
 
         const uniqueSubjects = new Set(usedSubjects?.map((s: any) => s.subject_id) || []);
@@ -126,7 +102,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { data: todaySessions, error: dailyError } = await supabaseAdmin
           .from("sessions")
           .select("total_questions")
-          .eq("user_id", user.id)
+          .eq("user_id", req.userId)
           .gte("started_at", today.toISOString());
 
         const questionsAnsweredToday = todaySessions?.reduce((sum: number, s: any) => sum + (s.total_questions || 0), 0) || 0;
@@ -173,7 +149,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { data: recentSessions } = await supabaseAdmin
         .from("sessions")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("subject_id", subject_id)
         .eq("university_id", university_id)
         .order("created_at", { ascending: false })
@@ -214,7 +190,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { data: session, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           subject_id,
           university_id,
           total_questions: questions.length,
@@ -300,37 +276,12 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // GET /api/sessions/history
-  app.get("/api/sessions/history", async (req: Request, res: Response) => {
+  app.get("/api/sessions/history", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { data: sessions, error } = await supabaseAdmin
         .from("sessions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .order("started_at", { ascending: false })
         .limit(50);
 
@@ -400,40 +351,15 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // GET /api/sessions/wrong-questions - Get all questions user got wrong (must be before :id route)
-  app.get("/api/sessions/wrong-questions", async (req: Request, res: Response) => {
+  app.get("/api/sessions/wrong-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      console.log("[wrong-questions] Fetching for user:", user.id);
+      console.log("[wrong-questions] Fetching for user:", req.userId);
 
       // Get user's sessions first
       const { data: userSessions, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .select("id")
-        .eq("user_id", user.id);
+        .eq("user_id", req.userId);
 
       if (sessionError) {
         console.error("[wrong-questions] Session fetch error:", sessionError);
@@ -629,39 +555,14 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // GET /api/sessions/:id
-  app.get("/api/sessions/:id", async (req: Request, res: Response) => {
+  app.get("/api/sessions/:id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { id } = req.params;
       const { data: session, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .single();
 
       if (sessionError || !session) {
@@ -699,33 +600,8 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // POST /api/sessions/:id/submit
-  app.post("/api/sessions/:id/submit", async (req: Request, res: Response) => {
+  app.post("/api/sessions/:id/submit", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { id } = req.params;
       const { answers, time_taken_seconds } = req.body;
 
@@ -741,7 +617,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         .from("sessions")
         .select("*")
         .eq("id", id)
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .single();
 
       if (sessionError || !session) {
@@ -821,7 +697,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { error: profileUpdateError } = await supabaseAdmin
           .from("profiles")
           .update({ last_mock_exam_date: new Date().toISOString() })
-          .eq("id", user.id);
+          .eq("id", req.userId);
 
         if (profileUpdateError) {
           console.warn("[sessions/:id/submit] Failed to update last_mock_exam_date:", profileUpdateError);
@@ -870,37 +746,12 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // GET /api/stats/me
-  app.get("/api/stats/me", async (req: Request, res: Response) => {
+  app.get("/api/stats/me", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { data: sessions, error } = await supabaseAdmin
         .from("sessions")
         .select("id, score, total_questions, subject_id")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("completed", true);
 
       if (error) {
@@ -985,40 +836,15 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // POST /api/sessions/mock/start - Start a mock PUTME exam (4 subjects, 25 questions each, 90 minutes)
-  app.post("/api/sessions/mock/start", async (req: Request, res: Response) => {
+  app.post("/api/sessions/mock/start", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const {
         data: profile,
         error: profileError,
       } = await supabaseAdmin
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {
@@ -1050,7 +876,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { data: completedMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
           .select("id", { count: "exact" })
-          .eq("user_id", user.id)
+          .eq("user_id", req.userId)
           .eq("is_mock", true)
           .eq("completed", true);
 
@@ -1072,7 +898,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { data: recentMocks, error: mockError } = await supabaseAdmin
           .from("sessions")
           .select("id", { count: "exact" })
-          .eq("user_id", user.id)
+          .eq("user_id", req.userId)
           .eq("is_mock", true)
           .eq("completed", true)
           .gte("started_at", sevenDaysAgo.toISOString());
@@ -1179,7 +1005,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         const { data: recentMockSessions } = await supabaseAdmin
           .from("sessions")
           .select("id")
-          .eq("user_id", user.id)
+          .eq("user_id", req.userId)
           .eq("is_mock", true)
           .order("created_at", { ascending: false })
           .limit(5);
@@ -1230,7 +1056,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { data: session, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           subject_id: null, // Multiple subjects
           university_id: profile.target_university_id,
           total_questions: allQuestions.length,
@@ -1256,7 +1082,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({ last_mock_exam_date: new Date().toISOString() })
-        .eq("id", user.id);
+        .eq("id", req.userId);
 
       if (updateError) {
         console.warn("[sessions/mock/start] Failed to update last_mock_exam_date:", updateError);
@@ -1318,38 +1144,13 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
   });
 
   // POST /api/sessions/error-bank/start - Start a practice session with wrong questions
-  app.post("/api/sessions/error-bank/start", async (req: Request, res: Response) => {
+  app.post("/api/sessions/error-bank/start", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get user's profile for subscription status
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {
@@ -1402,7 +1203,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { data: userSessions } = await supabaseAdmin
         .from("sessions")
         .select("id")
-        .eq("user_id", user.id);
+        .eq("user_id", req.userId);
 
       const userSessionIds = userSessions?.map((s: any) => s.id) ?? [];
 
@@ -1479,7 +1280,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       const { data: session, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           total_questions: questions.length,
           completed: false,
           started_at: new Date().toISOString(),

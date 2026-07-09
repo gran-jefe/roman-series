@@ -1,5 +1,6 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface RecalledQuestionsDeps {
   supabaseAdmin: SupabaseClient;
@@ -9,38 +10,13 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
   const { supabaseAdmin } = deps;
 
   // GET /api/recalled-questions - Get recalled questions (Elite only)
- app.get("/api/recalled-questions", async (req: Request, res: Response) => {
+ app.get("/api/recalled-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
    try {
-     const authHeader = req.headers.authorization;
-
-     if (!authHeader?.startsWith("Bearer ")) {
-       return res.status(401).json({
-         status: "error",
-         message: "Missing or invalid Authorization header",
-         timestamp: new Date().toISOString(),
-       });
-     }
-
-     const token = authHeader.substring(7);
-
-     const {
-       data: { user },
-       error: authError,
-     } = await supabaseAdmin.auth.getUser(token);
-
-     if (authError || !user) {
-       return res.status(401).json({
-         status: "error",
-         message: "Invalid or expired token",
-         timestamp: new Date().toISOString(),
-       });
-     }
-
      // Check subscription
      const { data: profile, error: profileError } = await supabaseAdmin
        .from("profiles")
        .select("subscription_status")
-       .eq("id", user.id)
+       .eq("id", req.userId)
        .single();
 
      if (profileError || !profile) {
@@ -121,38 +97,9 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
    }
  });
   // POST /api/admin/recalled-questions - Upload recalled question (Admin only)
-  app.post("/api/admin/recalled-questions", async (req: Request, res: Response) => {
+  app.post("/api/admin/recalled-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile || profile.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Only admins can upload recalled questions",
@@ -202,7 +149,7 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
           explanation: explanation || null,
           year: year || null,
           difficulty_level: difficulty_level || "medium",
-          created_by: user.id,
+          created_by: req.userId,
         })
         .select()
         .single();
@@ -258,38 +205,9 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
   });
 
   // GET /api/admin/recalled-questions - List recalled questions for admin
-  app.get("/api/admin/recalled-questions", async (req: Request, res: Response) => {
+  app.get("/api/admin/recalled-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile || profile.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Only admins can access this resource",
@@ -347,38 +265,9 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
   });
 
   // PATCH /api/admin/recalled-questions/:id - Update recalled question
-  app.patch("/api/admin/recalled-questions/:id", async (req: Request, res: Response) => {
+  app.patch("/api/admin/recalled-questions/:id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile || profile.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Only admins can update recalled questions",
@@ -429,38 +318,9 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
   });
 
   // DELETE /api/admin/recalled-questions/:id - Delete recalled question
-  app.delete("/api/admin/recalled-questions/:id", async (req: Request, res: Response) => {
+  app.delete("/api/admin/recalled-questions/:id", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile || profile.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Only admins can delete recalled questions",

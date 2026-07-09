@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { resolveUserFromToken } from "../middleware/requireAuth";
 
 interface UploadDeps {
   supabaseAdmin: SupabaseClient;
@@ -22,9 +23,9 @@ async function checkAdminAuth(
   }
 
   const token = authHeader.substring(7);
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+  const resolved = await resolveUserFromToken(token, supabaseAdmin).catch(() => null);
 
-  if (authError || !user) {
+  if (!resolved) {
     res.status(401).json({
       status: "error",
       message: "Invalid or expired token",
@@ -33,13 +34,7 @@ async function checkAdminAuth(
     return null;
   }
 
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
+  if (resolved.userRole !== "admin") {
     res.status(403).json({
       status: "error",
       message: "Admin access required",
@@ -48,7 +43,7 @@ async function checkAdminAuth(
     return null;
   }
 
-  return user.id;
+  return resolved.userId;
 }
 
 const optionSchema = z.object({

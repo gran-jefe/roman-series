@@ -1,9 +1,10 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import type { AnalyticsOverview, TopicPerformance, PeerRanking, PredictionResult } from "../types";
 import { batchQuery } from "../lib/supabase";
+import { requireAuth, AuthedRequest, resolveUserFromToken } from "../middleware/requireAuth";
 
 interface AnalyticsDeps {
   supabaseAdmin: SupabaseClient;
@@ -14,45 +15,20 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
   const { supabaseAdmin, groqApiKey } = deps;
 
   // GET /api/analytics/overview - User's performance overview with streak & time
-  app.get("/api/analytics/overview", async (req: Request, res: Response) => {
+  app.get("/api/analytics/overview", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get user profile for subscription check
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       // Get all completed sessions with time and date info
       const { data: sessions, error: sessionError } = await supabaseAdmin
         .from("sessions")
         .select("id, score, total_questions, subject_id, started_at, time_taken_seconds, completed")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("completed", true)
         .order("started_at", { ascending: true });
 
@@ -277,40 +253,15 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
   });
 
   // GET /api/analytics/topics - Topic-level performance
-  app.get("/api/analytics/topics", async (req: Request, res: Response) => {
+  app.get("/api/analytics/topics", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      console.log("[analytics/topics] Fetching answers for user:", user.id);
+      console.log("[analytics/topics] Fetching answers for user:", req.userId);
 
       // Get session answers with question and topic info
       const { data: answers, error: answersError } = await supabaseAdmin
         .from("session_answers")
         .select("question_id, is_correct, sessions!inner(id, user_id)")
-        .eq("sessions.user_id", user.id)
+        .eq("sessions.user_id", req.userId)
         .eq("sessions.completed", true);
 
       console.log("[analytics/topics] Answers query result - count:", answers?.length || 0, "error:", answersError);
@@ -491,38 +442,13 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
   });
 
   // GET /api/analytics/peers - Peer ranking for students with same course
-  app.get("/api/analytics/peers", async (req: Request, res: Response) => {
+  app.get("/api/analytics/peers", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get current user's profile
       const { data: currentProfile } = await supabaseAdmin
         .from("profiles")
         .select("target_course, subject_combination, full_name")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (!currentProfile) {
@@ -583,7 +509,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
             name_initial: profile.full_name?.charAt(0).toUpperCase() || "?",
             avg_score: avgScore,
             sessions_count: stats?.total || 0,
-            is_me: profile.id === user.id,
+            is_me: profile.id === req.userId,
           };
         })
         .sort((a, b) => {
@@ -630,38 +556,13 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
   });
 
   // GET /api/analytics/prediction - UTME score prediction for admission target
-  app.get("/api/analytics/prediction", async (req: Request, res: Response) => {
+  app.get("/api/analytics/prediction", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get user's profile with UTME score and target course
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("utme_score, target_course, target_university_id, subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (!profile) {
@@ -699,7 +600,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       const { data: sessions } = await supabaseAdmin
         .from("sessions")
         .select("score, total_questions")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("completed", true);
 
       let currentPracticeAvg = 0;
@@ -1126,33 +1027,8 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
   }
 
   // GET /api/analytics/report - Generate AI report
-  app.get("/api/analytics/report", async (req: Request, res: Response) => {
+  app.get("/api/analytics/report", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Check if Groq API key is configured
       if (!groqApiKey) {
         console.error("[analytics/report] Groq API key not configured");
@@ -1173,7 +1049,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       //   });
       // }
 
-      const data = await fetchAnalyticsData(user.id);
+      const data = await fetchAnalyticsData(req.userId!);
 
       if (!data.profile) {
         res.status(400).json({
@@ -1193,7 +1069,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      const result = await getOrGenerateReport(user.id, data);
+      const result = await getOrGenerateReport(req.userId!, data);
 
       res.set("Cache-Control", "no-store");
       res.json({
@@ -1219,7 +1095,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
   });
 
   // GET /api/analytics/report/download - Download report as PDF
-  app.get("/api/analytics/report/download", async (req: Request, res: Response) => {
+  app.get("/api/analytics/report/download", async (req: AuthedRequest, res: Response) => {
     try {
       // Check Bearer token in Authorization header (preferred) or query param token (fallback)
       let token: string | null = null;
@@ -1240,12 +1116,9 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
+      const resolved = await resolveUserFromToken(token, supabaseAdmin);
 
-      if (authError || !user) {
+      if (!resolved) {
         res.status(401).json({
           status: "error",
           message: "Invalid or expired token",
@@ -1254,7 +1127,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
         return;
       }
 
-      const data = await fetchAnalyticsData(user.id);
+      const data = await fetchAnalyticsData(resolved.userId);
 
       if (!data.profile || data.totalQuestions === 0) {
         res.status(400).json({
@@ -1266,7 +1139,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       }
 
       // Get cached or generate new report
-      const result = await getOrGenerateReport(user.id, data);
+      const result = await getOrGenerateReport(resolved.userId, data);
       const reportText = result.report;
 
       // Generate PDF
@@ -1327,38 +1200,13 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
   });
 
   // GET /api/analytics/speed - Detailed speed analysis by topic (Scholar+ only)
-  app.get("/api/analytics/speed", async (req: Request, res: Response) => {
+  app.get("/api/analytics/speed", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Check subscription
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profile?.subscription_status === "explorer") {
@@ -1374,7 +1222,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       const { data: sessions } = await supabaseAdmin
         .from("sessions")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("completed", true);
 
       if (!sessions || sessions.length === 0) {
@@ -1470,38 +1318,13 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
   });
 
   // GET /api/analytics/study-plan - AI-powered study plan (Elite only, cached 24h)
-  app.get("/api/analytics/study-plan", async (req: Request, res: Response) => {
+  app.get("/api/analytics/study-plan", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Check Elite subscription
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profile?.subscription_status !== "elite") {
@@ -1517,7 +1340,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       const { data: cachedReport } = await supabaseAdmin
         .from("analytics_reports")
         .select("cached_data, created_at")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("report_type", "study_plan")
         .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false })
@@ -1552,7 +1375,7 @@ Keep the report between 400-600 words. Use encouraging, constructive language.`;
       const { data: sessions, error: sessionsError } = await supabaseAdmin
         .from("sessions")
         .select("id, user_id")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("completed", true);
 
       console.log("[study-plan] Sessions:", sessions?.length || 0, "Error:", sessionsError);
@@ -1770,7 +1593,7 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       const { error: cacheError } = await supabaseAdmin
         .from("analytics_reports")
         .upsert({
-          user_id: user.id,
+          user_id: req.userId,
           report_type: "study_plan",
           cached_data: studyPlan,
           created_at: new Date().toISOString(),
@@ -1781,7 +1604,7 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       if (cacheError) {
         console.error("[study-plan] Cache save error:", cacheError);
       } else {
-        console.log("[study-plan] Cached study plan for user:", user.id);
+        console.log("[study-plan] Cached study plan for user:", req.userId);
       }
 
       const totalEstimatedHours = studyPlan.reduce((sum: number, t: any) => sum + (t.estimated_hours || 0), 0);
@@ -1813,39 +1636,15 @@ Prioritize by: urgency first, then by how many questions have been answered (les
   });
 
   // GET /api/analytics/study-plan/download - Download study plan as PDF (Elite only)
-  app.get("/api/analytics/study-plan/download", async (req: Request, res: Response) => {
+  app.get("/api/analytics/study-plan/download", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
       console.log("[study-plan/download] Starting PDF generation");
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
 
       // Check Elite subscription
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status, full_name")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profile?.subscription_status !== "elite") {
@@ -1858,11 +1657,11 @@ Prioritize by: urgency first, then by how many questions have been answered (les
       }
 
       // Get the latest study plan
-      console.log("[study-plan/download] Looking for plan for user:", user.id);
+      console.log("[study-plan/download] Looking for plan for user:", req.userId);
       const { data: cachedReport, error: fetchError } = await supabaseAdmin
         .from("analytics_reports")
         .select("cached_data, created_at")
-        .eq("user_id", user.id)
+        .eq("user_id", req.userId)
         .eq("report_type", "study_plan")
         .order("created_at", { ascending: false })
         .limit(1)

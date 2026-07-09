@@ -3,9 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const oobCode = searchParams.get("oobCode");
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,63 +20,19 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   useEffect(() => {
-    // Must run client-side only
-    if (typeof window === "undefined") return;
-
-    const hash = window.location.hash;
-    console.log("[reset-password] hash:", hash);
-
-    // Parse hash fragment
-    const hashParams = new URLSearchParams(hash.substring(1));
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    const type = hashParams.get("type");
-    const errorParam = hashParams.get("error");
-    const errorDescription = hashParams.get("error_description");
-
-    console.log("[reset-password] accessToken:", !!accessToken);
-    console.log("[reset-password] type:", type);
-    console.log("[reset-password] error:", errorParam);
-
-    if (errorParam) {
-      setError(errorDescription || "Reset link is invalid or has expired.");
+    if (!oobCode) {
       setIsValidToken(false);
       return;
     }
 
-    if (accessToken && type === "recovery") {
-      supabase.auth
-        .setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || "",
-        })
-        .then(({ error: sessionError }) => {
-          if (sessionError) {
-            console.error("[reset-password] setSession error:", sessionError);
-            setIsValidToken(false);
-          } else {
-            console.log("[reset-password] session set successfully");
-            setIsValidToken(true);
-          }
-        });
-    } else {
-      // No hash params — might be a code-based flow
-      // Check if we already have a session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          setIsValidToken(true);
-        } else {
-          setIsValidToken(false);
-        }
+    verifyPasswordResetCode(firebaseAuth, oobCode)
+      .then(() => setIsValidToken(true))
+      .catch((err) => {
+        console.error("[reset-password] Invalid or expired oobCode:", err);
+        setIsValidToken(false);
       });
-    }
-  }, []);
+  }, [oobCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,20 +48,21 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    if (!oobCode) return;
+
     setLoading(true);
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
-
-    if (updateError) {
-      setError(updateError.message || "Failed to update password");
-      setLoading(false);
-    } else {
+    try {
+      await confirmPasswordReset(firebaseAuth, oobCode, password);
       setSuccess(true);
       setTimeout(() => {
         window.location.href = "/login";
       }, 2000);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Failed to update password");
+    } finally {
+      setLoading(false);
     }
   };
 

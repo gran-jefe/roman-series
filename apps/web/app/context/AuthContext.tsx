@@ -2,8 +2,15 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import api, { storeTokens, clearAuth } from "@/lib/api";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
+import api, { setAuthCookie, clearAuthCookie } from "@/lib/api";
 import type { Profile } from "types";
 
 interface User {
@@ -11,12 +18,21 @@ interface User {
   email: string;
 }
 
+interface RegisterInput {
+  full_name: string;
+  email: string;
+  password: string;
+  target_university_id?: string;
+  target_course?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ needsMigration: boolean }>;
+  register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -24,142 +40,118 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function redirectForProfile(router: ReturnType<typeof useRouter>, userProfile: Profile) {
+  if (userProfile?.role === "admin") {
+    router.push("/admin");
+  } else if (!userProfile?.subject_combination?.length) {
+    router.push("/onboarding");
+  } else {
+    router.push("/dashboard");
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
-  // Mark as mounted to avoid hydration issues
-  useEffect(() => {
-    setMounted(true);
+  const fetchProfile = useCallback(async () => {
+    const response = await api.get("/api/auth/me");
+    if (response.data.status === "success") {
+      setUser(response.data.data.user);
+      setProfile(response.data.data.profile);
+      return response.data.data.profile as Profile;
+    }
+    return null;
   }, []);
 
-  const restoreSession = useCallback(async () => {
-    try {
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-
-      if (!token) {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setProfile(null);
+        clearAuthCookie();
         setLoading(false);
         return;
       }
 
-      // Check token expiry before attempting to use it
-      const expiresAt =
-        typeof window !== "undefined"
-          ? parseInt(localStorage.getItem("token_expires_at") || "0")
-          : 0;
-      const isExpired = expiresAt && Date.now() > expiresAt - 30_000; // 30s buffer
-
-      if (isExpired) {
-        const refreshToken =
-          typeof window !== "undefined"
-            ? localStorage.getItem("refresh_token")
-            : null;
-
-        if (!refreshToken) {
-          setLoading(false);
-          return;
-        }
-
-        try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-          const { data } = await axios.post(
-            `${apiUrl}/api/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-
-          if (data.status === "success") {
-            const { access_token, refresh_token: newRefresh, expires_in } =
-              data.data;
-            storeTokens(access_token, newRefresh, expires_in);
-          } else {
-            setLoading(false);
-            return;
-          }
-        } catch {
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fetch current user's profile
-      const response = await api.get("/api/auth/me");
-
-      if (response.data.status === "success") {
-        setUser(response.data.data.user);
-        setProfile(response.data.data.profile);
-      } else {
-        // Token invalid, clear everything
-        clearAuth();
-      }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error("[AuthContext] Failed to restore session:", error);
-      // Only clear credentials on 401 (token actually invalid)
-      // Network errors should not clear credentials
-      if (error.response?.status === 401) {
-        clearAuth();
+      try {
+        await fetchProfile();
+        setAuthCookie();
+      } catch (error) {
+        console.error("[AuthContext] Failed to fetch profile:", error);
         setUser(null);
         setProfile(null);
+        clearAuthCookie();
+      } finally {
+        setLoading(false);
       }
-      // If network error, just leave state as is and keep trying
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    });
 
-  // Restore session only on client mount
-  useEffect(() => {
-    if (mounted) {
-      restoreSession();
+    return unsubscribe;
+  }, [fetchProfile]);
+
+  const restoreSession = useCallback(async () => {
+    if (firebaseAuth.currentUser) {
+      await fetchProfile();
     }
-  }, [mounted, restoreSession]);
+  }, [fetchProfile]);
 
   const login = async (email: string, password: string) => {
-    const response = await api.post("/api/auth/login", { email, password });
-
-    const { access_token, refresh_token, expires_in } = response.data.data;
-
-    // Store tokens with expiry tracking
-    storeTokens(access_token, refresh_token, expires_in);
-
-    // Fetch full profile data
-    const meResponse = await api.get("/api/auth/me");
-
-    if (meResponse.data.status === "success") {
-      const userProfile = meResponse.data.data.profile;
-      setUser(meResponse.data.data.user);
-      setProfile(userProfile);
-
-      // Redirect based on role and onboarding status
-      if (userProfile?.role === "admin") {
-        router.push("/admin");
-      } else if (!userProfile?.subject_combination?.length) {
-        router.push("/onboarding");
-      } else {
-        router.push("/dashboard");
+    try {
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
+      const userProfile = await fetchProfile();
+      setAuthCookie();
+      if (userProfile) {
+        redirectForProfile(router, userProfile);
       }
+      return { needsMigration: false };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/auth/migrate-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (data.migrated) {
+          await sendPasswordResetEmail(firebaseAuth, email);
+          return { needsMigration: true };
+        }
+
+        throw new Error("Invalid email or password");
+      }
+      throw err;
+    }
+  };
+
+  const register = async ({ full_name, email, password, target_university_id, target_course }: RegisterInput) => {
+    const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+    const idToken = await credential.user.getIdToken();
+
+    await api.post(
+      "/api/auth/register",
+      { full_name, target_university_id, target_course },
+      { headers: { Authorization: `Bearer ${idToken}` } }
+    );
+
+    const userProfile = await fetchProfile();
+    setAuthCookie();
+    if (userProfile) {
+      redirectForProfile(router, userProfile);
     }
   };
 
   const logout = async () => {
     try {
-      await api.post("/api/auth/logout", {});
-    } catch (error) {
-      console.error("[AuthContext] Logout error:", error);
+      await signOut(firebaseAuth);
     } finally {
-      // Clear state
       setUser(null);
       setProfile(null);
-
-      // Clear auth storage
-      clearAuth();
-
-      // Redirect to login
+      clearAuthCookie();
       router.push("/login");
     }
   };
@@ -178,9 +170,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     profile,
-    loading: loading || !mounted,
+    loading,
     isAuthenticated: !!user && !!profile,
     login,
+    register,
     logout,
     restoreSession,
     refreshProfile,
