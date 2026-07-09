@@ -20,8 +20,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      toast.success("Logged in successfully!");
+      const result = await login(email, password);
+      if (result.needsMigration) {
+        toast.success(
+          "We've upgraded our login system. Check your email for a link to set a new password.",
+          { duration: 6000 }
+        );
+      } else {
+        toast.success("Logged in successfully!");
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const errorMessage =

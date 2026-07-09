@@ -1,6 +1,7 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { batchQuery } from "../lib/supabase";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface LeaderboardDeps {
   supabaseAdmin: SupabaseClient;
@@ -9,35 +10,13 @@ interface LeaderboardDeps {
 export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
   const { supabaseAdmin } = deps;
 
-  app.get("/api/leaderboard/top-students", async (req: Request, res: Response) => {
+  app.get("/api/leaderboard/top-students", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get user profile and plan
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status, target_course")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {
@@ -215,7 +194,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
         .sort((a, b) => b.avg_score - a.avg_score);
 
       const totalParticipants = sortedUsers.length;
-      const currentUserRank = sortedUsers.findIndex((u) => u.user_id === user.id) + 1 || null;
+      const currentUserRank = sortedUsers.findIndex((u) => u.user_id === req.userId) + 1 || null;
 
       if (maxResults) {
         sortedUsers = sortedUsers.slice(0, maxResults);
@@ -253,7 +232,7 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
           name_initial: nameInitial,
           avg_score: entry.avg_score,
           sessions_count: entry.sessions,
-          is_current_user: entry.user_id === user.id,
+          is_current_user: entry.user_id === req.userId,
         };
       });
 
@@ -280,30 +259,8 @@ export function registerLeaderboardRoutes(app: Express, deps: LeaderboardDeps) {
     }
   });
 
-  app.get("/api/leaderboard", async (req: Request, res: Response) => {
+  app.get("/api/leaderboard", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { subjectId, universityId } = req.query;
 
       let query = supabaseAdmin

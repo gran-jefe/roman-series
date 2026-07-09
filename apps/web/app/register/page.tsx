@@ -3,13 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { isCountdownMode } from "@/lib/countdown";
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { register } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,18 +35,9 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/register", {
-        full_name: fullName,
-        email,
-        password,
-      });
-
-      if (response.data.status === "success") {
-        toast.success("Account created successfully! Redirecting to login...");
-        setTimeout(() => {
-          router.push("/login");
-        }, 1500);
-      }
+      await register({ full_name: fullName, email, password });
+      toast.success("Account created successfully!");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.message || err.message || "Registration failed";

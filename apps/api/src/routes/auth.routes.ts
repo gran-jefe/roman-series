@@ -2,21 +2,32 @@ import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { RateLimitRequestHandler } from "express-rate-limit";
 import { z } from "zod";
+import { firebaseAdminAuth } from "../lib/firebaseAdmin";
+import { migrateLegacyUserToFirebase } from "../lib/authMigration";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface AuthDeps {
   supabaseAdmin: SupabaseClient;
-  supabaseClient: SupabaseClient;
   authLimiter: RateLimitRequestHandler;
-  webUrl: string;
   registerSchema: z.ZodObject<any>;
-  loginSchema: z.ZodObject<any>;
 }
 
 export function registerAuthRoutes(app: Express, deps: AuthDeps) {
-  const { supabaseAdmin, supabaseClient, authLimiter, webUrl, registerSchema, loginSchema } = deps;
+  const { supabaseAdmin, authLimiter, registerSchema } = deps;
 
   app.post("/api/auth/register", authLimiter, async (req: Request, res: Response) => {
     try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({
+          status: "error",
+          message: "Missing or invalid Authorization header",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const validation = registerSchema.safeParse(req.body);
       if (!validation.success) {
         res.status(400).json({
@@ -27,11 +38,34 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      const { full_name, email, password, target_university_id, target_course } = validation.data;
+      const { full_name, target_university_id, target_course } = validation.data;
 
+      const token = authHeader.substring(7);
+      let decoded;
+      try {
+        decoded = await firebaseAdminAuth.verifyIdToken(token);
+      } catch {
+        res.status(401).json({
+          status: "error",
+          message: "Invalid or expired token",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!decoded.email) {
+        res.status(400).json({
+          status: "error",
+          message: "Firebase account has no associated email",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // A placeholder Supabase Auth user is still required: profiles.id has a
+      // hard FK to auth.users(id). Nobody ever logs into this account directly.
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
+        email: decoded.email,
         email_confirm: true,
       });
 
@@ -46,6 +80,8 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
 
       const { error: profileError } = await supabaseAdmin.from("profiles").insert({
         id: authData.user.id,
+        firebase_uid: decoded.uid,
+        email: decoded.email,
         full_name,
         target_university_id,
         target_course,
@@ -55,6 +91,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
 
       if (profileError) {
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        await firebaseAdminAuth.deleteUser(decoded.uid).catch(() => {});
 
         res.status(400).json({
           status: "error",
@@ -69,10 +106,10 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         data: {
           user: {
             id: authData.user.id,
-            email: authData.user.email,
+            email: decoded.email,
           },
         },
-        message: "User created successfully. Check your email to verify your account.",
+        message: "User created successfully.",
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -80,190 +117,6 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       res.status(500).json({
         status: "error",
         message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-
-  app.post("/api/auth/login", authLimiter, async (req: Request, res: Response) => {
-    try {
-      const validation = loginSchema.safeParse(req.body);
-      if (!validation.success) {
-        res.status(400).json({
-          status: "error",
-          message: validation.error.errors[0].message,
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { email, password } = validation.data;
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error || !data.session) {
-        res.status(401).json({
-          status: "error",
-          message: error?.message || "Invalid email or password",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        res.status(500).json({
-          status: "error",
-          message: "Failed to fetch user profile",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Store session creation time for 24-hour inactivity timeout
-      const sessionExpiresAt = new Date();
-      sessionExpiresAt.setHours(sessionExpiresAt.getHours() + 24);
-
-      await supabaseAdmin
-        .from("profiles")
-        .update({
-          last_login: new Date().toISOString(),
-          session_expires_at: sessionExpiresAt.toISOString(),
-        })
-        .eq("id", data.user.id);
-
-      res.json({
-        status: "success",
-        data: {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-          },
-          profile: profile,
-          expires_in: 86400, // 24 hours in seconds
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[auth/login] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-
-  app.post("/api/auth/logout", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
-
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      await supabaseAdmin.auth.admin.signOut(user.id);
-
-      res.json({
-        status: "success",
-        message: "Logged out successfully",
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[auth/logout] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-
-  app.post("/api/auth/refresh", async (req: Request, res: Response) => {
-    try {
-      const { refresh_token } = req.body;
-
-      if (!refresh_token) {
-        res.status(400).json({
-          status: "error",
-          message: "Missing required field: refresh_token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { data, error } = await supabaseClient.auth.refreshSession({
-        refresh_token,
-      });
-
-      if (error || !data.session) {
-        console.error("[auth/refresh] Supabase refresh error:", error?.message || "Unknown error");
-        res.status(401).json({
-          status: "error",
-          message: error?.message || "Failed to refresh session. Please log in again.",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Extend session expiration by 24 hours (activity-based timeout)
-      if (data.user) {
-        const sessionExpiresAt = new Date();
-        sessionExpiresAt.setHours(sessionExpiresAt.getHours() + 24);
-
-        const { error: updateError } = await supabaseAdmin
-          .from("profiles")
-          .update({
-            session_expires_at: sessionExpiresAt.toISOString(),
-          })
-          .eq("id", data.user.id);
-
-        if (updateError) {
-          console.error("[auth/refresh] Failed to update session expiry:", updateError);
-        }
-      }
-
-      res.json({
-        status: "success",
-        data: {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_in: 86400, // 24 hours in seconds
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[auth/refresh] Unexpected error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error during token refresh",
         timestamp: new Date().toISOString(),
       });
     }
@@ -282,25 +135,39 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
-      const redirectUrl = webUrl || "https://romanseries.com.ng";
-      const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${redirectUrl}/reset-password`,
+      // No password check here by design: this endpoint mirrors the previous
+      // Supabase resetPasswordForEmail behavior, where proving inbox ownership
+      // via the emailed link is the actual verification step.
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, firebase_uid")
+        .eq("email", email)
+        .is("firebase_uid", null)
+        .single();
+
+      if (profileError || !profile) {
+        // Either no such account, or already migrated (frontend will attempt
+        // Firebase's own sendPasswordResetEmail directly in that case).
+        res.json({ success: false, migrated: false });
+        return;
+      }
+
+      const result = await migrateLegacyUserToFirebase({
+        profileId: profile.id,
+        email,
+        supabaseAdmin,
       });
 
-      if (error) {
-        res.status(400).json({
+      if (!result.success) {
+        res.status(500).json({
           status: "error",
-          message: error.message,
+          message: "Failed to migrate account",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      res.json({
-        status: "success",
-        message: "Password reset email sent. Check your email for further instructions.",
-        timestamp: new Date().toISOString(),
-      });
+      res.json({ success: true, migrated: true });
     } catch (error) {
       console.error("[auth/forgot-password] Error:", error);
       res.status(500).json({
@@ -311,140 +178,95 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
     }
   });
 
-  app.patch("/api/profiles/subject-combination", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
+  app.patch(
+    "/api/profiles/subject-combination",
+    requireAuth(supabaseAdmin),
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        const { subject_combination } = req.body;
 
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
+        if (!subject_combination || !Array.isArray(subject_combination)) {
+          res.status(400).json({
+            status: "error",
+            message: "subject_combination must be an array",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (subject_combination.length < 3 || subject_combination.length > 4) {
+          res.status(400).json({
+            status: "error",
+            message: "You must select 3 or 4 subjects",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const realSubjectIds = subject_combination.filter((id: string) => id !== "other");
+
+        if (realSubjectIds.length === 0) {
+          res.status(400).json({
+            status: "error",
+            message: "You must select at least one actual subject",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const { data: subjects, error: subjectsError } = await supabaseAdmin
+          .from("subjects")
+          .select("id")
+          .in("id", realSubjectIds);
+
+        if (subjectsError || !subjects || subjects.length < 3) {
+          res.status(400).json({
+            status: "error",
+            message: "Invalid subjects selected",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const { data: profile, error: updateError } = await supabaseAdmin
+          .from("profiles")
+          .update({ subject_combination: realSubjectIds })
+          .eq("id", req.userId)
+          .select("*")
+          .single();
+
+        if (updateError || !profile) {
+          res.status(500).json({
+            status: "error",
+            message: "Failed to update subject combination",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        res.json({
+          status: "success",
+          data: { profile },
+          message: "Subject combination updated successfully",
           timestamp: new Date().toISOString(),
         });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { subject_combination } = req.body;
-
-      if (!subject_combination || !Array.isArray(subject_combination)) {
-        res.status(400).json({
-          status: "error",
-          message: "subject_combination must be an array",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      if (subject_combination.length < 3 || subject_combination.length > 4) {
-        res.status(400).json({
-          status: "error",
-          message: "You must select 3 or 4 subjects",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Validate all are UUIDs and exist in subjects table (or are "other")
-      const realSubjectIds = subject_combination.filter((id: string) => id !== "other");
-
-      if (realSubjectIds.length === 0) {
-        res.status(400).json({
-          status: "error",
-          message: "You must select at least one actual subject",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { data: subjects, error: subjectsError } = await supabaseAdmin
-        .from("subjects")
-        .select("id")
-        .in("id", realSubjectIds);
-
-      if (subjectsError || !subjects || subjects.length < 3) {
-        res.status(400).json({
-          status: "error",
-          message: "Invalid subjects selected",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Update profile with real subjects only (filter out "other")
-      const { data: profile, error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({ subject_combination: realSubjectIds })
-        .eq("id", user.id)
-        .select("*")
-        .single();
-
-      if (updateError || !profile) {
+      } catch (error) {
+        console.error("[profiles/subject-combination] Error:", error);
         res.status(500).json({
           status: "error",
-          message: "Failed to update subject combination",
+          message: "Internal server error",
           timestamp: new Date().toISOString(),
         });
-        return;
       }
-
-      res.json({
-        status: "success",
-        data: { profile },
-        message: "Subject combination updated successfully",
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[profiles/subject-combination] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
     }
-  });
+  );
 
-  app.get("/api/auth/me", async (req: Request, res: Response) => {
+  app.get("/api/auth/me", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (profileError || !profile) {
@@ -475,8 +297,8 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         status: "success",
         data: {
           user: {
-            id: user.id,
-            email: user.email,
+            id: profile.id,
+            email: profile.email,
           },
           profile: profileData,
         },
@@ -492,108 +314,66 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
     }
   });
 
-  app.patch("/api/profiles/utme-score", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
+  app.patch(
+    "/api/profiles/utme-score",
+    requireAuth(supabaseAdmin),
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        const { utme_score } = req.body;
 
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
+        if (utme_score === undefined) {
+          res.status(400).json({
+            status: "error",
+            message: "Missing required field: utme_score",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (typeof utme_score !== "number" || utme_score < 0 || utme_score > 400) {
+          res.status(400).json({
+            status: "error",
+            message: "UTME score must be a number between 0 and 400",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const { data: profile, error: updateError } = await supabaseAdmin
+          .from("profiles")
+          .update({ utme_score })
+          .eq("id", req.userId)
+          .select("*")
+          .single();
+
+        if (updateError || !profile) {
+          res.status(500).json({
+            status: "error",
+            message: "Failed to update UTME score",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        res.json({
+          status: "success",
+          data: { profile },
+          message: "UTME score updated successfully",
           timestamp: new Date().toISOString(),
         });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { utme_score } = req.body;
-
-      if (utme_score === undefined) {
-        res.status(400).json({
-          status: "error",
-          message: "Missing required field: utme_score",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      if (typeof utme_score !== "number" || utme_score < 0 || utme_score > 400) {
-        res.status(400).json({
-          status: "error",
-          message: "UTME score must be a number between 0 and 400",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const { data: profile, error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({ utme_score })
-        .eq("id", user.id)
-        .select("*")
-        .single();
-
-      if (updateError || !profile) {
+      } catch (error) {
+        console.error("[profiles/utme-score] Error:", error);
         res.status(500).json({
           status: "error",
-          message: "Failed to update UTME score",
+          message: "Internal server error",
           timestamp: new Date().toISOString(),
         });
-        return;
       }
-
-      res.json({
-        status: "success",
-        data: { profile },
-        message: "UTME score updated successfully",
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("[profiles/utme-score] Error:", error);
-      res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
     }
-  });
+  );
 
-  app.patch("/api/profiles/me", async (req: Request, res: Response) => {
+  app.patch("/api/profiles/me", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { full_name, target_university_id, target_course, utme_score } = req.body;
 
       const updateData: any = {};
@@ -658,7 +438,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       const { data: profile, error: updateError } = await supabaseAdmin
         .from("profiles")
         .update(updateData)
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .select("*")
         .single();
 

@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import getFlutterwave from "../lib/flutterwave";
-import crypto from "crypto";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface PaymentsDeps {
   supabaseAdmin: SupabaseClient;
@@ -17,36 +17,11 @@ const isPromoActive = () => Date.now() < PROMO_END_DATE.getTime();
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   const { supabaseAdmin, webUrl, flwWebhookHash } = deps;
 
-  app.post("/api/payments/initiate", async (req: Request, res: Response) => {
+  app.post("/api/payments/initiate", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
       console.log("[Initiate] ========= INITIATE CALLED =========");
-      console.log("[Initiate] User ID from auth:", req.headers.authorization?.substring(7) ? "present" : "missing");
       console.log("[Initiate] Body:", JSON.stringify(req.body));
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        console.error("[Initiate] Auth error:", authError);
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      console.log("[Initiate] User:", user.id);
+      console.log("[Initiate] User:", req.userId);
 
       const { plan } = req.body;
 
@@ -81,7 +56,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
       const amountInKobo = pricing[plan as keyof typeof pricing];
       const amountInNaira = amountInKobo / 100;
-      const tx_ref = `RS-${user.id.slice(0, 8)}-${Date.now()}`;
+      const tx_ref = `RS-${req.userId!.slice(0, 8)}-${Date.now()}`;
 
       console.log("[Initiate] Amount:", amountInKobo, "kobo,", amountInNaira, "NGN");
       console.log("[Initiate] tx_ref:", tx_ref);
@@ -90,14 +65,14 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("full_name, email")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       // INSERT subscription record FIRST before returning
       const { data: newSub, error: insertError } = await supabaseAdmin
         .from("subscriptions")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           plan,
           status: "pending",
           paystack_reference: tx_ref,
@@ -125,7 +100,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         currency: "NGN",
         redirect_url: `${webUrl}/payments/success`,
         customer: {
-          email: user.email,
+          email: profile?.email,
           name: profile?.full_name || "Roman Series Student",
         },
         customizations: {
@@ -371,35 +346,13 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
     return res.status(200).json({ status: "success" });
   });
 
-  app.get("/api/payments/status", async (req: Request, res: Response) => {
+  app.get("/api/payments/status", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       // Get subscription status from profiles table
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status, subscription_expires_at")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       const isActive =
@@ -426,30 +379,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
     }
   });
 
-  app.post("/api/payments/upgrade", async (req: Request, res: Response) => {
+  app.post("/api/payments/upgrade", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { target_plan } = req.body;
 
       if (!target_plan || !["explorer", "scholar", "elite"].includes(target_plan)) {
@@ -465,7 +396,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       if (!profile) {
@@ -514,21 +445,21 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const tx_ref = `UPGRADE-${user.id.slice(0, 8)}-${Date.now()}`;
+      const tx_ref = `UPGRADE-${req.userId!.slice(0, 8)}-${Date.now()}`;
       const amountInNaira = upgradeDifference / 100;
 
       // Get user profile
       const { data: userProfile } = await supabaseAdmin
         .from("profiles")
         .select("full_name, email")
-        .eq("id", user.id)
+        .eq("id", req.userId)
         .single();
 
       // Record the pending upgrade
       const { data: newUpgrade, error: upgradeError } = await supabaseAdmin
         .from("subscriptions")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           plan: target_plan,
           amount: upgradeDifference,
           upgraded_from: profile.subscription_status,
@@ -557,7 +488,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         currency: "NGN",
         redirect_url: `${webUrl}/payments/success`,
         customer: {
-          email: user.email,
+          email: userProfile?.email,
           name: userProfile?.full_name || "Roman Series Student",
         },
         customizations: {

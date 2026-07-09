@@ -1,5 +1,6 @@
-import { Express, Request, Response } from "express";
+import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface FeedbackDeps {
   supabaseAdmin: SupabaseClient;
@@ -9,30 +10,8 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
   const { supabaseAdmin } = deps;
 
   // POST /api/feedback - Submit feedback (authenticated)
-  app.post("/api/feedback", async (req: Request, res: Response) => {
+  app.post("/api/feedback", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
       const { rating, category, message, emoji_mood } = req.body;
 
       // Validate required fields
@@ -70,7 +49,7 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
       const { data: feedback, error: insertError } = await supabaseAdmin
         .from("feedback")
         .insert({
-          user_id: user.id,
+          user_id: req.userId,
           rating,
           category,
           message: message || null,
@@ -109,38 +88,9 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
   });
 
   // GET /api/feedback - Get all feedback (admin only)
-  app.get("/api/feedback", async (req: Request, res: Response) => {
+  app.get("/api/feedback", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith("Bearer ")) {
-        res.status(401).json({
-          status: "error",
-          message: "Missing or invalid Authorization header",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      const token = authHeader.substring(7);
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-      if (authError || !user) {
-        res.status(401).json({
-          status: "error",
-          message: "Invalid or expired token",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || profile?.role !== "admin") {
+      if (req.userRole !== "admin") {
         res.status(403).json({
           status: "error",
           message: "Access denied. Admin only.",
