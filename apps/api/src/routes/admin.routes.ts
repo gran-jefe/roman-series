@@ -76,43 +76,54 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [usersRes, sessionsRes, questionsRes, subscriptionsRes] =
+      // `{ count: "exact", head: true }` asks PostgREST for a server-side row
+      // count without returning any rows, so these aren't capped at the
+      // default 1000-row page size the way `.select("id")` + `.length` was.
+      const [usersRes, sessionsRes, questionsRes, newUsersRes, subscribersRes] =
         await Promise.all([
-          supabaseAdmin.from("profiles").select("id"),
+          supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
           supabaseAdmin
             .from("sessions")
-            .select("id")
+            .select("id", { count: "exact", head: true })
             .gte("started_at", today.toISOString()),
-          supabaseAdmin.from("questions").select("id"),
-          // Total revenue is cumulative money collected — count every
-          // successfully-paid subscription, not just currently-unexpired ones.
+          supabaseAdmin.from("questions").select("id", { count: "exact", head: true }),
           supabaseAdmin
-            .from("subscriptions")
-            .select("amount")
-            .eq("status", "active"),
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", sevenDaysAgo),
+          supabaseAdmin
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("subscription_status", "active"),
         ]);
 
-      const newUsersRes = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .gte(
-          "created_at",
-          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        );
-
-      const totalRevenue =
-        (subscriptionsRes.data?.reduce((sum, s: any) => sum + (s.amount || 0), 0) ||
-          0) / 100;
+      // Revenue needs the actual `amount` values, not just a count, so it
+      // can't use head:true — page through in batches of 1000 instead of a
+      // single `.select("amount")`, which Supabase silently caps at 1000 rows.
+      let totalRevenueKobo = 0;
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("subscriptions")
+          .select("amount")
+          .eq("status", "active")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        totalRevenueKobo += (data || []).reduce((sum, s: any) => sum + (s.amount || 0), 0);
+        if (!data || data.length < pageSize) break;
+      }
 
       res.json({
         status: "success",
         data: {
-          total_users: usersRes.data?.length || 0,
-          sessions_today: sessionsRes.data?.length || 0,
-          total_revenue: Math.round(totalRevenue),
-          total_questions: questionsRes.data?.length || 0,
-          new_users_this_week: newUsersRes.data?.length || 0,
+          total_users: usersRes.count || 0,
+          sessions_today: sessionsRes.count || 0,
+          total_revenue: Math.round(totalRevenueKobo / 100),
+          total_questions: questionsRes.count || 0,
+          new_users_this_week: newUsersRes.count || 0,
+          total_subscribers: subscribersRes.count || 0,
         },
         timestamp: new Date().toISOString(),
       });

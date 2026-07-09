@@ -12,6 +12,7 @@ interface AdminStats {
   total_revenue: number;
   total_questions: number;
   new_users_this_week: number;
+  total_subscribers: number;
 }
 
 export default function AdminPage() {
@@ -53,6 +54,11 @@ export default function AdminPage() {
       color: "blue",
     },
     {
+      label: "Subscribers",
+      value: stats.total_subscribers,
+      color: "pink",
+    },
+    {
       label: "Sessions Today",
       value: stats.sessions_today,
       color: "green",
@@ -76,6 +82,7 @@ export default function AdminPage() {
 
   const colorClasses = {
     blue: "bg-blue-50 border-blue-200 text-blue-700",
+    pink: "bg-pink-50 border-pink-200 text-pink-700",
     green: "bg-green-50 border-green-200 text-green-700",
     emerald: "bg-emerald-50 border-emerald-200 text-emerald-700",
     purple: "bg-purple-50 border-purple-200 text-purple-700",
@@ -86,9 +93,10 @@ export default function AdminPage() {
     <div>
       <h1 className="text-3xl font-bold text-navy mb-8">Admin Overview</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {loading ? (
           <>
+            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
