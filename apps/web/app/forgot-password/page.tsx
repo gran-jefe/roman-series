@@ -34,12 +34,12 @@ export default function ForgotPasswordPage() {
 
       // By now a Firebase account exists for this email if one was ever
       // going to (already did, or the call above just created it).
-      // TODO: pass actionCodeSettings pointing at our own /reset-password
-      // page once romanseries.com.ng is added to Firebase's authorized
-      // domains (Authentication -> Settings -> Authorized domains) — until
-      // then, Firebase rejects any custom redirect URL outright.
+      const webUrl = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
       try {
-        await sendPasswordResetEmail(firebaseAuth, email);
+        await sendPasswordResetEmail(firebaseAuth, email, {
+          url: `${webUrl}/reset-password`,
+          handleCodeInApp: true,
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         if (err.code !== "auth/user-not-found") throw err;
