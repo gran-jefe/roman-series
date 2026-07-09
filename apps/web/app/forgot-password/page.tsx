@@ -19,26 +19,32 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
+      // Check with the backend FIRST, unconditionally. Firebase's email
+      // enumeration protection makes sendPasswordResetEmail silently resolve
+      // (no throw) for accounts it doesn't know about yet, so we can't rely
+      // on catching auth/user-not-found to detect "needs migration" — by the
+      // time we'd check, it's already too late. This call is the actual
+      // source of truth: it migrates the account server-side if needed.
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      await fetch(`${apiUrl}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      // By now a Firebase account exists for this email if one was ever
+      // going to (already did, or the call above just created it).
+      // TODO: pass actionCodeSettings pointing at our own /reset-password
+      // page once romanseries.com.ng is added to Firebase's authorized
+      // domains (Authentication -> Settings -> Authorized domains) — until
+      // then, Firebase rejects any custom redirect URL outright.
       try {
         await sendPasswordResetEmail(firebaseAuth, email);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         if (err.code !== "auth/user-not-found") throw err;
-
-        // Not on Firebase yet — migrate if this is a pre-migration account,
-        // then send the reset email now that a Firebase account exists.
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const res = await fetch(`${apiUrl}/api/auth/forgot-password`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        const data = await res.json();
-
-        if (data.migrated) {
-          await sendPasswordResetEmail(firebaseAuth, email);
-        }
-        // If not migrated (no such account), stay silent — avoids confirming
-        // or denying account existence to the caller.
+        // Truly no account anywhere — stay silent, don't confirm or deny
+        // account existence to the caller.
       }
 
       setSubmitted(true);

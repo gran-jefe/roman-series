@@ -118,6 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
 
         if (data.migrated) {
+          // TODO: pass actionCodeSettings pointing at our own /reset-password
+          // page once romanseries.com.ng is added to Firebase's authorized
+          // domains — until then a custom redirect URL is rejected outright.
           await sendPasswordResetEmail(firebaseAuth, email);
           return { needsMigration: true };
         }
