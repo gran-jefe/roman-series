@@ -175,9 +175,13 @@ export default function AdminRecalledQuestionsPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-navy">
-              Manage Recalled UI-POSTUTME Questions
+              Manage Authentic and Update UI-POSTUTME Questions
+              (2019-2026)
             </h1>
-            <p className="text-gray-600 mt-2">Upload and manage questions confirmed to have appeared in past Post-UTME exams</p>
+            <p className="text-gray-600 mt-2">
+              Upload and manage questions confirmed to have appeared in past
+              Post-UTME exams
+            </p>
           </div>
           <Link
             href="/admin"
@@ -200,7 +204,9 @@ export default function AdminRecalledQuestionsPage() {
         {/* Upload Form */}
         {showForm && (
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-navy mb-6">Upload Recalled Question</h2>
+            <h2 className="text-2xl font-bold text-navy mb-6">
+              Upload Recalled Question
+            </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Subject and University Row */}
@@ -233,7 +239,10 @@ export default function AdminRecalledQuestionsPage() {
                   <select
                     value={formData.university_id}
                     onChange={(e) =>
-                      setFormData({ ...formData, university_id: e.target.value })
+                      setFormData({
+                        ...formData,
+                        university_id: e.target.value,
+                      })
                     }
                     required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
@@ -258,7 +267,10 @@ export default function AdminRecalledQuestionsPage() {
                     type="number"
                     value={formData.year}
                     onChange={(e) =>
-                      setFormData({ ...formData, year: parseInt(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        year: parseInt(e.target.value),
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
                   />
@@ -271,7 +283,10 @@ export default function AdminRecalledQuestionsPage() {
                   <select
                     value={formData.difficulty_level}
                     onChange={(e) =>
-                      setFormData({ ...formData, difficulty_level: e.target.value })
+                      setFormData({
+                        ...formData,
+                        difficulty_level: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
                   >
@@ -324,7 +339,9 @@ export default function AdminRecalledQuestionsPage() {
                   {formData.options.map((option, idx) => (
                     <div key={idx} className="flex gap-3 items-start">
                       <div className="min-w-fit pt-2">
-                        <span className="font-bold text-navy min-w-fit">{option.label}.</span>
+                        <span className="font-bold text-navy min-w-fit">
+                          {option.label}.
+                        </span>
                       </div>
                       <div className="flex-1">
                         <input
@@ -342,11 +359,17 @@ export default function AdminRecalledQuestionsPage() {
                           type="checkbox"
                           checked={option.is_correct}
                           onChange={(e) =>
-                            handleOptionChange(idx, "is_correct", e.target.checked)
+                            handleOptionChange(
+                              idx,
+                              "is_correct",
+                              e.target.checked,
+                            )
                           }
                           className="w-5 h-5 text-forest rounded focus:ring-2 focus:ring-forest"
                         />
-                        <span className="text-sm font-medium text-gray-700">Correct</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          Correct
+                        </span>
                       </label>
                     </div>
                   ))}
@@ -389,32 +412,49 @@ export default function AdminRecalledQuestionsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 px-4 font-bold text-navy">Question</th>
-                    <th className="text-left py-3 px-4 font-bold text-navy">Subject</th>
-                    <th className="text-left py-3 px-4 font-bold text-navy">University</th>
-                    <th className="text-left py-3 px-4 font-bold text-navy">Year</th>
-                    <th className="text-left py-3 px-4 font-bold text-navy">Difficulty</th>
+                    <th className="text-left py-3 px-4 font-bold text-navy">
+                      Question
+                    </th>
+                    <th className="text-left py-3 px-4 font-bold text-navy">
+                      Subject
+                    </th>
+                    <th className="text-left py-3 px-4 font-bold text-navy">
+                      University
+                    </th>
+                    <th className="text-left py-3 px-4 font-bold text-navy">
+                      Year
+                    </th>
+                    <th className="text-left py-3 px-4 font-bold text-navy">
+                      Difficulty
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {questions.map((question) => (
-                    <tr key={question.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <tr
+                      key={question.id}
+                      className="border-b border-gray-200 hover:bg-gray-50"
+                    >
                       <td className="py-3 px-4 text-sm text-gray-700">
                         {question.body.substring(0, 50)}...
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{question.subject_name}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700">
+                        {question.subject_name}
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-700">
                         {question.university_name}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{question.year}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700">
+                        {question.year}
+                      </td>
                       <td className="py-3 px-4">
                         <span
                           className={`text-xs font-bold px-2 py-1 rounded ${
                             question.difficulty_level === "hard"
                               ? "bg-red-100 text-red-800"
                               : question.difficulty_level === "medium"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-green-100 text-green-800"
                           }`}
                         >
                           {question.difficulty_level}
