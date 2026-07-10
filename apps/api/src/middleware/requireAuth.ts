@@ -12,10 +12,13 @@ export interface ResolvedUser {
   userRole: string;
 }
 
+export class ProfileLookupError extends Error {}
+
 export async function resolveUserFromToken(
   token: string,
   supabaseAdmin: SupabaseClient
 ): Promise<ResolvedUser | null> {
+  // Let this throw on an invalid/expired token - callers must return 401 for it.
   const decoded = await firebaseAdminAuth.verifyIdToken(token);
 
   const { data: profile, error } = await supabaseAdmin
@@ -24,7 +27,12 @@ export async function resolveUserFromToken(
     .eq("firebase_uid", decoded.uid)
     .single();
 
-  if (error || !profile) {
+  if (error) {
+    // DB/infra failure, not a bad token - the caller must not treat this as a 401.
+    throw new ProfileLookupError(error.message);
+  }
+
+  if (!profile) {
     return null;
   }
 
@@ -61,6 +69,15 @@ export function requireAuth(supabaseAdmin: SupabaseClient) {
       req.userRole = resolved.userRole;
       next();
     } catch (error) {
+      if (error instanceof ProfileLookupError) {
+        res.status(503).json({
+          status: "error",
+          message: "Unable to verify account right now, please try again",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       res.status(401).json({
         status: "error",
         message: "Invalid or expired token",

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
+import { firebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -262,6 +263,20 @@ export default function MockSessionPage() {
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Mock exams run far longer than a Firebase ID token's ~1hr lifetime, and the
+  // exam makes no API calls between start and submit. Proactively force-refresh
+  // the token in the background so the high-stakes submit call never runs on a
+  // stale token.
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      firebaseAuth.currentUser?.getIdToken(true).catch((err) => {
+        console.error("Background token refresh failed:", err);
+      });
+    }, 25 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Save time remaining to sessionStorage periodically

@@ -1,5 +1,9 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { firebaseAuth } from "./firebase";
+
+interface RetriableConfig extends InternalAxiosRequestConfig {
+  _retriedAfterRefresh?: boolean;
+}
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -44,6 +48,21 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const config = error.config as RetriableConfig | undefined;
+
+    if (error.response?.status === 401 && config && !config._retriedAfterRefresh) {
+      config._retriedAfterRefresh = true;
+      try {
+        const freshToken = await firebaseAuth.currentUser?.getIdToken(true);
+        if (freshToken) {
+          config.headers.Authorization = `Bearer ${freshToken}`;
+          return api(config);
+        }
+      } catch (refreshError) {
+        console.error("Failed to force-refresh Firebase ID token:", refreshError);
+      }
+    }
+
     if (error.response?.status === 401 && typeof window !== "undefined") {
       clearAuthCookie();
       window.location.href = "/login?error=session_expired";
