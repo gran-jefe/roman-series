@@ -11,24 +11,32 @@ import toast from "react-hot-toast";
 
 interface RecalledQuestion {
   id: string;
+  subject: string;
+  year: number | null;
+  section_label: string | null;
+  question_number: number | null;
   body: string;
-  year?: number;
-  difficulty_level: string;
-  subject_id: string;
-  university_id: string;
-  subject_name?: string;
-  university_name?: string;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  answer: string | null;
+  note: string | null;
 }
 
-interface Subject {
-  id: string;
-  name: string;
-}
-
-interface University {
-  id: string;
-  name: string;
-}
+const EMPTY_FORM = {
+  subject: "",
+  year: new Date().getFullYear(),
+  section_label: "",
+  question_number: "" as number | "",
+  body: "",
+  option_a: "",
+  option_b: "",
+  option_c: "",
+  option_d: "",
+  answer: "",
+  note: "",
+};
 
 export default function AdminRecalledQuestionsPage() {
   const { profile, loading } = useAuth();
@@ -36,26 +44,10 @@ export default function AdminRecalledQuestionsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [questions, setQuestions] = useState<RecalledQuestion[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    subject_id: "",
-    university_id: "",
-    body: "",
-    explanation: "",
-    year: new Date().getFullYear(),
-    difficulty_level: "medium",
-    options: [
-      { label: "A", body: "", is_correct: false },
-      { label: "B", body: "", is_correct: false },
-      { label: "C", body: "", is_correct: false },
-      { label: "D", body: "", is_correct: false },
-    ],
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Bulk JSON upload state
@@ -69,7 +61,6 @@ export default function AdminRecalledQuestionsPage() {
 
   // Word doc -> JSON parse state (step 1 of 2; step 2 reuses the bulk upload above)
   const docxInputRef = useRef<HTMLInputElement>(null);
-  const [docxUniversityId, setDocxUniversityId] = useState("");
   const [isParsingDocx, setIsParsingDocx] = useState(false);
   const [parsedPreview, setParsedPreview] = useState<{
     questions: any[];
@@ -92,32 +83,12 @@ export default function AdminRecalledQuestionsPage() {
 
   const fetchData = async () => {
     try {
-      const [subjectsRes, unisRes, questionsRes] = await Promise.all([
-        api.get("/api/subjects"),
-        api.get("/api/universities"),
-        api.get("/api/admin/recalled-questions?limit=100"),
-      ]);
-      setSubjects(subjectsRes.data.data || []);
-      setUniversities(unisRes.data.data || []);
-      setQuestions(questionsRes.data.data.questions || []);
+      const res = await api.get("/api/admin/recalled-questions?limit=100");
+      setQuestions(res.data.data.questions || []);
     } catch (error) {
       console.error("Failed to fetch data:", error);
       toast.error("Failed to load data");
     }
-  };
-
-  const handleOptionChange = (index: number, field: string, value: any) => {
-    const newOptions = [...formData.options];
-    newOptions[index] = { ...newOptions[index], [field]: value };
-
-    // Ensure only one option is marked correct
-    if (field === "is_correct" && value) {
-      newOptions.forEach((opt, i) => {
-        if (i !== index) opt.is_correct = false;
-      });
-    }
-
-    setFormData({ ...formData, options: newOptions });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,52 +96,30 @@ export default function AdminRecalledQuestionsPage() {
     setIsSubmitting(true);
 
     try {
-      // Validation
-      if (!formData.subject_id || !formData.university_id || !formData.body) {
-        toast.error("Please fill in all required fields");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (!formData.options.some((opt) => opt.is_correct)) {
-        toast.error("Please mark one option as correct");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (formData.options.some((opt) => !opt.body)) {
-        toast.error("Please fill in all option bodies");
+      if (!formData.subject || !formData.body) {
+        toast.error("Subject and question body are required");
         setIsSubmitting(false);
         return;
       }
 
       const response = await api.post("/api/admin/recalled-questions", {
-        subject_id: formData.subject_id,
-        university_id: formData.university_id,
-        body: formData.body,
-        explanation: formData.explanation || null,
+        subject: formData.subject,
         year: formData.year || null,
-        difficulty_level: formData.difficulty_level,
-        options: formData.options,
+        section_label: formData.section_label || null,
+        question_number: formData.question_number || null,
+        body: formData.body,
+        option_a: formData.option_a || null,
+        option_b: formData.option_b || null,
+        option_c: formData.option_c || null,
+        option_d: formData.option_d || null,
+        answer: formData.answer || null,
+        note: formData.note || null,
       });
 
       if (response.data.status === "success") {
         toast.success("Recalled question uploaded successfully!");
         setShowForm(false);
-        setFormData({
-          subject_id: "",
-          university_id: "",
-          body: "",
-          explanation: "",
-          year: new Date().getFullYear(),
-          difficulty_level: "medium",
-          options: [
-            { label: "A", body: "", is_correct: false },
-            { label: "B", body: "", is_correct: false },
-            { label: "C", body: "", is_correct: false },
-            { label: "D", body: "", is_correct: false },
-          ],
-        });
+        setFormData(EMPTY_FORM);
         fetchData();
       }
     } catch (error: any) {
@@ -185,12 +134,10 @@ export default function AdminRecalledQuestionsPage() {
     const template = [
       {
         subject: "Biology",
-        university: "UI",
-        body: "Which of the following is a function of the cell membrane?",
-        explanation: "The cell membrane controls what enters and leaves the cell.",
         year: 2024,
-        exam_type: "post_utme",
-        difficulty_level: "medium",
+        section_label: "BIOLOGY 2024",
+        question_number: 1,
+        body: "Which of the following is a function of the cell membrane?",
         options: [
           { label: "A", body: "Selective permeability", is_correct: true },
           { label: "B", body: "Protein synthesis", is_correct: false },
@@ -266,11 +213,6 @@ export default function AdminRecalledQuestionsPage() {
     e.target.value = ""; // allow re-selecting the same file next time
     if (!file) return;
 
-    if (!docxUniversityId) {
-      toast.error("Select a university first - it can't be read from the document");
-      return;
-    }
-
     setParsedPreview(null);
     setBulkResult(null);
     setIsParsingDocx(true);
@@ -280,7 +222,6 @@ export default function AdminRecalledQuestionsPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const form = new FormData();
       form.append("file", file);
-      form.append("university_id", docxUniversityId);
 
       const response = await fetch(`${apiUrl}/api/admin/recalled-questions/parse-docx`, {
         method: "POST",
@@ -381,23 +322,10 @@ export default function AdminRecalledQuestionsPage() {
           <h2 className="text-lg font-bold text-navy mb-1">Upload from Word Document</h2>
           <p className="text-sm text-gray-600 mb-4">
             Parses a .docx of recalled questions into JSON for review, then adds everything you
-            confirm - university and subject aren&apos;t always stated per question in the source
-            document, so pick the university below (subject and year are read from each
-            section&apos;s heading, e.g. &quot;ENGLISH LANGUAGE 2025&quot;).
+            confirm - subject and year are read from each section&apos;s heading (e.g.
+            &quot;ENGLISH LANGUAGE 2025&quot;).
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={docxUniversityId}
-              onChange={(e) => setDocxUniversityId(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-forest"
-            >
-              <option value="">Select university...</option>
-              {universities.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
             <input
               ref={docxInputRef}
               type="file"
@@ -407,7 +335,7 @@ export default function AdminRecalledQuestionsPage() {
             />
             <button
               onClick={() => docxInputRef.current?.click()}
-              disabled={isParsingDocx || !docxUniversityId}
+              disabled={isParsingDocx}
               className="bg-navy text-white px-6 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-opacity disabled:opacity-50"
             >
               {isParsingDocx ? "Parsing..." : "📄 Upload Word Doc (.docx)"}
@@ -507,56 +435,22 @@ export default function AdminRecalledQuestionsPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Subject and University Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Subject and Year Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Subject *
                   </label>
-                  <select
-                    value={formData.subject_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subject_id: e.target.value })
-                    }
+                  <input
+                    type="text"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     required
+                    placeholder="e.g. Biology, Use of English"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
-                  >
-                    <option value="">Select Subject</option>
-                    {subjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    University *
-                  </label>
-                  <select
-                    value={formData.university_id}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        university_id: e.target.value,
-                      })
-                    }
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
-                  >
-                    <option value="">Select University</option>
-                    {universities.map((uni) => (
-                      <option key={uni.id} value={uni.id}>
-                        {uni.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Year and Difficulty Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Year
@@ -565,10 +459,7 @@ export default function AdminRecalledQuestionsPage() {
                     type="number"
                     value={formData.year}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        year: parseInt(e.target.value),
-                      })
+                      setFormData({ ...formData, year: parseInt(e.target.value) || 0 })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
                   />
@@ -576,23 +467,34 @@ export default function AdminRecalledQuestionsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Difficulty Level
+                    Question # (in this batch)
                   </label>
-                  <select
-                    value={formData.difficulty_level}
+                  <input
+                    type="number"
+                    value={formData.question_number}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        difficulty_level: e.target.value,
+                        question_number: e.target.value ? parseInt(e.target.value) : "",
                       })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
+                  />
                 </div>
+              </div>
+
+              {/* Section label */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Batch / Section Label (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.section_label}
+                  onChange={(e) => setFormData({ ...formData, section_label: e.target.value })}
+                  placeholder="e.g. BIOLOGY 2024 BATCH A"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                />
               </div>
 
               {/* Question Body */}
@@ -612,66 +514,64 @@ export default function AdminRecalledQuestionsPage() {
                 />
               </div>
 
-              {/* Explanation */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Explanation (Optional)
-                </label>
-                <textarea
-                  value={formData.explanation}
-                  onChange={(e) =>
-                    setFormData({ ...formData, explanation: e.target.value })
-                  }
-                  rows={3}
-                  placeholder="Enter explanation for the answer..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
-                />
-              </div>
-
               {/* Options */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Answer Options * (Mark one as correct)
+                  Answer Options (leave blank if unknown)
                 </label>
                 <div className="space-y-3">
-                  {formData.options.map((option, idx) => (
-                    <div key={idx} className="flex gap-3 items-start">
-                      <div className="min-w-fit pt-2">
-                        <span className="font-bold text-navy min-w-fit">
-                          {option.label}.
-                        </span>
-                      </div>
-                      <div className="flex-1">
+                  {(["A", "B", "C", "D"] as const).map((letter) => {
+                    const key = `option_${letter.toLowerCase()}` as
+                      | "option_a"
+                      | "option_b"
+                      | "option_c"
+                      | "option_d";
+                    return (
+                      <div key={letter} className="flex gap-3 items-center">
+                        <span className="font-bold text-navy w-6">{letter}.</span>
                         <input
                           type="text"
-                          value={option.body}
-                          onChange={(e) =>
-                            handleOptionChange(idx, "body", e.target.value)
-                          }
-                          placeholder={`Option ${option.label}`}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                          value={formData[key]}
+                          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                          placeholder={`Option ${letter}`}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
                         />
                       </div>
-                      <label className="flex items-center gap-2 pt-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={option.is_correct}
-                          onChange={(e) =>
-                            handleOptionChange(
-                              idx,
-                              "is_correct",
-                              e.target.checked,
-                            )
-                          }
-                          className="w-5 h-5 text-forest rounded focus:ring-2 focus:ring-forest"
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                          Correct
-                        </span>
-                      </label>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* Correct answer */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Correct Answer (if known)
+                </label>
+                <select
+                  value={formData.answer}
+                  onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                  className="w-full md:w-48 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                >
+                  <option value="">Not yet known</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                </select>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Note (Optional)
+                </label>
+                <textarea
+                  value={formData.note}
+                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  rows={3}
+                  placeholder="Any extra context for this question..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest focus:border-transparent"
+                />
               </div>
 
               {/* Submit Buttons */}
@@ -717,13 +617,13 @@ export default function AdminRecalledQuestionsPage() {
                       Subject
                     </th>
                     <th className="text-left py-3 px-4 font-bold text-navy">
-                      University
+                      Batch
                     </th>
                     <th className="text-left py-3 px-4 font-bold text-navy">
                       Year
                     </th>
                     <th className="text-left py-3 px-4 font-bold text-navy">
-                      Difficulty
+                      Answer
                     </th>
                   </tr>
                 </thead>
@@ -737,25 +637,23 @@ export default function AdminRecalledQuestionsPage() {
                         {question.body.substring(0, 50)}...
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-                        {question.subject_name}
+                        {question.subject}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-                        {question.university_name}
+                        {question.section_label || "—"}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-                        {question.year}
+                        {question.year ?? "—"}
                       </td>
                       <td className="py-3 px-4">
                         <span
                           className={`text-xs font-bold px-2 py-1 rounded ${
-                            question.difficulty_level === "hard"
-                              ? "bg-red-100 text-red-800"
-                              : question.difficulty_level === "medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
+                            question.answer
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-600"
                           }`}
                         >
-                          {question.difficulty_level}
+                          {question.answer || "Unmarked"}
                         </span>
                       </td>
                     </tr>

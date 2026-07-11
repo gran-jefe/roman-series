@@ -8,8 +8,19 @@ import mammoth from "mammoth";
 // format, so every option comes back with is_correct: false - the resulting
 // questions are meant to be marked up by an admin afterward.
 
-const SUBJECT_ALIASES: Record<string, string> = {
-  "english language": "english",
+// recalled_questions.subject is free text (no FK to the `subjects` table), and
+// the ~1,000 rows already in that table use a specific display convention per
+// subject - match it so newly-parsed rows don't fragment into a second,
+// differently-cased "subject" for the same thing.
+const SUBJECT_DISPLAY_NAMES: Record<string, string> = {
+  "english language": "Use of English",
+  biology: "Biology",
+  chemistry: "Chemistry",
+  physics: "Physics",
+  government: "Government",
+  crs: "CRS",
+  irs: "IRS",
+  literature: "Literature",
 };
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E"];
@@ -25,6 +36,8 @@ function cleanText(value: string): string {
 export interface ParsedRecalledQuestion {
   subject: string;
   year: number;
+  section_label: string;
+  question_number: number;
   body: string;
   options: { label: string; body: string }[];
 }
@@ -77,9 +90,15 @@ function extractOptions(blockText: string): { stem: string; options: { label: st
   return { stem, options };
 }
 
-export function normalizeSubjectName(name: string): string {
+export function displaySubjectName(name: string): string {
   const key = name.trim().toLowerCase();
-  return SUBJECT_ALIASES[key] || key;
+  return (
+    SUBJECT_DISPLAY_NAMES[key] ||
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 export async function parseRecalledQuestionsDocument(buffer: Buffer): Promise<RecalledParseResult> {
@@ -105,8 +124,8 @@ export function parseRecalledQuestionsText(text: string): RecalledParseResult {
   let skippedNoOptions = 0;
 
   // Split into (subject, year, sectionText) sections on heading lines.
-  const sections: { subject: string; year: number; lines: string[] }[] = [];
-  let current: { subject: string; year: number; lines: string[] } | null = null;
+  const sections: { subject: string; year: number; sectionLabel: string; lines: string[] }[] = [];
+  let current: { subject: string; year: number; sectionLabel: string; lines: string[] } | null = null;
 
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim();
@@ -114,7 +133,12 @@ export function parseRecalledQuestionsText(text: string): RecalledParseResult {
 
     if (headingMatch) {
       if (current) sections.push(current);
-      current = { subject: headingMatch[1].trim(), year: parseInt(headingMatch[2], 10), lines: [] };
+      current = {
+        subject: headingMatch[1].trim(),
+        year: parseInt(headingMatch[2], 10),
+        sectionLabel: line,
+        lines: [],
+      };
     } else if (current) {
       current.lines.push(rawLine);
     }
@@ -157,8 +181,10 @@ export function parseRecalledQuestionsText(text: string): RecalledParseResult {
       }
 
       questions.push({
-        subject: section.subject,
+        subject: displaySubjectName(section.subject),
         year: section.year,
+        section_label: section.sectionLabel,
+        question_number: parseInt(numMatch[1], 10),
         body: stem,
         options,
       });

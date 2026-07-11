@@ -2,7 +2,10 @@ import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
 import multer from "multer";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
-import { parseRecalledQuestionsDocument, normalizeSubjectName } from "../lib/recalledQuestionsParser";
+import { parseRecalledQuestionsDocument } from "../lib/recalledQuestionsParser";
+
+const OPTION_KEYS = ["option_a", "option_b", "option_c", "option_d"] as const;
+const OPTION_LETTERS = ["A", "B", "C", "D"] as const;
 
 interface RecalledQuestionsDeps {
   supabaseAdmin: SupabaseClient;
@@ -112,47 +115,54 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
       }
 
       const {
-        subject_id,
-        university_id,
-        body,
-        explanation,
+        subject,
         year,
-        difficulty_level,
-        options,
+        section_label,
+        question_number,
+        body,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        answer,
+        note,
       } = req.body;
 
-      // Validate required fields
-      if (!subject_id || !university_id || !body || !Array.isArray(options) || options.length === 0) {
+      if (!subject || !body) {
         res.status(400).json({
           status: "error",
-          message: "Missing required fields: subject_id, university_id, body, options (array)",
+          message: "Missing required fields: subject, body",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      // Validate options (must have exactly one correct answer)
-      const correctCount = options.filter((opt: any) => opt.is_correct).length;
-      if (correctCount !== 1) {
+      if (answer && !OPTION_LETTERS.includes(answer)) {
         res.status(400).json({
           status: "error",
-          message: "Exactly one option must be marked as correct",
+          message: "answer must be one of A, B, C, D (or omitted if not yet known)",
           timestamp: new Date().toISOString(),
         });
         return;
       }
 
-      // Create recalled question
+      const hasOptions = Boolean(option_a || option_b || option_c || option_d);
+
       const { data: question, error: createError } = await supabaseAdmin
         .from("recalled_questions")
         .insert({
-          subject_id,
-          university_id,
-          body,
-          explanation: explanation || null,
+          subject,
           year: year || null,
-          difficulty_level: difficulty_level || "medium",
-          created_by: req.userId,
+          section_label: section_label || null,
+          question_number: question_number || null,
+          body,
+          option_a: option_a || null,
+          option_b: option_b || null,
+          option_c: option_c || null,
+          option_d: option_d || null,
+          answer: answer || null,
+          has_options: hasOptions,
+          note: note || null,
         })
         .select()
         .single();
@@ -162,28 +172,6 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
         res.status(500).json({
           status: "error",
           message: "Failed to create recalled question",
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Insert options
-      const optionRows = options.map((opt: any) => ({
-        recalled_question_id: question.id,
-        label: opt.label,
-        body: opt.body,
-        is_correct: opt.is_correct,
-      }));
-
-      const { error: optionsError } = await supabaseAdmin
-        .from("recalled_question_options")
-        .insert(optionRows);
-
-      if (optionsError) {
-        console.error("[admin/recalled-questions] Options error:", optionsError);
-        res.status(500).json({
-          status: "error",
-          message: "Failed to add question options",
           timestamp: new Date().toISOString(),
         });
         return;
@@ -219,7 +207,7 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
         return;
       }
 
-      const { subject_id, university_id, limit = "50", offset = "0" } = req.query;
+      const { subject, year, limit = "50", offset = "0" } = req.query;
 
       let query = supabaseAdmin
         .from("recalled_questions")
@@ -227,12 +215,12 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
         .order("created_at", { ascending: false })
         .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
-      if (subject_id) {
-        query = query.eq("subject_id", subject_id as string);
+      if (subject) {
+        query = query.eq("subject", subject as string);
       }
 
-      if (university_id) {
-        query = query.eq("university_id", university_id as string);
+      if (year) {
+        query = query.eq("year", Number(year));
       }
 
       const { data: questions, error, count } = await query;
@@ -280,20 +268,47 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
       }
 
       const { id } = req.params;
-      const { body, explanation, year, difficulty_level } = req.body;
+      const {
+        subject,
+        year,
+        section_label,
+        question_number,
+        body,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        answer,
+        note,
+      } = req.body;
+
+      if (answer !== undefined && answer && !OPTION_LETTERS.includes(answer)) {
+        res.status(400).json({
+          status: "error",
+          message: "answer must be one of A, B, C, D (or null if not yet known)",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
 
       const updateData: any = {};
-      if (body !== undefined) updateData.body = body;
-      if (explanation !== undefined) updateData.explanation = explanation;
+      if (subject !== undefined) updateData.subject = subject;
       if (year !== undefined) updateData.year = year;
-      if (difficulty_level !== undefined) updateData.difficulty_level = difficulty_level;
-      updateData.updated_at = new Date().toISOString();
+      if (section_label !== undefined) updateData.section_label = section_label;
+      if (question_number !== undefined) updateData.question_number = question_number;
+      if (body !== undefined) updateData.body = body;
+      if (option_a !== undefined) updateData.option_a = option_a;
+      if (option_b !== undefined) updateData.option_b = option_b;
+      if (option_c !== undefined) updateData.option_c = option_c;
+      if (option_d !== undefined) updateData.option_d = option_d;
+      if (answer !== undefined) updateData.answer = answer;
+      if (note !== undefined) updateData.note = note;
 
       const { data: question, error: updateError } = await supabaseAdmin
         .from("recalled_questions")
         .update(updateData)
         .eq("id", id)
-        .select("*, recalled_question_options(*)")
+        .select("*")
         .single();
 
       if (updateError || !question) {
@@ -393,25 +408,14 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
           return;
         }
 
-        const { university_id } = req.body;
-        if (!university_id) {
-          res.status(400).json({
-            status: "error",
-            message: "university_id is required - it can't be inferred from the document",
-            timestamp: new Date().toISOString(),
-          });
-          return;
-        }
-
         const parsed = await parseRecalledQuestionsDocument(req.file.buffer);
 
         const questions = parsed.questions.map((q) => ({
           subject: q.subject,
-          university_id,
-          body: q.body,
           year: q.year,
-          exam_type: "post_utme",
-          difficulty_level: "medium",
+          section_label: q.section_label,
+          question_number: q.question_number,
+          body: q.body,
           options: q.options.map((o) => ({ ...o, is_correct: false })),
         }));
 
@@ -462,20 +466,6 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
         return;
       }
 
-      const [{ data: subjects }, { data: universities }] = await Promise.all([
-        supabaseAdmin.from("subjects").select("id, name"),
-        supabaseAdmin.from("universities").select("id, name, short_code"),
-      ]);
-
-      const subjectByName = new Map(
-        (subjects || []).map((s: any) => [s.name.toLowerCase(), s.id])
-      );
-      const universityByName = new Map<string, string>();
-      (universities || []).forEach((u: any) => {
-        universityByName.set(u.name.toLowerCase(), u.id);
-        if (u.short_code) universityByName.set(u.short_code.toLowerCase(), u.id);
-      });
-
       let created = 0;
       let skipped = 0;
       const errors: string[] = [];
@@ -485,20 +475,8 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
         const label = `Question ${i + 1}`;
 
         try {
-          const subjectId =
-            q.subject_id ||
-            subjectByName.get(String(q.subject || "").toLowerCase()) ||
-            subjectByName.get(normalizeSubjectName(String(q.subject || "")));
-          const universityId =
-            q.university_id || universityByName.get(String(q.university || "").toLowerCase());
-
-          if (!subjectId) {
-            errors.push(`${label}: unknown subject "${q.subject || q.subject_id || ""}"`);
-            skipped++;
-            continue;
-          }
-          if (!universityId) {
-            errors.push(`${label}: unknown university "${q.university || q.university_id || ""}"`);
+          if (!q.subject || typeof q.subject !== "string") {
+            errors.push(`${label}: missing subject`);
             skipped++;
             continue;
           }
@@ -512,6 +490,13 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
             skipped++;
             continue;
           }
+          if (q.options.length > OPTION_KEYS.length) {
+            errors.push(
+              `${label}: has ${q.options.length} options but recalled_questions only supports up to ${OPTION_KEYS.length} (A-D)`
+            );
+            skipped++;
+            continue;
+          }
           // 0 correct is allowed here (e.g. recalled questions imported from a
           // source with no answer key, to be marked up by an admin later) -
           // only more than one marked correct is actually invalid.
@@ -522,40 +507,26 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
             continue;
           }
 
-          const { data: inserted, error: insertError } = await supabaseAdmin
-            .from("recalled_questions")
-            .insert({
-              subject_id: subjectId,
-              university_id: universityId,
-              body: q.body,
-              explanation: q.explanation || null,
-              year: q.year || null,
-              exam_type: q.exam_type || "post_utme",
-              difficulty_level: q.difficulty_level || "medium",
-              created_by: req.userId,
-            })
-            .select()
-            .single();
+          const optionColumns: Record<string, string | null> = {};
+          let answer: string | null = null;
+          q.options.forEach((o: any, idx: number) => {
+            optionColumns[OPTION_KEYS[idx]] = o.body;
+            if (o.is_correct) answer = OPTION_LETTERS[idx];
+          });
 
-          if (insertError || !inserted) {
-            errors.push(`${label}: ${insertError?.message || "failed to insert"}`);
-            skipped++;
-            continue;
-          }
+          const { error: insertError } = await supabaseAdmin.from("recalled_questions").insert({
+            subject: q.subject,
+            year: q.year || null,
+            section_label: q.section_label || null,
+            question_number: q.question_number || null,
+            body: q.body,
+            ...optionColumns,
+            answer,
+            has_options: true,
+          });
 
-          const { error: optionsError } = await supabaseAdmin
-            .from("recalled_question_options")
-            .insert(
-              q.options.map((o: any) => ({
-                recalled_question_id: inserted.id,
-                label: o.label,
-                body: o.body,
-                is_correct: !!o.is_correct,
-              }))
-            );
-
-          if (optionsError) {
-            errors.push(`${label}: question saved but options failed - ${optionsError.message}`);
+          if (insertError) {
+            errors.push(`${label}: ${insertError.message}`);
             skipped++;
             continue;
           }
