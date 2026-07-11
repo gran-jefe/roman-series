@@ -11,8 +11,65 @@ interface AdminDeps {
   uploadCache: Map<string, { parsed: any; expiresAt: number }>;
 }
 
+export interface ProfileFilters {
+  plans: string[];
+  courses: string[];
+  subjectIds: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
+function parseListParam(value: unknown): string[] {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value.map(String) : String(value).split(",");
+  return raw.map((s) => s.trim()).filter(Boolean);
+}
+
+// Query filters shared by the users list, the CSV export, and announcement
+// recipient resolution, so all three always agree on who matches a given
+// plan/course/subject/date-range combination.
+export function parseProfileFilters(query: Record<string, unknown>): ProfileFilters {
+  let dateTo = (query.date_to as string) || undefined;
+  // A date-only value (no time component) needs to be pushed to end-of-day,
+  // otherwise `.lte("created_at", ...)` would exclude everything from that day.
+  if (dateTo && /^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+    dateTo = `${dateTo}T23:59:59.999Z`;
+  }
+
+  return {
+    plans: parseListParam(query.plans),
+    courses: parseListParam(query.courses),
+    subjectIds: parseListParam(query.subjects),
+    dateFrom: (query.date_from as string) || undefined,
+    dateTo,
+    search: (query.search as string) || undefined,
+  };
+}
+
+export function applyProfileFilters<T extends { in: Function; overlaps: Function; gte: Function; lte: Function; or: Function }>(
+  query: T,
+  filters: ProfileFilters
+): T {
+  let q: any = query;
+  if (filters.plans.length) q = q.in("subscription_status", filters.plans);
+  if (filters.courses.length) q = q.in("target_course", filters.courses);
+  if (filters.subjectIds.length) q = q.overlaps("subject_combination", filters.subjectIds);
+  if (filters.dateFrom) q = q.gte("created_at", filters.dateFrom);
+  if (filters.dateTo) q = q.lte("created_at", filters.dateTo);
+  if (filters.search) {
+    // PostgREST's .or() syntax gives meaning to "," "(" ")" - strip them so a
+    // stray character in an admin's search box can't break the filter string.
+    const safeSearch = filters.search.replace(/[,()]/g, "");
+    if (safeSearch) {
+      q = q.or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`);
+    }
+  }
+  return q;
+}
+
 // Helper to check admin auth
-async function checkAdminAuth(
+export async function checkAdminAuth(
   req: Request,
   res: Response,
   supabaseAdmin: SupabaseClient
@@ -137,64 +194,144 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     try {
       const page = parseInt((req.query.page as string) || "1");
       const limit = Math.min(parseInt((req.query.limit as string) || "20"), 100);
-      const search = (req.query.search as string) || "";
+      const filters = parseProfileFilters(req.query as Record<string, unknown>);
 
-      const { data: profiles, error: profilesError } = await supabaseAdmin
+      // profiles.email (added in the Firebase Auth migration) is now the
+      // source of truth for user email, so this no longer needs to merge in
+      // supabaseAdmin.auth.admin.listUsers() - that call silently truncates
+      // at its own default page size and was capping this list at ~50 users.
+      let query = supabaseAdmin
         .from("profiles")
-        .select("id, full_name, role, subscription_status, created_at, target_university_id");
-
-      if (profilesError) throw profilesError;
-
-      const { data: authUsers, error: authError } =
-        await supabaseAdmin.auth.admin.listUsers();
-
-      if (authError) throw authError;
-
-      const emailMap = new Map(
-        authUsers.users.map((u: any) => [u.id, u.email])
-      );
-
-      const merged = (profiles || []).map((profile: any) => ({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: emailMap.get(profile.id) || "N/A",
-        role: profile.role || "user",
-        subscription_status: profile.subscription_status,
-        target_university_id: profile.target_university_id,
-        created_at: profile.created_at,
-      }));
-
-      let filtered = merged;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = merged.filter(
-          (u: any) =>
-            u.full_name?.toLowerCase().includes(searchLower) ||
-            u.email?.toLowerCase().includes(searchLower)
+        .select(
+          "id, full_name, email, role, subscription_status, target_course, subject_combination, target_university_id, created_at",
+          { count: "exact" }
         );
-      }
 
-      filtered.sort((a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      query = applyProfileFilters(query, filters);
 
       const start = (page - 1) * limit;
-      const end = start + limit;
-      const paginatedData = filtered.slice(start, end);
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(start, start + limit - 1);
+
+      if (error) throw error;
+
+      const users = (data || []).map((profile: any) => ({
+        ...profile,
+        email: profile.email || "N/A",
+        role: profile.role || "user",
+      }));
 
       res.json({
         status: "success",
-        data: paginatedData,
+        data: users,
         pagination: {
           page,
           limit,
-          total: filtered.length,
-          total_pages: Math.ceil(filtered.length / limit),
+          total: count || 0,
+          total_pages: Math.ceil((count || 0) / limit),
         },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error("[admin/users] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/users/filter-options - distinct target_course values in
+  // use, so the admin panel's course filter only shows real, selectable values
+  app.get("/api/admin/users/filter-options", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const courseSet = new Set<string>();
+      const pageSize = 1000;
+
+      // Supabase caps a single `.select()` at 1000 rows, so page through in
+      // batches (same pattern as the revenue query in /api/admin/stats above)
+      // rather than risk missing distinct values past the first page.
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("profiles")
+          .select("target_course")
+          .not("target_course", "is", null)
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        (data || []).forEach((p: any) => {
+          if (p.target_course) courseSet.add(p.target_course);
+        });
+        if (!data || data.length < pageSize) break;
+      }
+
+      const courses = Array.from(courseSet).sort((a, b) => a.localeCompare(b));
+
+      res.json({
+        status: "success",
+        data: { courses },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users/filter-options] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/users/export - CSV export of every user matching the given filters
+  app.get("/api/admin/users/export", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const filters = parseProfileFilters(req.query as Record<string, unknown>);
+      const rows: any[] = [];
+      const pageSize = 1000;
+
+      for (let from = 0; ; from += pageSize) {
+        let query = supabaseAdmin
+          .from("profiles")
+          .select("full_name, email, subscription_status, target_course, created_at");
+        query = applyProfileFilters(query, filters);
+
+        const { data, error } = await query
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+
+      const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const csvLines = [
+        ["Name", "Email", "Plan", "Target Course", "Joined"].join(","),
+        ...rows.map((r) =>
+          [
+            escapeCsv(r.full_name),
+            escapeCsv(r.email),
+            escapeCsv(r.subscription_status),
+            escapeCsv(r.target_course),
+            escapeCsv(new Date(r.created_at).toISOString().split("T")[0]),
+          ].join(",")
+        ),
+      ];
+
+      const filename = `users-export-${new Date().toISOString().split("T")[0]}.csv`;
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(csvLines.join("\n"));
+    } catch (error) {
+      console.error("[admin/users/export] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

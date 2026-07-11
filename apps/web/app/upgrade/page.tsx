@@ -65,7 +65,7 @@ export default function UpgradePage() {
     };
 
     updateCountdown();
-    const timer = setInterval(updateCountdown, 60000);
+    const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
 

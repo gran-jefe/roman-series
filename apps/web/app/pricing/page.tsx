@@ -64,7 +64,7 @@ export default function PricingPage() {
     };
 
     updateCountdown();
-    const timer = setInterval(updateCountdown, 60000); // Update every minute
+    const timer = setInterval(updateCountdown, 1000);
     return () => clearInterval(timer);
   }, []);
 

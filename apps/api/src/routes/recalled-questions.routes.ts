@@ -1,13 +1,16 @@
 import { Express, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import multer from "multer";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
+import { parseRecalledQuestionsDocument, normalizeSubjectName } from "../lib/recalledQuestionsParser";
 
 interface RecalledQuestionsDeps {
   supabaseAdmin: SupabaseClient;
+  upload: multer.Multer;
 }
 
 export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQuestionsDeps) {
-  const { supabaseAdmin } = deps;
+  const { supabaseAdmin, upload } = deps;
 
   // GET /api/recalled-questions - Get recalled questions (Elite only)
  app.get("/api/recalled-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
@@ -352,6 +355,225 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
       });
     } catch (error) {
       console.error("[admin/recalled-questions/:id] Delete error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // POST /api/admin/recalled-questions/parse-docx - Step 1 of the Word-doc
+  // upload flow: parses an uploaded .docx into the same JSON shape the bulk
+  // endpoint below accepts. This never touches the database - it's a pure
+  // text -> JSON conversion so the admin can review the parsed result (and
+  // the list of anything that couldn't be parsed) before committing it via
+  // POST /api/admin/recalled-questions/bulk.
+  app.post(
+    "/api/admin/recalled-questions/parse-docx",
+    requireAuth(supabaseAdmin),
+    upload.single("file"),
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        if (req.userRole !== "admin") {
+          res.status(403).json({
+            status: "error",
+            message: "Only admins can upload recalled questions",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (!req.file) {
+          res.status(400).json({
+            status: "error",
+            message: "No file provided",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const { university_id } = req.body;
+        if (!university_id) {
+          res.status(400).json({
+            status: "error",
+            message: "university_id is required - it can't be inferred from the document",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const parsed = await parseRecalledQuestionsDocument(req.file.buffer);
+
+        const questions = parsed.questions.map((q) => ({
+          subject: q.subject,
+          university_id,
+          body: q.body,
+          year: q.year,
+          exam_type: "post_utme",
+          difficulty_level: "medium",
+          options: q.options.map((o) => ({ ...o, is_correct: false })),
+        }));
+
+        res.json({
+          status: "success",
+          data: {
+            questions,
+            total_parsed: parsed.total_parsed,
+            skipped_no_options: parsed.skipped_no_options,
+            errors: parsed.errors,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("[admin/recalled-questions/parse-docx] Error:", error);
+        res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  );
+
+  // POST /api/admin/recalled-questions/bulk - Bulk-add recalled questions from
+  // a JSON file. Every question here is a brand new INSERT - this never
+  // deletes or replaces existing rows, so uploads always append to what's
+  // already in the table.
+  app.post("/api/admin/recalled-questions/bulk", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      if (req.userRole !== "admin") {
+        res.status(403).json({
+          status: "error",
+          message: "Only admins can upload recalled questions",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { questions } = req.body;
+
+      if (!Array.isArray(questions) || questions.length === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "questions must be a non-empty array",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const [{ data: subjects }, { data: universities }] = await Promise.all([
+        supabaseAdmin.from("subjects").select("id, name"),
+        supabaseAdmin.from("universities").select("id, name, short_code"),
+      ]);
+
+      const subjectByName = new Map(
+        (subjects || []).map((s: any) => [s.name.toLowerCase(), s.id])
+      );
+      const universityByName = new Map<string, string>();
+      (universities || []).forEach((u: any) => {
+        universityByName.set(u.name.toLowerCase(), u.id);
+        if (u.short_code) universityByName.set(u.short_code.toLowerCase(), u.id);
+      });
+
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        const label = `Question ${i + 1}`;
+
+        try {
+          const subjectId =
+            q.subject_id ||
+            subjectByName.get(String(q.subject || "").toLowerCase()) ||
+            subjectByName.get(normalizeSubjectName(String(q.subject || "")));
+          const universityId =
+            q.university_id || universityByName.get(String(q.university || "").toLowerCase());
+
+          if (!subjectId) {
+            errors.push(`${label}: unknown subject "${q.subject || q.subject_id || ""}"`);
+            skipped++;
+            continue;
+          }
+          if (!universityId) {
+            errors.push(`${label}: unknown university "${q.university || q.university_id || ""}"`);
+            skipped++;
+            continue;
+          }
+          if (!q.body || typeof q.body !== "string") {
+            errors.push(`${label}: missing question body`);
+            skipped++;
+            continue;
+          }
+          if (!Array.isArray(q.options) || q.options.length < 2) {
+            errors.push(`${label}: needs at least 2 options`);
+            skipped++;
+            continue;
+          }
+          // 0 correct is allowed here (e.g. recalled questions imported from a
+          // source with no answer key, to be marked up by an admin later) -
+          // only more than one marked correct is actually invalid.
+          const correctCount = q.options.filter((o: any) => o.is_correct).length;
+          if (correctCount > 1) {
+            errors.push(`${label}: at most one option can be marked is_correct`);
+            skipped++;
+            continue;
+          }
+
+          const { data: inserted, error: insertError } = await supabaseAdmin
+            .from("recalled_questions")
+            .insert({
+              subject_id: subjectId,
+              university_id: universityId,
+              body: q.body,
+              explanation: q.explanation || null,
+              year: q.year || null,
+              exam_type: q.exam_type || "post_utme",
+              difficulty_level: q.difficulty_level || "medium",
+              created_by: req.userId,
+            })
+            .select()
+            .single();
+
+          if (insertError || !inserted) {
+            errors.push(`${label}: ${insertError?.message || "failed to insert"}`);
+            skipped++;
+            continue;
+          }
+
+          const { error: optionsError } = await supabaseAdmin
+            .from("recalled_question_options")
+            .insert(
+              q.options.map((o: any) => ({
+                recalled_question_id: inserted.id,
+                label: o.label,
+                body: o.body,
+                is_correct: !!o.is_correct,
+              }))
+            );
+
+          if (optionsError) {
+            errors.push(`${label}: question saved but options failed - ${optionsError.message}`);
+            skipped++;
+            continue;
+          }
+
+          created++;
+        } catch (rowError) {
+          errors.push(`${label}: ${rowError instanceof Error ? rowError.message : "unknown error"}`);
+          skipped++;
+        }
+      }
+
+      res.json({
+        status: "success",
+        data: { created, skipped, errors },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/recalled-questions/bulk] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

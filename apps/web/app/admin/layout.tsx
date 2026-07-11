@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/PageLoader";
 const NAV_LINKS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/announcements", label: "Announcements" },
   { href: "/admin/questions", label: "Questions" },
   { href: "/admin/review-answers", label: "Review Answers" },
   { href: "/admin/cutoff-marks", label: "Cut-off Marks" },

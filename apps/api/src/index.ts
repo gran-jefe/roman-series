@@ -16,6 +16,7 @@ import { registerAuthMigrationRoutes } from "./routes/auth-migration.routes";
 import { registerDataRoutes } from "./routes/data.routes";
 import { registerSessionsRoutes } from "./routes/sessions.routes";
 import { registerAdminRoutes } from "./routes/admin.routes";
+import { registerAnnouncementsRoutes } from "./routes/admin.announcements.routes";
 import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
@@ -161,6 +162,8 @@ registerAdminRoutes(app, {
   uploadCache,
 });
 
+registerAnnouncementsRoutes(app, { supabaseAdmin });
+
 registerUploadRoutes(app, { supabaseAdmin });
 
 registerPaymentsRoutes(app, {
@@ -180,7 +183,7 @@ registerFlaggingRoutes(app, { supabaseAdmin });
 
 registerPlansRoutes(app, { supabaseAdmin });
 
-registerRecalledQuestionsRoutes(app, { supabaseAdmin });
+registerRecalledQuestionsRoutes(app, { supabaseAdmin, upload });
 
 registerFeedbackRoutes(app, { supabaseAdmin });
 

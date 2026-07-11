@@ -136,7 +136,10 @@ Tables (with RLS policies):
 - Promo pricing display with countdown timer
 
 ### Admin Panel
-- User management (view, search, filter by plan)
+- User management (search; filter by plan, target course, subject, and signup date range, each single- or multi-select)
+- CSV export of the filtered user list
+- Bulk email announcements to a filtered/selected set of users (via Resend), with automatic fallback to an exportable recipient list (copy or CSV) when a send would exceed the free-tier quota
+- Announcement history log
 - Question upload via Word document parser
 - Question review and editing
 - Flagged questions review interface
@@ -201,6 +204,10 @@ PAYSTACK_SECRET_KEY=
 PAYSTACK_PUBLIC_KEY=
 NEXT_PUBLIC_API_URL=
 GROQ_API_KEY=
+RESEND_API_KEY=
+EMAIL_FROM_ADDRESS=Roman Series <announcements@romanseries.com.ng>
+EMAIL_DAILY_LIMIT=100
+EMAIL_MONTHLY_LIMIT=3000
 COUNTDOWN_MODE=false
 COUNTDOWN_END_DATE=
 ```
