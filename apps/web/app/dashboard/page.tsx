@@ -852,6 +852,14 @@ export default function DashboardPage() {
                         {Math.max(prediction.required_putme_score ?? 50, 50)}%
                       </p>
                       {typeof prediction.raw_required_putme_score === "number" &&
+                        prediction.raw_required_putme_score < 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Your UTME score alone already clears this course&apos;s cutoff. UI
+                            still requires a minimum of 50% in Post-UTME.
+                          </p>
+                        )}
+                      {typeof prediction.raw_required_putme_score === "number" &&
+                        prediction.raw_required_putme_score >= 0 &&
                         prediction.raw_required_putme_score < 50 && (
                           <p className="text-xs text-gray-500 mt-1">
                             Your calculated target is {prediction.raw_required_putme_score}%, but
