@@ -141,6 +141,12 @@ export default function AdminUsersPage() {
   const [audiencePreview, setAudiencePreview] = useState<AudiencePreview | null>(null);
   const [exportedResult, setExportedResult] = useState<ExportedResult | null>(null);
 
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editPlan, setEditPlan] = useState("explorer");
+  const [editDurationDays, setEditDurationDays] = useState("180");
+  const [editAmountNaira, setEditAmountNaira] = useState("");
+  const [savingPlan, setSavingPlan] = useState(false);
+
   const buildFilterParams = (extra?: Record<string, string>) => {
     const params = new URLSearchParams();
     if (plans.length) params.set("plans", plans.join(","));
@@ -374,6 +380,43 @@ export default function AdminUsersPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleOpenEditPlan = (user: User) => {
+    setEditingUser(user);
+    setEditPlan(user.subscription_status);
+    setEditDurationDays("180");
+    setEditAmountNaira("");
+  };
+
+  const handleSavePlan = async () => {
+    if (!editingUser) return;
+
+    setSavingPlan(true);
+    try {
+      const payload: {
+        subscription_status: string;
+        duration_days?: number;
+        amount_naira?: number;
+      } = { subscription_status: editPlan };
+
+      if (editPlan !== "explorer") {
+        payload.duration_days = Number(editDurationDays) || 180;
+        if (editAmountNaira) payload.amount_naira = Number(editAmountNaira);
+      }
+
+      await api.patch(`/api/admin/users/${editingUser.id}`, payload);
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === editingUser.id ? { ...u, subscription_status: editPlan } : u))
+      );
+      toast.success(`${editingUser.full_name}'s plan is now ${editPlan}`);
+      setEditingUser(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update plan");
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
   const canAnnounce = selectAllMatching || selectedIds.size > 0;
   const allOnPageSelected = users.length > 0 && users.every((u) => selectedIds.has(u.id));
 
@@ -534,13 +577,21 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.full_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                        user.subscription_status
-                      )}`}
-                    >
-                      {user.subscription_status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                          user.subscription_status
+                        )}`}
+                      >
+                        {user.subscription_status}
+                      </span>
+                      <button
+                        onClick={() => handleOpenEditPlan(user)}
+                        className="text-xs text-forest hover:underline"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{user.target_course || "—"}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">
@@ -698,6 +749,89 @@ export default function AdminUsersPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit plan modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-navy mb-1">Change Plan</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {editingUser.full_name} · {editingUser.email}
+            </p>
+
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plan</label>
+                <select
+                  value={editPlan}
+                  onChange={(e) => setEditPlan(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-forest"
+                >
+                  <option value="explorer">Explorer</option>
+                  <option value="scholar">Scholar</option>
+                  <option value="elite">Elite</option>
+                </select>
+              </div>
+
+              {editPlan !== "explorer" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount Paid (₦, optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={editAmountNaira}
+                      onChange={(e) => setEditAmountNaira(e.target.value)}
+                      placeholder="e.g. 3500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-forest"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Duration (days)
+                    </label>
+                    <input
+                      type="number"
+                      value={editDurationDays}
+                      onChange={(e) => setEditDurationDays(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-forest"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Use this when a student paid manually because Flutterwave didn&apos;t process
+                    their payment. This grants the plan exactly like a normal payment would (sets
+                    the expiry date and logs it to subscription records).
+                  </p>
+                </>
+              )}
+
+              {editPlan === "explorer" && (
+                <p className="text-xs text-gray-500">
+                  Switching to Explorer clears the subscription expiry.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingUser(null)}
+                disabled={savingPlan}
+                className="flex-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePlan}
+                disabled={savingPlan}
+                className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
+              >
+                {savingPlan ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
         </div>
       )}

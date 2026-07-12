@@ -340,25 +340,75 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     }
   });
 
-  // PATCH /api/admin/users/:id
+  // PATCH /api/admin/users/:id - also used to manually grant/extend a paid
+  // plan when Flutterwave fails to process and the student pays another way
+  // (bank transfer, cash, etc.) - mirrors what a real successful payment does
+  // (profiles.subscription_expires_at + a subscriptions audit row) so manually
+  // granted plans behave identically to ones paid through Flutterwave.
   app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
     const userId = await checkAdminAuth(req, res, supabaseAdmin);
     if (!userId) return;
 
     try {
       const { id } = req.params;
-      const { role, subscription_status } = req.body;
+      const { role, subscription_status, duration_days, amount_naira } = req.body;
+
+      if (
+        subscription_status &&
+        !["explorer", "scholar", "elite"].includes(subscription_status)
+      ) {
+        res.status(400).json({
+          status: "error",
+          message: "subscription_status must be explorer, scholar, or elite",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
 
       const updateData: any = {};
       if (role) updateData.role = role;
-      if (subscription_status) updateData.subscription_status = subscription_status;
 
-      const { data } = await supabaseAdmin
+      if (subscription_status) {
+        updateData.subscription_status = subscription_status;
+
+        if (subscription_status === "explorer") {
+          updateData.subscription_expires_at = null;
+        } else {
+          const days = Number(duration_days) > 0 ? Number(duration_days) : 180;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + days);
+          updateData.subscription_expires_at = expiresAt.toISOString();
+
+          const { error: subError } = await supabaseAdmin.from("subscriptions").insert({
+            user_id: id,
+            plan: subscription_status,
+            status: "active",
+            paystack_reference: `MANUAL-${crypto.randomUUID()}`,
+            amount: Math.round((Number(amount_naira) || 0) * 100),
+            expires_at: expiresAt.toISOString(),
+          });
+
+          if (subError) {
+            console.error("[admin/users/:id] Manual subscription log error:", subError);
+          }
+        }
+      }
+
+      const { data, error: updateError } = await supabaseAdmin
         .from("profiles")
         .update(updateData)
         .eq("id", id)
         .select()
         .single();
+
+      if (updateError || !data) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to update user",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
 
       res.json({
         status: "success",
