@@ -1338,10 +1338,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
-          // Set default values for prediction calculations
+          // Set default values for prediction calculations - UI's real
+          // aggregate formula is a fixed (UTME/8) + (PUTME/2), i.e. equal
+          // max contribution of 50 each, not a 60/40 split.
           utme_cutoff: 200,
-          utme_weight: 60,
-          putme_weight: 40,
+          utme_weight: 50,
+          putme_weight: 50,
           combined_cutoff: r.merit,
         }));
 
@@ -1439,10 +1441,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
-          // Set default values for prediction calculations
+          // Set default values for prediction calculations - UI's real
+          // aggregate formula is a fixed (UTME/8) + (PUTME/2), i.e. equal
+          // max contribution of 50 each, not a 60/40 split.
           utme_cutoff: 200,
-          utme_weight: 60,
-          putme_weight: 40,
+          utme_weight: 50,
+          putme_weight: 50,
           combined_cutoff: r.merit,
         }));
 
@@ -1573,8 +1577,8 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           course,
           year,
           utme_cutoff,
-          utme_weight: utme_weight || 60,
-          putme_weight: putme_weight || 40,
+          utme_weight: utme_weight || 50,
+          putme_weight: putme_weight || 50,
           combined_cutoff,
           notes: notes || null,
         })
