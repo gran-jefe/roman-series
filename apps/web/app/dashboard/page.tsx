@@ -500,7 +500,7 @@ export default function DashboardPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
                       <h4 className="text-xl md:text-2xl font-bold text-navy">
-                        Authentic and Update UI-POSTUTME Questions (2019-2026)
+                        Authentic and Updated UI-POSTUTME Questions (2019-2026)
                       </h4>
                       <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">
                         Elite Only
@@ -849,8 +849,15 @@ export default function DashboardPage() {
                         Target Post-UTME Score
                       </p>
                       <p className="text-2xl font-bold text-navy">
-                        {prediction.required_putme_score ?? 0}%
+                        {Math.max(prediction.required_putme_score ?? 50, 50)}%
                       </p>
+                      {typeof prediction.raw_required_putme_score === "number" &&
+                        prediction.raw_required_putme_score < 50 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Your calculated target is {prediction.raw_required_putme_score}%, but
+                            UI requires a minimum of 50% in Post-UTME.
+                          </p>
+                        )}
                     </div>
 
                     <div className="border-t pt-3">

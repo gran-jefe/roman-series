@@ -225,7 +225,7 @@ export default function UpgradePage() {
     "Advanced analytics dashboard",
     "Time-pressure diagnostics",
     "Hard-mode mock exams",
-    "Authentic and Update UI-POSTUTME Questions (2019-2026)",
+    "Authentic and Updated UI-POSTUTME Questions (2019-2026)",
     "Extended leaderboard",
     "Elite badge (blue tick on profile)",
     "Performance trend forecasting",
@@ -377,7 +377,7 @@ export default function UpgradePage() {
                 <li>• Get advanced analytics to identify weak areas faster</li>
                 <li>• Practice hard-mode exams for extra challenge</li>
                 <li>
-                  • Access authentic and Update UI-POSTUTME Questions
+                  • Access authentic and Updated UI-POSTUTME Questions
                   (2019-2026)
                 </li>
                 <li>• See your percentile ranking among peers</li>

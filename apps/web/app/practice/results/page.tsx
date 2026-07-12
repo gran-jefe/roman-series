@@ -9,6 +9,7 @@ import { UpgradePrompt } from "@/components/UpgradePrompt";
 import type { SessionResult, UserStats } from "types";
 import { CardSkeleton } from "@/components/skeletons";
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, BarChart3, Home } from "lucide-react";
+import { useContentProtection } from "@/hooks/useContentProtection";
 
 interface SessionMeta {
   subject: { id: string; name: string } | null;
@@ -17,6 +18,7 @@ interface SessionMeta {
 }
 
 export default function PracticeResultsPage() {
+  useContentProtection();
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");

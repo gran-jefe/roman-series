@@ -268,7 +268,7 @@ export default function AdminRecalledQuestionsPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-navy">
-              Manage Authentic and Update UI-POSTUTME Questions
+              Manage Authentic and Updated UI-POSTUTME Questions
               (2019-2026)
             </h1>
             <p className="text-gray-600 mt-2">

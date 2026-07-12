@@ -8,6 +8,7 @@ import Link from "next/link";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
 import { Lock, Calendar, AlertCircle } from "lucide-react";
+import { useContentProtection } from "@/hooks/useContentProtection";
 
 interface RecalledQuestion {
   id: string;
@@ -37,6 +38,7 @@ interface Subject {
 
 
 export default function RecalledQuestionsPage() {
+  useContentProtection();
   const { profile, loading } = useAuth();
   const [questions, setQuestions] = useState<RecalledQuestion[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -108,7 +110,7 @@ export default function RecalledQuestionsPage() {
   if (!isElite) {
     return (
       <LockedFeature
-        featureName="Authentic and Update UI-POSTUTME Questions (2019-2026)"
+        featureName="Authentic and Updated UI-POSTUTME Questions (2019-2026)"
         description="Access to questions confirmed to have appeared in past UI Post-Utme exams, including June 2026 questions for underage candidates. "
         currentPlan={profile?.subscription_status || "explorer"}
         icon="⭐"

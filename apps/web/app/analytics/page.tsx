@@ -460,6 +460,13 @@ export default function AnalyticsPage() {
                       <p className="text-xs text-gray-600">% minimum</p>
                     </div>
                   </div>
+                  {typeof prediction.raw_required_putme_score === "number" &&
+                    prediction.raw_required_putme_score < 50 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Your calculated target is {prediction.raw_required_putme_score}%, but UI
+                        requires a minimum of 50% in Post-UTME for admission.
+                      </p>
+                    )}
                 </div>
               </div>
 
