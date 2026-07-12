@@ -422,7 +422,22 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Key Info Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {/* Course Cutoff */}
+                <div className="p-5 rounded-lg border-l-4 bg-gray-50 border-gray-300">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">
+                    {prediction.cutoff.year} Course Cutoff
+                  </p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-navy">
+                        {prediction.cutoff.combined_cutoff ?? "—"}
+                      </p>
+                      <p className="text-xs text-gray-600">{prediction.cutoff.course}</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Your UTME Score */}
                 <div className={`p-5 rounded-lg border-l-4 ${prediction.utme_qualifies ? "bg-green-50 border-green-400" : "bg-amber-50 border-amber-400"}`}>
                   <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Your UTME Score</p>
@@ -485,11 +500,11 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold text-navy">Your Predicted Score</p>
                       <p className={`text-sm font-bold px-3 py-1 rounded-full ${
-                        (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0)
+                        (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity)
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
                       }`}>
-                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0) ? "✓ On Track" : "⚠ Below Cutoff"}
+                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity) ? "✓ On Track" : "⚠ Below Cutoff"}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -501,7 +516,9 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm font-bold text-navy">{(prediction.predicted_total ?? 0).toFixed(1)}</span>
-                        <span className="text-sm font-bold text-gray-500">Target: {prediction.cutoff?.combined_cutoff ?? 0}</span>
+                        <span className="text-sm font-bold text-gray-500">
+                          Target: {prediction.cutoff?.combined_cutoff ?? "—"}
+                        </span>
                       </div>
                     </div>
                   </div>
