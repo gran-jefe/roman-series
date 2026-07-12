@@ -109,7 +109,7 @@ export default function RecalledQuestionsPage() {
     return (
       <LockedFeature
         featureName="Authentic and Update UI-POSTUTME Questions (2019-2026)"
-        description="Access to questions confirmed to have appeared in past UI Post-Utme exams, including June 2026 questions for underage candidates."
+        description="Access to questions confirmed to have appeared in past UI Post-Utme exams, including June 2026 questions for underage candidates. "
         currentPlan={profile?.subscription_status || "explorer"}
         icon="⭐"
       />

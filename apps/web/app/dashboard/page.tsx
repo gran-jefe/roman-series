@@ -507,9 +507,9 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <p className="text-sm md:text-base text-gray-600 mb-4">
-                      Questions confirmed to have appeared in past Post-UTME
-                      exams. Practice with authentic exam content from your
-                      target university.
+                      Questions confirmed to have appeared in past UI Post-Utme
+                      exams, <strong>including June 2026 questions for underage
+                      candidates</strong>. 
                     </p>
                     {subscription?.subscription_status !== "elite" && (
                       <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4">
