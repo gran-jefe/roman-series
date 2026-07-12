@@ -34,6 +34,15 @@ export function clearAuthCookie() {
 
 api.interceptors.request.use(
   async (config) => {
+    // On a fresh page load, Firebase hasn't finished restoring a persisted
+    // session yet - firebaseAuth.currentUser is null for a brief async window
+    // even for an already-logged-in user. Without this, any request fired in
+    // that window (e.g. a page's own data-fetch effect on mount) goes out
+    // with no Authorization header, gets a real 401, and the response
+    // interceptor below treats that as a genuinely expired session - logging
+    // a fully-authenticated user out on every reload. authStateReady() is the
+    // SDK's own signal that the initial restore attempt has completed.
+    await firebaseAuth.authStateReady();
     const token = await firebaseAuth.currentUser?.getIdToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

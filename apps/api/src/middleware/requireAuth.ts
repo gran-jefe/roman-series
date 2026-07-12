@@ -28,8 +28,12 @@ export async function resolveUserFromToken(
     .single();
 
   if (error) {
-    // DB/infra failure, not a bad token - the caller must not treat this as a 401.
-    throw new ProfileLookupError(error.message);
+    // PGRST116 = "no rows returned", i.e. a valid Firebase token with no
+    // matching profile - a real, meaningful state (not a DB/infra failure),
+    // and one callers must be able to tell apart from an actual outage.
+    if (error.code !== "PGRST116") {
+      throw new ProfileLookupError(error.message);
+    }
   }
 
   if (!profile) {
@@ -59,7 +63,8 @@ export function requireAuth(supabaseAdmin: SupabaseClient) {
       if (!resolved) {
         res.status(401).json({
           status: "error",
-          message: "Invalid or expired token",
+          message:
+            "No account found for this login. If you had an account before our recent update, use 'Forgot Password' to activate it.",
           timestamp: new Date().toISOString(),
         });
         return;
