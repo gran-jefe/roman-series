@@ -147,6 +147,9 @@ export default function AdminUsersPage() {
   const [editAmountNaira, setEditAmountNaira] = useState("");
   const [savingPlan, setSavingPlan] = useState(false);
 
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const buildFilterParams = (extra?: Record<string, string>) => {
     const params = new URLSearchParams();
     if (plans.length) params.set("plans", plans.join(","));
@@ -417,6 +420,22 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/admin/users/${deletingUser.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
+      toast.success(`${deletingUser.full_name}'s account has been deleted`);
+      setDeletingUser(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const canAnnounce = selectAllMatching || selectedIds.size > 0;
   const allOnPageSelected = users.length > 0 && users.every((u) => selectedIds.has(u.id));
 
@@ -545,6 +564,7 @@ export default function AdminUsersPage() {
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Plan</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Course</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Joined</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -558,7 +578,7 @@ export default function AdminUsersPage() {
               </>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                   No users match these filters
                 </td>
               </tr>
@@ -596,6 +616,14 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 text-sm text-gray-700">{user.target_course || "—"}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {new Date(user.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <button
+                      onClick={() => setDeletingUser(user)}
+                      className="text-xs text-ember hover:underline"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))
@@ -830,6 +858,41 @@ export default function AdminUsersPage() {
                 className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
               >
                 {savingPlan ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete account confirmation modal */}
+      {deletingUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-navy mb-1">Delete Account</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {deletingUser.full_name} · {deletingUser.email}
+            </p>
+
+            <p className="text-sm text-gray-700 bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              This permanently deletes {deletingUser.full_name}&apos;s account, Firebase
+              login, and all practice history — sessions, mock exams, subscriptions.
+              This cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingUser(null)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-ember text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import multer from "multer";
 import crypto from "crypto";
 import { parseRomanSeriesDocument } from "../lib/questionParser";
 import { resolveUserFromToken } from "../middleware/requireAuth";
+import { firebaseAdminAuth } from "../lib/firebaseAdmin";
 
 interface AdminDeps {
   supabaseAdmin: SupabaseClient;
@@ -417,6 +418,98 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     } catch (error) {
       console.error("[admin/users/:id] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/users/:id - permanently deletes a user: the Firebase
+  // Auth account first, then the Supabase Auth user (whose id = profiles.id),
+  // which cascades to profiles/sessions/subscriptions/analytics_reports and,
+  // via auth.users directly, flagged_questions/recalled_questions too. Order
+  // matters: deleting Firebase first means a failure on the Supabase side
+  // leaves all data intact and safely retryable; the reverse order would
+  // risk cascading away all data while leaving a live, orphaned Firebase
+  // login - the same class of bug as the Firebase Orphaned Account Incident.
+  app.delete("/api/admin/users/:id", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const { id } = req.params;
+
+      if (id === adminId) {
+        res.status(400).json({
+          status: "error",
+          message: "You cannot delete your own account.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, firebase_uid, full_name, role")
+        .eq("id", id)
+        .single();
+
+      if (profileError || !profile) {
+        res.status(404).json({
+          status: "error",
+          message: "User not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (profile.role === "admin") {
+        res.status(403).json({
+          status: "error",
+          message: "Cannot delete an admin account.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (profile.firebase_uid) {
+        try {
+          await firebaseAdminAuth.deleteUser(profile.firebase_uid);
+        } catch (firebaseError: any) {
+          if (firebaseError?.code !== "auth/user-not-found") {
+            console.error("[admin/users/:id DELETE] Firebase delete failed:", firebaseError);
+            res.status(500).json({
+              status: "error",
+              message: "Failed to delete Firebase account — nothing was removed. Try again.",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+        }
+      }
+
+      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(id);
+
+      if (authDeleteError) {
+        console.error("[admin/users/:id DELETE] Supabase delete failed:", authDeleteError);
+        res.status(500).json({
+          status: "error",
+          message:
+            "Firebase account was deleted, but removing the database record failed. Click delete again to retry.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        message: "Account deleted.",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users/:id DELETE] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",
