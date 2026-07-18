@@ -973,19 +973,32 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         .select("question_id");
       const flaggedQuestionIds = new Set((flaggedRows || []).map((f: any) => f.question_id));
 
+      // Question deduplication: prefer questions unseen in the user's last 5 mock sessions.
+      // Fetched once up front (not per subject) since it isn't subject-specific.
+      const { data: recentMockSessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", req.userId)
+        .eq("is_mock", true)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const recentMockSessionIds = recentMockSessions?.map((s: any) => s.id) ?? [];
+      const seenMockIds = new Set<string>();
+      if (recentMockSessionIds.length > 0) {
+        const { data: recentMockAnswers } = await supabaseAdmin
+          .from("session_answers")
+          .select("question_id")
+          .in("session_id", recentMockSessionIds);
+        recentMockAnswers?.forEach((a: any) => seenMockIds.add(a.question_id));
+      }
+
       for (const subject of subjects) {
-        let query = supabaseAdmin
+        const { data: rawQuestionIds, error: idError } = await supabaseAdmin
           .from("questions")
-          .select("id")
+          .select("id, difficulty")
           .eq("subject_id", subject.id)
-          .eq("university_id", profile.target_university_id);
-
-        // In hard mode, filter for medium and hard difficulty questions
-        if (mode === "hard") {
-          query = query.in("difficulty", ["medium", "hard"]);
-        }
-
-        const { data: rawQuestionIds, error: idError } = await query
+          .eq("university_id", profile.target_university_id)
           .limit(100); // Get more than needed to have options for shuffling
 
         const questionIds = (rawQuestionIds || []).filter(
@@ -1001,28 +1014,18 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           return;
         }
 
-        // Question deduplication: prefer unseen questions from last 5 mock sessions
-        const { data: recentMockSessions } = await supabaseAdmin
-          .from("sessions")
-          .select("id")
-          .eq("user_id", req.userId)
-          .eq("is_mock", true)
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        const recentMockSessionIds = recentMockSessions?.map((s: any) => s.id) ?? [];
-        let seenMockIds = new Set<string>();
-        if (recentMockSessionIds.length > 0) {
-          const { data: recentMockAnswers } = await supabaseAdmin
-            .from("session_answers")
-            .select("question_id")
-            .in("session_id", recentMockSessionIds)
-            .eq("question_id", subject.id); // Filter by current subject
-          recentMockAnswers?.forEach((a: any) => seenMockIds.add(a.question_id));
+        // In hard mode, prefer medium/hard difficulty questions, but fall back to the
+        // full pool if this subject doesn't have enough of them to fill a 25-question block.
+        let candidateIds = questionIds;
+        if (mode === "hard") {
+          const hardPool = questionIds.filter(
+            (q: any) => q.difficulty === "medium" || q.difficulty === "hard"
+          );
+          candidateIds = hardPool.length >= questionsPerSubject ? hardPool : questionIds;
         }
 
-        const unseenMockIds = questionIds.filter((q: any) => !seenMockIds.has(q.id));
-        const mockPoolToShuffle = unseenMockIds.length >= questionsPerSubject ? unseenMockIds : questionIds;
+        const unseenMockIds = candidateIds.filter((q: any) => !seenMockIds.has(q.id));
+        const mockPoolToShuffle = unseenMockIds.length >= questionsPerSubject ? unseenMockIds : candidateIds;
 
         // Shuffle and select 25 questions
         const shuffled = shuffleArray(mockPoolToShuffle);

@@ -380,11 +380,24 @@ export default function MockSessionPage() {
   const currentQ = questions[currentQuestion];
   const isTimeWarning = timeRemaining < 600; // 10 minutes
   const isCritical = timeRemaining < 60; // 1 minute
-  const questionsPerSubject = 25;
-  const subjectIndex = Math.floor(currentQuestion / questionsPerSubject);
   const subjects = (sessionData?.subjects || []) as Subject[];
-  const currentSubject = subjects[subjectIndex]?.name || "Question";
-  const questionInSubject = (currentQuestion % questionsPerSubject) + 1;
+  // Questions are concatenated per subject by the backend; derive each subject's
+  // actual block boundaries instead of assuming a fixed 25 per subject (hard mode
+  // can return fewer for a subject with a thin medium/hard question pool).
+  const subjectBlocks: { name: string; start: number; count: number }[] = [];
+  questions.forEach((q, idx) => {
+    const last = subjectBlocks[subjectBlocks.length - 1];
+    if (last && last.name === q.subject_name) {
+      last.count += 1;
+    } else {
+      subjectBlocks.push({ name: q.subject_name, start: idx, count: 1 });
+    }
+  });
+  const currentBlock = subjectBlocks.find(
+    (b) => currentQuestion >= b.start && currentQuestion < b.start + b.count
+  );
+  const currentSubject = currentBlock?.name || "Question";
+  const questionInSubject = currentBlock ? currentQuestion - currentBlock.start + 1 : currentQuestion + 1;
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -402,7 +415,7 @@ export default function MockSessionPage() {
             Roman Series<sup className="text-[0.6em]">™</sup>
           </p>
           <p className="font-bold text-sm leading-tight">{hardMode ? "🔴 HARD MODE" : "Mock PUTME"}</p>
-          <p className="text-xs text-gray-300 leading-tight">{currentSubject} • Q{questionInSubject}/25</p>
+          <p className="text-xs text-gray-300 leading-tight">{currentSubject} • Q{questionInSubject}/{currentBlock?.count ?? 25}</p>
         </div>
         <div className={`font-bold text-lg px-3 py-1 rounded ${
           isCritical ? "bg-red-600" : isTimeWarning ? "bg-yellow-600" : "bg-forest"
@@ -432,14 +445,14 @@ export default function MockSessionPage() {
             </div>
 
             {/* Subject grids */}
-            {subjects.map((subject, idx) => (
-              <div key={subject.id} className="mb-4">
+            {subjectBlocks.map((block) => (
+              <div key={block.name} className="mb-4">
                 <p className="text-xs font-bold text-navy mb-2 uppercase tracking-wide">
-                  {subject.name}
+                  {block.name}
                 </p>
                 <div className="grid grid-cols-5 gap-1">
-                  {Array.from({ length: 25 }).map((_, qIdx) => {
-                    const qNumber = idx * 25 + qIdx;
+                  {Array.from({ length: block.count }).map((_, qIdx) => {
+                    const qNumber = block.start + qIdx;
                     const isAnswered = answers[qNumber]?.selected_option_id !== null;
                     const isCurrent = currentQuestion === qNumber;
                     const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
@@ -454,7 +467,7 @@ export default function MockSessionPage() {
                           "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                       >
-                        {idx * 25 + qIdx + 1}
+                        {qNumber + 1}
                       </button>
                     );
                   })}
@@ -470,18 +483,17 @@ export default function MockSessionPage() {
           {/* SUBJECT TABS - Sticky below navbar */}
           <div className="sticky top-14 z-40 bg-white border-b border-gray-200 overflow-x-auto flex-shrink-0">
             <div className="flex">
-              {subjects.map((subject, idx) => {
-                const startQ = idx * 25;
-                const answered = answers.slice(startQ, startQ + 25)
+              {subjectBlocks.map((block) => {
+                const answered = answers.slice(block.start, block.start + block.count)
                   .filter(a => a.selected_option_id !== null).length;
-                const isActive = Math.floor(currentQuestion / 25) === idx;
+                const isActive = currentBlock?.start === block.start;
                 return (
                   <button
-                    key={subject.id}
+                    key={block.name}
                     onClick={() => {
-                      const firstUnanswered = answers.slice(startQ, startQ + 25)
+                      const firstUnanswered = answers.slice(block.start, block.start + block.count)
                         .findIndex(a => a.selected_option_id === null);
-                      setCurrentQuestion(firstUnanswered >= 0 ? startQ + firstUnanswered : startQ);
+                      setCurrentQuestion(firstUnanswered >= 0 ? block.start + firstUnanswered : block.start);
                     }}
                     className={`flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap text-sm font-medium transition-all ${
                       isActive
@@ -489,11 +501,11 @@ export default function MockSessionPage() {
                         : "border-transparent text-gray-500 hover:text-navy"
                     }`}
                   >
-                    {subject.name}
+                    {block.name}
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      answered === 25 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      answered === block.count ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                     }`}>
-                      {answered}/25
+                      {answered}/{block.count}
                     </span>
                   </button>
                 );
@@ -504,9 +516,8 @@ export default function MockSessionPage() {
           {/* MOBILE MINI PALETTE */}
           <div className="lg:hidden bg-white border-b border-gray-100 px-3 py-2 flex-shrink-0">
             <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-              {Array.from({ length: 25 }).map((_, qIdx) => {
-                const subjectIdx = Math.floor(currentQuestion / 25);
-                const qNumber = subjectIdx * 25 + qIdx;
+              {Array.from({ length: currentBlock?.count ?? 0 }).map((_, qIdx) => {
+                const qNumber = (currentBlock?.start ?? 0) + qIdx;
                 const isAnswered = answers[qNumber]?.selected_option_id !== null;
                 const isCurrent = currentQuestion === qNumber;
                 const isFlagged = flaggedQuestions.has(questions[qNumber]?.id);
@@ -521,7 +532,7 @@ export default function MockSessionPage() {
                       "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {subjectIdx * 25 + qIdx + 1}
+                    {qNumber + 1}
                   </button>
                 );
               })}
