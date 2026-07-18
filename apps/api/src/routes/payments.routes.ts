@@ -727,4 +727,169 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       });
     }
   });
+
+  app.post("/api/payments/paystack/verify", async (req: Request, res: Response) => {
+    const { reference } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({
+        status: "error",
+        message: "reference is required",
+      });
+    }
+
+    try {
+      const paystackResponse = await verifyTransaction(reference);
+
+      if (paystackResponse.data.status !== "success") {
+        return res.status(400).json({
+          status: "error",
+          message: "Transaction not successful",
+        });
+      }
+
+      const { data: subscription, error: subFindError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan, status")
+        .eq("paystack_reference", reference)
+        .single();
+
+      if (subFindError || !subscription) {
+        return res.status(404).json({
+          status: "error",
+          message: "Subscription record not found for this transaction",
+        });
+      }
+
+      // Already processed
+      if (subscription.status === "active") {
+        return res.json({
+          status: "success",
+          data: { plan: subscription.plan, already_active: true },
+        });
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 180);
+
+      // Record the amount Paystack actually charged (in kobo), same as the
+      // Flutterwave verify path — the client may have charged a
+      // discounted/promo price.
+      const amountChargedKobo = paystackResponse.data.amount || 0;
+
+      const { error: subUpdateError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          status: "active",
+          expires_at: expiresAt.toISOString(),
+          amount: amountChargedKobo,
+        })
+        .eq("paystack_reference", reference);
+
+      if (subUpdateError) {
+        console.error("[Paystack Verify] Subscription update error:", subUpdateError);
+      }
+
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: subscription.plan,
+          subscription_expires_at: expiresAt.toISOString(),
+        })
+        .eq("id", subscription.user_id);
+
+      if (profileError) {
+        console.error("[Paystack Verify] Profile update failed:", profileError);
+        return res.status(500).json({
+          status: "error",
+          message: "Payment received but profile update failed. Contact support.",
+        });
+      }
+
+      return res.json({
+        status: "success",
+        data: {
+          plan: subscription.plan,
+          expires_at: expiresAt.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("[Paystack Verify] Error:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Verification failed: " + error.message,
+      });
+    }
+  });
+
+  app.post("/api/payments/paystack/webhook", async (req: Request, res: Response) => {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    const signature = req.headers["x-paystack-signature"] as string | undefined;
+
+    if (!secretKey || !signature) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    if (!req.rawBody) {
+      return res.status(400).send("Missing request body");
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha512", secretKey)
+      .update(req.rawBody)
+      .digest("hex");
+
+    const signatureBuffer = Buffer.from(signature, "utf8");
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+    const isValid =
+      signatureBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+
+    if (!isValid) {
+      console.error("[Paystack Webhook] Signature mismatch");
+      return res.status(401).send("Unauthorized");
+    }
+
+    const payload = req.body;
+
+    if (payload.event === "charge.success") {
+      const reference = payload.data?.reference;
+
+      try {
+        const { data: subscription } = await supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, plan, status")
+          .eq("paystack_reference", reference)
+          .single();
+
+        if (subscription && subscription.status !== "active") {
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 180);
+
+          await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "active",
+              expires_at: expiresAt.toISOString(),
+            })
+            .eq("paystack_reference", reference);
+
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              subscription_status: subscription.plan,
+              subscription_expires_at: expiresAt.toISOString(),
+            })
+            .eq("id", subscription.user_id);
+
+          console.log("[Paystack Webhook] Payment processed for reference:", reference, "Plan:", subscription.plan, "User:", subscription.user_id);
+        }
+      } catch (err) {
+        console.error("[Paystack Webhook] Error processing:", err);
+      }
+    }
+
+    return res.status(200).json({ status: "success" });
+  });
 }

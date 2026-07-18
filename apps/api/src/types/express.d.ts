@@ -5,6 +5,7 @@ declare global {
     interface Request {
       user?: User;
       profile?: Profile;
+      rawBody?: Buffer;
     }
   }
 }
