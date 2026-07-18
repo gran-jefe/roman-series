@@ -19,6 +19,8 @@ const isPromoActive = () => Date.now() < PROMO_END_DATE.getTime();
 // Pricing in kobo — use Launch Week discount prices while the promo is active
 // (must match the Scholar/Elite prices advertised on pricing/page.tsx and
 // upgrade/page.tsx), otherwise fall back to regular price.
+// Used by the Flutterwave /upgrade route only — see PAYSTACK_PROMO_PRICING
+// below for why Paystack routes don't use this.
 const getPlanPricing = (): Record<string, number> =>
   isPromoActive()
     ? {
@@ -31,6 +33,15 @@ const getPlanPricing = (): Record<string, number> =>
         scholar: 350000,   // ₦3,500 (regular)
         elite: 500000,     // ₦5,000 (regular)
       };
+
+// Paystack checkout keeps the Launch Week discount price regardless of
+// PROMO_END_DATE, for now — always ₦2,500/₦3,500, never the regular price.
+// Unlike getPlanPricing() above, this is NOT date-gated on purpose.
+const PAYSTACK_PROMO_PRICING: Record<string, number> = {
+  explorer: 0,       // Free
+  scholar: 250000,   // ₦2,500
+  elite: 350000,     // ₦3,500
+};
 
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   const { supabaseAdmin, webUrl, flwWebhookHash } = deps;
@@ -562,8 +573,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const planPricing = getPlanPricing();
-      const amountInKobo = planPricing[plan];
+      const amountInKobo = PAYSTACK_PROMO_PRICING[plan];
       const reference = `PS-${req.userId!.slice(0, 8)}-${Date.now()}`;
 
       const { error: insertError } = await supabaseAdmin
@@ -649,9 +659,8 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const planPricing = getPlanPricing();
-      const currentPlanPrice = planPricing[profile.subscription_status];
-      const targetPlanPrice = planPricing[target_plan];
+      const currentPlanPrice = PAYSTACK_PROMO_PRICING[profile.subscription_status];
+      const targetPlanPrice = PAYSTACK_PROMO_PRICING[target_plan];
       const upgradeDifference = Math.max(0, targetPlanPrice - currentPlanPrice);
 
       if (upgradeDifference === 0) {

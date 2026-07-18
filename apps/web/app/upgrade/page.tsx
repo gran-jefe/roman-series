@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
-import { getPromoTimeLeft, isPromoActive } from "@/lib/promo";
+import { getPromoTimeLeft } from "@/lib/promo";
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -17,13 +17,14 @@ export default function UpgradePage() {
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Must match the promo-aware pricing the backend actually charges
-  // (apps/api/src/routes/payments.routes.ts getPlanPricing) so the
-  // displayed price never diverges from what Paystack charges.
-  const promoActive = isPromoActive();
-  const scholarPrice = promoActive ? 2500 : 3500;
-  const elitePrice = promoActive ? 3500 : 5000;
-  const upgradeCost = elitePrice - scholarPrice;
+  // Paystack checkout keeps the Launch Week discount price for now,
+  // regardless of the promo countdown date — must match
+  // PAYSTACK_PROMO_PRICING in apps/api/src/routes/payments.routes.ts so the
+  // displayed price never diverges from what Paystack actually charges.
+  const promoActive = true;
+  const scholarPrice = 2500;
+  const elitePrice = 3500;
+  const upgradeCost = elitePrice - scholarPrice; // ₦1,000
 
   // Countdown to the end of the Launch Week discount
   useEffect(() => {
