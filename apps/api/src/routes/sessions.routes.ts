@@ -965,6 +965,12 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Fetch 25 questions per subject (100 total)
       let allQuestions: any[] = [];
       const questionsPerSubject = 25;
+      // Hard mode prefers questions the whole user base actually gets wrong a
+      // lot (see get_hard_question_ids), not a static per-question tag. 5
+      // attempts is a defensible floor before treating a wrong-rate as signal
+      // rather than noise; 0.5 means "most attempts get it wrong."
+      const HARD_MODE_MIN_ATTEMPTS = 5;
+      const HARD_MODE_WRONG_RATE_THRESHOLD = 0.5;
 
       // Questions currently flagged for review are excluded from mock exams
       // until an admin rectifies and clears the flag.
@@ -998,8 +1004,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           .from("questions")
           .select("id, difficulty")
           .eq("subject_id", subject.id)
-          .eq("university_id", profile.target_university_id)
-          .limit(100); // Get more than needed to have options for shuffling
+          .eq("university_id", profile.target_university_id);
 
         const questionIds = (rawQuestionIds || []).filter(
           (q: any) => !flaggedQuestionIds.has(q.id)
@@ -1014,14 +1019,31 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           return;
         }
 
-        // In hard mode, prefer medium/hard difficulty questions, but fall back to the
-        // full pool if this subject doesn't have enough of them to fill a 25-question block.
+        // Hard mode cascade: prefer questions the whole user base actually
+        // gets wrong a lot (real, aggregate difficulty — not personalized to
+        // this user); fall back to the static difficulty tag for
+        // cold-start subjects without enough answer history yet; fall back
+        // to the full pool if neither yields enough for a 25-question block.
         let candidateIds = questionIds;
         if (mode === "hard") {
-          const hardPool = questionIds.filter(
+          const { data: globalHardRows } = await supabaseAdmin.rpc("get_hard_question_ids", {
+            p_question_ids: questionIds.map((q: any) => q.id),
+            p_min_attempts: HARD_MODE_MIN_ATTEMPTS,
+            p_wrong_rate_threshold: HARD_MODE_WRONG_RATE_THRESHOLD,
+          });
+          const globalHardIds = new Set((globalHardRows || []).map((r: any) => r.question_id));
+          const globalHardPool = questionIds.filter((q: any) => globalHardIds.has(q.id));
+
+          const staticHardPool = questionIds.filter(
             (q: any) => q.difficulty === "medium" || q.difficulty === "hard"
           );
-          candidateIds = hardPool.length >= questionsPerSubject ? hardPool : questionIds;
+
+          candidateIds =
+            globalHardPool.length >= questionsPerSubject
+              ? globalHardPool
+              : staticHardPool.length >= questionsPerSubject
+              ? staticHardPool
+              : questionIds;
         }
 
         const unseenMockIds = candidateIds.filter((q: any) => !seenMockIds.has(q.id));
