@@ -11,12 +11,11 @@ import { useAuth } from "@/context/AuthContext";
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Flutterwave's inline widget redirects here with these params
+  // Flutterwave's inline widget redirects here with these params. Paystack
+  // purchases redirect to /payment/callback instead — see that page.
   const transaction_id = searchParams.get("transaction_id");
   const tx_ref = searchParams.get("tx_ref");
   const status = searchParams.get("status");
-  // Paystack's hosted checkout redirects here with these instead
-  const paystackReference = searchParams.get("reference") || searchParams.get("trxref");
   const { restoreSession } = useAuth();
 
   const [verifying, setVerifying] = useState(true);
@@ -30,10 +29,7 @@ export default function PaymentSuccessPage() {
       return;
     }
 
-    const isFlutterwaveRedirect = status === "successful" && transaction_id && tx_ref;
-    const isPaystackRedirect = !!paystackReference;
-
-    if (!isFlutterwaveRedirect && !isPaystackRedirect) {
+    if (status !== "successful" || !transaction_id || !tx_ref) {
       setError("No payment reference found");
       setVerifying(false);
       return;
@@ -41,14 +37,10 @@ export default function PaymentSuccessPage() {
 
     const verifyPayment = async () => {
       try {
-        const res = isPaystackRedirect
-          ? await api.post("/api/payments/paystack/verify", {
-              reference: paystackReference,
-            })
-          : await api.post("/api/payments/verify", {
-              transaction_id,
-              tx_ref,
-            });
+        const res = await api.post("/api/payments/verify", {
+          transaction_id,
+          tx_ref,
+        });
         if (res.data.status === "success") {
           setSuccess(true);
           // Refresh user profile to get updated subscription status
@@ -70,7 +62,7 @@ export default function PaymentSuccessPage() {
     };
 
     verifyPayment();
-  }, [transaction_id, tx_ref, status, paystackReference, router, restoreSession]);
+  }, [transaction_id, tx_ref, status, router, restoreSession]);
 
   if (verifying) {
     return (

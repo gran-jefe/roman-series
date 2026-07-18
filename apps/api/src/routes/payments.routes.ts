@@ -600,7 +600,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         email: profile.email,
         amount: amountInKobo,
         reference,
-        callback_url: `${webUrl}/payments/success`,
+        callback_url: `${webUrl}/payment/callback`,
         metadata: { user_id: req.userId, plan },
       });
 
@@ -708,7 +708,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         email: profile.email,
         amount: upgradeDifference,
         reference,
-        callback_url: `${webUrl}/payments/success`,
+        callback_url: `${webUrl}/payment/callback`,
         metadata: {
           user_id: req.userId,
           plan: target_plan,
@@ -828,6 +828,74 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         status: "error",
         message: "Verification failed: " + error.message,
       });
+    }
+  });
+
+  // Polled by the payment callback page while it waits for the webhook to
+  // land. Cheap fast path if the webhook already confirmed the payment;
+  // otherwise falls back to asking Paystack directly. Public (no requireAuth)
+  // — the callback page may hit this before Firebase auth has finished
+  // restoring the session.
+  app.get("/api/payments/paystack/status/:reference", async (req: Request, res: Response) => {
+    const { reference } = req.params;
+
+    try {
+      const { data: subscription } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan, status")
+        .eq("paystack_reference", reference)
+        .single();
+
+      if (!subscription) {
+        res.json({ status: "failed", subscription_active: false, plan: null });
+        return;
+      }
+
+      // Webhook may have already confirmed this — skip the Paystack call.
+      if (subscription.status === "active") {
+        res.json({ status: "success", subscription_active: true, plan: subscription.plan });
+        return;
+      }
+
+      const paystackResponse = await verifyTransaction(reference);
+      const paystackStatus = paystackResponse.data.status;
+
+      if (paystackStatus === "success") {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 180);
+        const amountChargedKobo = paystackResponse.data.amount || 0;
+
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            status: "active",
+            expires_at: expiresAt.toISOString(),
+            amount: amountChargedKobo,
+          })
+          .eq("paystack_reference", reference);
+
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            subscription_status: subscription.plan,
+            subscription_expires_at: expiresAt.toISOString(),
+          })
+          .eq("id", subscription.user_id);
+
+        res.json({ status: "success", subscription_active: true, plan: subscription.plan });
+        return;
+      }
+
+      if (["failed", "abandoned", "reversed"].includes(paystackStatus)) {
+        res.json({ status: "failed", subscription_active: false, plan: null });
+        return;
+      }
+
+      res.json({ status: "pending", subscription_active: false, plan: null });
+    } catch (error) {
+      console.error("[Paystack Status] Error:", error);
+      // Transient — let the frontend keep polling rather than hard-failing.
+      res.json({ status: "pending", subscription_active: false, plan: null });
     }
   });
 
