@@ -7,48 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check, X } from "lucide-react";
-import toast from "react-hot-toast";
 import { getPromoTimeLeft } from "@/lib/promo";
-
-// Utility function to load Flutterwave script and open modal
-const openFlutterwaveModal = (config: any) => {
-  const scriptId = "flutterwave-inline-script";
-
-  const initPayment = () => {
-    try {
-      if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
-        (window as any).FlutterwaveCheckout(config);
-      } else {
-        console.error("[FLW] FlutterwaveCheckout not available on window");
-        toast.error("Payment system failed to load. Please refresh and try again.");
-      }
-    } catch (err) {
-      console.error("[FLW] FlutterwaveCheckout error:", err);
-      toast.error("Payment failed to open. Please try again.");
-    }
-  };
-
-  const existingScript = document.getElementById(scriptId);
-  if (existingScript) {
-    // Script already loaded — call directly
-    initPayment();
-    return;
-  }
-
-  const script = document.createElement("script");
-  script.id = scriptId;
-  script.src = "https://checkout.flutterwave.com/v3.js";
-  script.async = true;
-  script.onload = () => {
-    console.log("[FLW] Script loaded successfully");
-    initPayment();
-  };
-  script.onerror = () => {
-    console.error("[FLW] Failed to load Flutterwave script");
-    toast.error("Payment system unavailable. Check your connection.");
-  };
-  document.body.appendChild(script);
-};
 
 export default function PricingPage() {
   const router = useRouter();
@@ -84,20 +43,6 @@ export default function PricingPage() {
     setError("");
 
     try {
-      // Check if public key is available
-      console.log(
-        "[FLW] Public key available:",
-        !!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY
-      );
-
-      if (!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY) {
-        toast.error(
-          "Payment configuration error: Flutterwave public key not configured"
-        );
-        setLoadingPlan(null);
-        return;
-      }
-
       // Check if user is already on Scholar and upgrading to Elite
       if (plan === "elite" && profile?.subscription_status === "scholar") {
         // Redirect to dedicated upgrade page for Scholar → Elite
@@ -105,86 +50,11 @@ export default function PricingPage() {
         return;
       }
 
-      // Pricing in Naira
-      const pricing = {
-        scholar: 2500,
-        elite: 3500,
-      };
+      const res = await api.post("/api/payments/paystack/initialize", { plan });
+      const { authorization_url } = res.data.data;
 
-      const amount = pricing[plan as keyof typeof pricing];
-
-      // Step 1: Create subscription record and get tx_ref
-      const res = await api.post("/api/payments/initiate", { plan });
-      const { tx_ref } = res.data.data;
-
-      // Step 2: Configure Flutterwave
-      const config = {
-        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY,
-        tx_ref,
-        amount,
-        currency: "NGN",
-        payment_options: "card,banktransfer,ussd,opay",
-        customer: {
-          email: user?.email || "",
-          name: profile?.full_name || "Student",
-        },
-        customizations: {
-          title: "Roman Series™",
-          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - 6 months`,
-          logo: "https://romanseries.com.ng/logo.png",
-        },
-        callback: async (response: any) => {
-          if (
-            response.status === "successful" ||
-            response.charge_response_code === "00"
-          ) {
-            try {
-              await api.post("/api/payments/verify", {
-                transaction_id: response.transaction_id,
-                tx_ref: response.tx_ref,
-              });
-              toast.success("Payment successful! Upgrading your account...");
-              setTimeout(() => {
-                window.location.href = "/dashboard";
-              }, 2000);
-            } catch (err: any) {
-              toast.error(
-                err?.response?.data?.message ||
-                  "Payment received but upgrade failed. Contact support."
-              );
-            }
-          } else {
-            toast.error("Payment was not completed");
-            setLoadingPlan(null);
-          }
-        },
-        onclose: () => {
-          setLoadingPlan(null);
-        },
-      };
-
-      // Validate config before opening modal
-      if (!config.public_key) {
-        toast.error("Payment configuration error: missing public key");
-        setLoadingPlan(null);
-        return;
-      }
-      if (!config.customer.email) {
-        toast.error("Please log in to make a payment");
-        setLoadingPlan(null);
-        return;
-      }
-
-      console.log("[FLW] Opening modal with config:", {
-        public_key: config.public_key.substring(0, 20) + "...",
-        tx_ref: config.tx_ref,
-        amount: config.amount,
-        customer_email: config.customer.email,
-      });
-
-      // Step 3: Open Flutterwave modal using direct script
-      openFlutterwaveModal(config);
-      setLoadingPlan(null);
+      // Redirect to Paystack's hosted checkout page
+      window.location.href = authorization_url;
     } catch (err: any) {
       console.error("Payment error:", err);
       setError(err?.response?.data?.message || "Payment failed. Try again.");

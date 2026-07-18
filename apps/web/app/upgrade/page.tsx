@@ -7,48 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
-import toast from "react-hot-toast";
-import { getPromoTimeLeft } from "@/lib/promo";
-
-// Utility function to load Flutterwave script and open modal
-const openFlutterwaveModal = (config: any) => {
-  const scriptId = "flutterwave-inline-script";
-
-  const initPayment = () => {
-    try {
-      if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
-        (window as any).FlutterwaveCheckout(config);
-      } else {
-        console.error("[FLW] FlutterwaveCheckout not available on window");
-        toast.error("Payment system failed to load. Please refresh and try again.");
-      }
-    } catch (err) {
-      console.error("[FLW] FlutterwaveCheckout error:", err);
-      toast.error("Payment failed to open. Please try again.");
-    }
-  };
-
-  const existingScript = document.getElementById(scriptId);
-  if (existingScript) {
-    // Script already loaded — call directly
-    initPayment();
-    return;
-  }
-
-  const script = document.createElement("script");
-  script.id = scriptId;
-  script.src = "https://checkout.flutterwave.com/v3.js";
-  script.async = true;
-  script.onload = () => {
-    console.log("[FLW] Script loaded successfully");
-    initPayment();
-  };
-  script.onerror = () => {
-    console.error("[FLW] Failed to load Flutterwave script");
-    toast.error("Payment system unavailable. Check your connection.");
-  };
-  document.body.appendChild(script);
-};
+import { getPromoTimeLeft, isPromoActive } from "@/lib/promo";
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -57,6 +16,14 @@ export default function UpgradePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [timeLeft, setTimeLeft] = useState<string>("");
+
+  // Must match the promo-aware pricing the backend actually charges
+  // (apps/api/src/routes/payments.routes.ts getPlanPricing) so the
+  // displayed price never diverges from what Paystack charges.
+  const promoActive = isPromoActive();
+  const scholarPrice = promoActive ? 2500 : 3500;
+  const elitePrice = promoActive ? 3500 : 5000;
+  const upgradeCost = elitePrice - scholarPrice;
 
   // Countdown to the end of the Launch Week discount
   useEffect(() => {
@@ -93,100 +60,14 @@ export default function UpgradePage() {
     setError("");
 
     try {
-      // Check if public key is available
-      console.log(
-        "[FLW] Public key available:",
-        !!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY
-      );
-
-      if (!process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY) {
-        toast.error(
-          "Payment configuration error: Flutterwave public key not configured"
-        );
-        setIsProcessing(false);
-        return;
-      }
-
-      // Call backend to create subscription record and get tx_ref
-      const res = await api.post("/api/payments/upgrade", {
+      const res = await api.post("/api/payments/paystack/upgrade", {
         target_plan: "elite",
       });
 
-      const paymentData = res.data.data;
+      const { authorization_url } = res.data.data;
 
-      // Backend computes the upgrade diff off regular prices (₦5,000 - ₦3,500 = ₦1,500),
-      // not the Launch Week discount prices (₦3,500 - ₦2,500 = ₦1,000) shown on this page.
-      // Charge the discount diff directly, same pattern as the pricing page's promo override.
-      const discountUpgradeAmount = 1000;
-
-      // Configure Flutterwave
-      const config = {
-        public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY,
-        tx_ref: paymentData.tx_ref,
-        amount: discountUpgradeAmount,
-        currency: "NGN",
-        payment_options: "card,banktransfer,ussd,opay",
-        customer: {
-          email: user.email || "",
-          name: profile?.full_name || "Roman Series Student",
-        },
-        customizations: {
-          title: "Roman Series™",
-          description: "Upgrade to Elite",
-          logo: "https://romanseries.com.ng/logo.png",
-        },
-        callback: async (response: any) => {
-          if (
-            response.status === "successful" ||
-            response.charge_response_code === "00"
-          ) {
-            try {
-              await api.post("/api/payments/verify", {
-                transaction_id: response.transaction_id,
-                tx_ref: response.tx_ref,
-              });
-              toast.success("Payment successful! Upgrading your account...");
-              setTimeout(() => {
-                window.location.href = "/dashboard";
-              }, 2000);
-            } catch (err: any) {
-              toast.error(
-                err?.response?.data?.message ||
-                  "Payment received but upgrade failed. Contact support."
-              );
-            }
-          } else {
-            toast.error("Payment was not completed");
-            setIsProcessing(false);
-          }
-        },
-        onclose: () => {
-          setIsProcessing(false);
-        },
-      };
-
-      // Validate config before opening modal
-      if (!config.public_key) {
-        toast.error("Payment configuration error: missing public key");
-        setIsProcessing(false);
-        return;
-      }
-      if (!config.customer.email) {
-        toast.error("Please log in to make a payment");
-        setIsProcessing(false);
-        return;
-      }
-
-      console.log("[FLW] Opening modal with config:", {
-        public_key: config.public_key.substring(0, 20) + "...",
-        tx_ref: config.tx_ref,
-        amount: config.amount,
-        customer_email: config.customer.email,
-      });
-
-      // Open Flutterwave modal using direct script
-      openFlutterwaveModal(config);
-      setIsProcessing(false);
+      // Redirect to Paystack's hosted checkout page
+      window.location.href = authorization_url;
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Failed to initiate upgrade. Please try again."
@@ -284,37 +165,41 @@ export default function UpgradePage() {
             <div className="bg-gradient-to-br from-forest/5 to-transparent rounded-lg p-6 mb-8 border border-forest/20">
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  Your current plan: Scholar (₦2,500){" "}
-                  <span className="text-xs text-ember font-semibold">
-                    DISCOUNT
-                  </span>
+                  Your current plan: Scholar (₦{scholarPrice.toLocaleString()}){" "}
+                  {promoActive && (
+                    <span className="text-xs text-ember font-semibold">
+                      DISCOUNT
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm text-gray-600 mb-1">
                   Elite plan regular price:{" "}
-                  <span className="line-through">₦5,000</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-gray-600">
-                    Elite plan discount price:{" "}
-                    <span className="font-bold text-forest">₦3,500</span>
-                  </p>
-                  <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
-                    DISCOUNT
+                  <span className={promoActive ? "line-through" : "font-bold text-forest"}>
+                    ₦5,000
                   </span>
-                </div>
+                </p>
+                {promoActive && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-600">
+                      Elite plan discount price:{" "}
+                      <span className="font-bold text-forest">₦{elitePrice.toLocaleString()}</span>
+                    </p>
+                    <span className="bg-ember text-white text-xs font-bold px-2 py-1 rounded">
+                      DISCOUNT
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white rounded-lg p-4 mb-4 border-2 border-forest">
                 <p className="text-sm text-gray-600 mb-1">
                   You&apos;ll pay today:
                 </p>
-                <p className="text-5xl font-bold text-forest">₦1,000</p>
+                <p className="text-5xl font-bold text-forest">₦{upgradeCost.toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Difference between Scholar (₦2,500) and Elite (₦3,500) for 6
-                  months
+                  Difference between Scholar (₦{scholarPrice.toLocaleString()}) and Elite
+                  (₦{elitePrice.toLocaleString()}) for 6 months
                 </p>
-                another most important thing is too many auth attempts please
-                try again in 15 minutes, how can that be solved, we are live
               </div>
 
               <button
@@ -326,11 +211,11 @@ export default function UpgradePage() {
                     : "bg-forest hover:bg-opacity-90 shadow-lg hover:shadow-xl"
                 }`}
               >
-                {isProcessing ? "Processing..." : "Complete Upgrade (₦1,000)"}
+                {isProcessing ? "Processing..." : `Complete Upgrade (₦${upgradeCost.toLocaleString()})`}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
-                Secure payment powered by Flutterwave
+                Secure payment powered by Paystack
               </p>
             </div>
 
@@ -346,7 +231,7 @@ export default function UpgradePage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                <span>Secure payment with Flutterwave</span>
+                <span>Secure payment with Paystack</span>
               </div>
             </div>
           </div>
@@ -395,13 +280,17 @@ export default function UpgradePage() {
           <div className="space-y-4">
             <div>
               <h4 className="font-semibold text-gray-900 mb-1">
-                Why only ₦1,000?
+                Why only ₦{upgradeCost.toLocaleString()}?
               </h4>
               <p className="text-gray-600 text-sm">
-                During our discount, you&apos;re upgrading from Scholar at the
-                discount price (₦2,500) to Elite at the discount price (₦3,500)
-                for the same 6-month period. You only pay the difference of
-                ₦1,000.
+                {promoActive
+                  ? <>During our discount, you&apos;re upgrading from Scholar at the
+                      discount price (₦{scholarPrice.toLocaleString()}) to Elite at the discount price
+                      (₦{elitePrice.toLocaleString()}) for the same 6-month period. You only pay the
+                      difference of ₦{upgradeCost.toLocaleString()}.</>
+                  : <>You&apos;re upgrading from Scholar (₦{scholarPrice.toLocaleString()}) to Elite
+                      (₦{elitePrice.toLocaleString()}) for the same 6-month period. You only pay the
+                      difference of ₦{upgradeCost.toLocaleString()}.</>}
               </p>
             </div>
             <div>
