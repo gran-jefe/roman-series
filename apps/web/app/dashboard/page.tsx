@@ -384,9 +384,9 @@ export default function DashboardPage() {
                             </p>
                             <p className="text-xs text-red-800 mt-1">
                               You&apos;ve used all {mockExamLimit.mockLimit}{" "}
-                              free mock exams. Upgrade to Scholar (₦2,500 - 3
-                              mock exams per week) or Elite (₦3,500 - unlimited
-                              mock exams) for more attempts.
+                              free mock exams. Get Elite access (₦1,000 for 3
+                              days or ₦1,500 for 7 days) for unlimited mock
+                              exams.
                             </p>
                           </div>
                         )}
@@ -400,9 +400,9 @@ export default function DashboardPage() {
                             <p className="text-xs text-blue-800 mt-1">
                               You&apos;ve completed{" "}
                               {mockExamLimit.completedMocks} of{" "}
-                              {mockExamLimit.mockLimit}. Upgrade to Scholar
-                              (₦2,500 - 3 mocks per week) or Elite (₦3,500 -
-                              unlimited mocks) for more attempts.
+                              {mockExamLimit.mockLimit}. Get Elite access
+                              (₦1,000 for 3 days or ₦1,500 for 7 days) for
+                              unlimited mocks.
                             </p>
                           </div>
                         )}
@@ -413,9 +413,9 @@ export default function DashboardPage() {
                             📅 Scholar Plan: 3 mock exams per week
                           </p>
                           <p className="text-xs text-blue-800 mt-1">
-                            You have 3 mock exams available each week. Upgrade
-                            to Elite (₦3,500) for unlimited anytime, plus hard
-                            mode and advanced analytics.
+                            You have 3 mock exams available each week. Get
+                            Elite access (from ₦1,000) for unlimited anytime,
+                            plus hard mode and advanced analytics.
                           </p>
                         </div>
                       )}
@@ -517,9 +517,9 @@ export default function DashboardPage() {
                           ⭐ Elite Exclusive Feature
                         </p>
                         <p className="text-xs text-purple-800 mt-1">
-                          Upgrade to Elite (₦3,500/6 months) to unlock access to
-                          our database of recalled exam questions and gain
-                          advanced analytics.
+                          Get Elite access (₦1,000 for 3 days or ₦1,500 for 7
+                          days) to unlock our database of recalled exam
+                          questions and gain advanced analytics.
                         </p>
                       </div>
                     )}
@@ -609,9 +609,9 @@ export default function DashboardPage() {
                           ⭐ Elite Exclusive Feature
                         </p>
                         <p className="text-xs text-red-800 mt-1">
-                          Upgrade to Elite (₦3,500/6 months) to unlock hard mode
-                          exams with advanced difficulty filtering and
-                          time-pressure diagnostics.
+                          Get Elite access (₦1,000 for 3 days or ₦1,500 for 7
+                          days) to unlock hard mode exams with advanced
+                          difficulty filtering and time-pressure diagnostics.
                         </p>
                       </div>
                     )}
@@ -815,7 +815,7 @@ export default function DashboardPage() {
                   onClick={() => router.push("/pricing")}
                   className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
                 >
-                  Upgrade to Scholar
+                  Get Elite Access
                 </button>
               </div>
             ) : (

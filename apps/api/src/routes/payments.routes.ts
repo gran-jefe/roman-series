@@ -37,10 +37,30 @@ const getPlanPricing = (): Record<string, number> =>
 // Paystack checkout keeps the Launch Week discount price regardless of
 // PROMO_END_DATE, for now — always ₦2,500/₦3,500, never the regular price.
 // Unlike getPlanPricing() above, this is NOT date-gated on purpose.
+// Kept only for the legacy Scholar/Elite paystack/upgrade route below —
+// new purchases go through ELITE_ACCESS_PRICING instead.
 const PAYSTACK_PROMO_PRICING: Record<string, number> = {
   explorer: 0,       // Free
   scholar: 250000,   // ₦2,500
   elite: 350000,     // ₦3,500
+};
+
+// "Emergency Access" pricing — the current standing offer, replacing the
+// old Scholar/Elite tiers for new purchases. Both durations grant full
+// Elite feature access (profiles.subscription_status is set to "elite"
+// either way); only the price and subscription length differ. The exact
+// duration is inferred from the kobo amount actually charged (see
+// resolveAccessDurationDays) rather than a new subscription_status value,
+// so no DB schema change is needed.
+const ELITE_ACCESS_PRICING: Record<number, number> = {
+  7: 150000, // ₦1,500 — 7-day access
+  3: 100000, // ₦1,000 — 3-day access
+};
+
+const resolveAccessDurationDays = (amountKobo: number): number => {
+  if (amountKobo === ELITE_ACCESS_PRICING[7]) return 7;
+  if (amountKobo === ELITE_ACCESS_PRICING[3]) return 3;
+  return 180; // legacy Scholar/Elite purchases keep their original 6-month term
 };
 
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
@@ -547,12 +567,13 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
 
   app.post("/api/payments/paystack/initialize", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const { plan } = req.body;
+      const { plan, access_days } = req.body;
+      const accessDays = Number(access_days);
 
-      if (!plan || !["scholar", "elite"].includes(plan)) {
+      if (plan !== "elite" || ![7, 3].includes(accessDays)) {
         res.status(400).json({
           status: "error",
-          message: "Invalid plan. Must be 'scholar' or 'elite'",
+          message: "Invalid plan. Must be 'elite' with access_days of 7 or 3",
           timestamp: new Date().toISOString(),
         });
         return;
@@ -573,7 +594,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const amountInKobo = PAYSTACK_PROMO_PRICING[plan];
+      const amountInKobo = ELITE_ACCESS_PRICING[accessDays];
       const reference = `PS-${req.userId!.slice(0, 8)}-${Date.now()}`;
 
       const { error: insertError } = await supabaseAdmin
@@ -601,7 +622,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         amount: amountInKobo,
         reference,
         callback_url: `${webUrl}/payment/callback`,
-        metadata: { user_id: req.userId, plan },
+        metadata: { user_id: req.userId, plan, access_days: accessDays },
       });
 
       res.json({
@@ -778,13 +799,14 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         });
       }
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 180);
-
       // Record the amount Paystack actually charged (in kobo), same as the
       // Flutterwave verify path — the client may have charged a
-      // discounted/promo price.
+      // discounted/promo price. Duration is derived from this charged
+      // amount (see resolveAccessDurationDays) rather than always 180 days.
       const amountChargedKobo = paystackResponse.data.amount || 0;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
 
       const { error: subUpdateError } = await supabaseAdmin
         .from("subscriptions")
@@ -861,9 +883,9 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
       const paystackStatus = paystackResponse.data.status;
 
       if (paystackStatus === "success") {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 180);
         const amountChargedKobo = paystackResponse.data.amount || 0;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
 
         await supabaseAdmin
           .from("subscriptions")
@@ -941,8 +963,9 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
           .single();
 
         if (subscription && subscription.status !== "active") {
+          const amountChargedKobo = payload.data?.amount || 0;
           const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 180);
+          expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
 
           await supabaseAdmin
             .from("subscriptions")

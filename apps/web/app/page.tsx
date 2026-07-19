@@ -5,24 +5,11 @@ import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { TrendingUp, Star, CheckCircle, Target, BarChart3, Clipboard, Trophy, Clock, Zap, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { getPromoTimeLeft } from "@/lib/promo";
 import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 
 export default function LandingPage() {
   const { user } = useAuth();
-  const [timeLeft, setTimeLeft] = useState<string>("");
   const [currentTestimonialIdx, setCurrentTestimonialIdx] = useState(0);
-
-  // Countdown to the end of the Launch Week discount
-  useEffect(() => {
-    const updateCountdown = () => {
-      setTimeLeft(getPromoTimeLeft());
-    };
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Auto-scroll testimonials every 5 seconds
   useEffect(() => {
@@ -354,41 +341,16 @@ export default function LandingPage() {
       highlighted: false,
     },
     {
-      name: "Scholar",
-      price: "₦2,500",
-      originalPrice: "₦3,500",
-      duration: "6 months",
-      description: "Most students choose this",
+      name: "Elite — 7 Days",
+      price: "₦1,500",
+      duration: "7 days",
+      description: "Full exam-week access",
       features: [
-        "Unlimited practice",
-        "All subjects",
-        "Topic-by-topic drilling",
-        "3 mock exams per week",
-        "Full error bank",
-        "Detailed analytics",
-        "Topic mastery tracking",
-        "Speed analysis",
-        "Daily streak",
-        "Full leaderboard + your rank",
-        "Predicted score (basic)",
-        "Weak topic recommendations",
-        "Performance history",
-        "Exam simulation mode",
-      ],
-      highlighted: true,
-      badge: "Most Popular",
-    },
-    {
-      name: "Elite",
-      price: "₦3,500",
-      originalPrice: "₦5,000",
-      duration: "6 months",
-      description: "For serious, dedicated students",
-      features: [
-        "Everything in Scholar",
+        "Unlimited practice, all subjects",
         "Unlimited mock exams",
         "Hard-mode mock exams",
-        "Access to authentic UI POST-UTME questions from 2019-2025",
+        "Access to authentic UI POST-UTME questions from 2019-2026",
+        "Full error bank",
         "Advanced predictive scoring",
         "Admission probability meter",
         "Course-specific ranking",
@@ -396,13 +358,34 @@ export default function LandingPage() {
         "Smart weak-topic prioritisation",
         "Advanced analytics dashboard",
         "Time-pressure diagnostics",
-        "Likely UI-standard challenge sets",
         "Extended leaderboard",
         "Elite badge (blue tick on profile)",
-        "Performance trend forecasting",
+      ],
+      highlighted: true,
+      badge: "Most Popular",
+    },
+    {
+      name: "Elite — 3 Days",
+      price: "₦1,000",
+      duration: "3 days",
+      description: "Quick final push",
+      features: [
+        "Unlimited practice, all subjects",
+        "Unlimited mock exams",
+        "Hard-mode mock exams",
+        "Access to authentic UI POST-UTME questions from 2019-2026",
+        "Full error bank",
+        "Advanced predictive scoring",
+        "Admission probability meter",
+        "Course-specific ranking",
+        "Percentile ranking (You're ahead of X%)",
+        "Smart weak-topic prioritisation",
+        "Advanced analytics dashboard",
+        "Time-pressure diagnostics",
+        "Extended leaderboard",
+        "Elite badge (blue tick on profile)",
       ],
       highlighted: false,
-      badge: "Best Value",
     },
   ];
 
@@ -457,19 +440,6 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
-
-      {/* ──── COUNTDOWN BANNER ──── */}
-      {timeLeft && (
-        <div className="bg-gradient-to-r from-ember via-orange-500 to-amber-500 text-white py-2.5 px-4 text-center text-sm font-semibold">
-          <span className="inline-flex items-center gap-2">
-            <span className="w-2 h-2 bg-white rounded-full animate-pulse inline-block"></span>
-            🔥 Launch Week Special – {timeLeft}
-            <Link href="#pricing" className="underline underline-offset-2 hover:no-underline ml-1">
-              Claim discount →
-            </Link>
-          </span>
-        </div>
-      )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <MaintenanceBanner />
@@ -840,14 +810,6 @@ export default function LandingPage() {
       <section id="pricing" className="bg-gray-50 py-20 sm:py-28 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
 
-          {timeLeft && (
-            <div className="mb-10 p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl text-center">
-              <p className="text-amber-800 font-bold text-sm">
-                🎉 Launch Week Discount · Ends in: {timeLeft}
-              </p>
-            </div>
-          )}
-
           <div className="text-center mb-14">
             <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-forest bg-forest/10 px-4 py-1.5 rounded-full mb-4">
               Pricing
@@ -888,23 +850,17 @@ export default function LandingPage() {
                       <span className="text-4xl sm:text-5xl font-black text-navy">
                         {plan.price}
                       </span>
-                      {plan.originalPrice && (
-                        <span className="text-gray-300 line-through text-base font-medium">
-                          {plan.originalPrice}
-                        </span>
-                      )}
                     </div>
                     <p className="text-gray-400 text-sm mt-1">/ {plan.duration}</p>
                   </div>
 
-                  <Link href={user ? "/dashboard" : "/register"}
+                  <Link href={plan.name === "Explorer" ? (user ? "/dashboard" : "/register") : "/pricing"}
                     className={`block w-full py-3.5 rounded-xl font-black text-center text-sm transition-all mb-8
                       ${plan.highlighted
                         ? "bg-forest text-white hover:bg-forest/90 hover:shadow-lg hover:shadow-forest/20"
                         : "border-2 border-gray-200 text-navy hover:border-forest hover:text-forest"
                       }`}>
-                    {plan.name === "Explorer" ? "Start Free" :
-                     plan.name === "Scholar" ? "Get Scholar" : "Go Elite"}
+                    {plan.name === "Explorer" ? "Start Free" : "Get Elite Access"}
                   </Link>
 
                   <div className="space-y-3 flex-1">

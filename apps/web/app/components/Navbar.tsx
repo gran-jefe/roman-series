@@ -54,7 +54,7 @@ export function Navbar() {
       href: "/practice/mock/session",
       icon: <Clipboard size={20} />,
       requiresUpgrade: !hasMockExamAccess,
-      upgradeTooltip: "Upgrade to Scholar to unlock mock exams",
+      upgradeTooltip: "Get Elite access to unlock mock exams",
     },
     {
       label: "Hard Mode",
@@ -80,14 +80,14 @@ export function Navbar() {
       href: "/error-bank",
       icon: <AlertCircle size={20} />,
       requiresUpgrade: !hasErrorBankAccess,
-      upgradeTooltip: "Upgrade to Scholar to unlock error bank",
+      upgradeTooltip: "Get Elite access to unlock error bank",
     },
     {
       label: "Analytics",
       href: "/analytics",
       icon: <BarChart3 size={20} />,
       requiresUpgrade: !hasAnalyticsAccess,
-      upgradeTooltip: "Upgrade to Scholar to unlock advanced analytics",
+      upgradeTooltip: "Get Elite access to unlock advanced analytics",
     },
     {
       label: "Profile",

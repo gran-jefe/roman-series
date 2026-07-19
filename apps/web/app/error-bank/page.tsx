@@ -91,7 +91,7 @@ export default function ErrorBankPage() {
         <main className="max-w-6xl mx-auto px-4 py-12 text-center">
           <p className="text-gray-600 mb-4">{errorBankAccess.reason}</p>
           <Link href="/pricing" className="text-forest font-medium hover:underline">
-            Upgrade to Scholar
+            Get Elite Access
           </Link>
         </main>
       </div>
@@ -147,7 +147,7 @@ export default function ErrorBankPage() {
                   onClick={() => setShowUpgradePrompt(true)}
                   className="text-blue-600 hover:underline font-medium"
                 >
-                  Upgrade to Scholar
+                  Get Elite Access
                 </button>{" "}
                 to access unlimited error history.
               </p>
@@ -285,7 +285,7 @@ export default function ErrorBankPage() {
       {showUpgradePrompt && (
         <UpgradePrompt
           title="Unlock Full Error Bank"
-          message="Explorer users can view their 10 most recent errors. Scholar users get unlimited access to your entire error history, helping you focus on your weakest areas."
+          message="Explorer users can view their 10 most recent errors. Elite access unlocks your entire error history, helping you focus on your weakest areas."
           feature="Unlimited Error History"
           onClose={() => setShowUpgradePrompt(false)}
         />

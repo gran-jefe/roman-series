@@ -244,7 +244,7 @@ export default function PracticeResultsPage() {
               <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center max-w-sm mx-4">
                 <h3 className="text-lg font-black text-navy mb-2">Advanced Analytics Locked</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  Upgrade to Scholar to unlock full performance insights, detailed score predictions, and how you compare to peers.
+                  Get Elite access to unlock full performance insights, detailed score predictions, and how you compare to peers.
                 </p>
                 <button
                   onClick={() => setShowUpgradePrompt(false)}
@@ -311,7 +311,7 @@ export default function PracticeResultsPage() {
               <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center max-w-sm mx-4">
                 <h3 className="text-lg font-black text-navy mb-2">Full Answer Review Locked</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  Upgrade to Scholar to access complete answer reviews, detailed explanations, and performance analytics.
+                  Get Elite access to unlock complete answer reviews, detailed explanations, and performance analytics.
                 </p>
                 <button
                   onClick={() => setShowUpgradePrompt(false)}

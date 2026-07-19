@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
               href="/pricing"
               className="inline-block px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition"
             >
-              Upgrade to Scholar
+              Get Elite Access
             </Link>
           </div>
         </main>
@@ -528,7 +528,7 @@ export default function AnalyticsPage() {
                 {profile?.subscription_status === "explorer" && (
                   <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
                     <div className="text-center">
-                      <p className="text-white font-semibold mb-3">Full prediction unlocked in Scholar plan</p>
+                      <p className="text-white font-semibold mb-3">Full prediction unlocked with Elite access</p>
                       <button
                         onClick={() => router.push("/pricing")}
                         className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
@@ -707,7 +707,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1">
                       <h3 className="font-bold text-navy mb-2">Unlock Detailed Analytics</h3>
                       <p className="text-sm text-gray-700 mb-4">
-                        Upgrade to Scholar to access Speed Analysis, Topic Mastery Tracking, Performance History, and more insights to boost your preparation.
+                        Get Elite access to unlock Speed Analysis, Topic Mastery Tracking, Performance History, and more insights to boost your preparation.
                       </p>
                       <button
                         onClick={() => router.push("/pricing")}
@@ -791,7 +791,7 @@ export default function AnalyticsPage() {
                       onClick={() => router.push("/pricing")}
                       className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
                     >
-                      Upgrade to Scholar
+                      Get Elite Access
                     </button>
                   </div>
                 </div>
@@ -842,7 +842,7 @@ export default function AnalyticsPage() {
                       onClick={() => router.push("/pricing")}
                       className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
                     >
-                      Upgrade to Scholar
+                      Get Elite Access
                     </button>
                   </div>
                 </div>
@@ -1250,7 +1250,7 @@ export default function AnalyticsPage() {
       {showUpgradePrompt && (
         <UpgradePrompt
           title="Unlock Advanced Analytics"
-          message="Scholar and Elite plans unlock advanced analytics with deeper insights, performance trends, percentile rankings, and cohort comparisons to help you track your progress."
+          message="Elite access unlocks advanced analytics with deeper insights, performance trends, percentile rankings, and cohort comparisons to help you track your progress."
           feature="Advanced Analytics & Insights"
           onClose={() => setShowUpgradePrompt(false)}
         />
