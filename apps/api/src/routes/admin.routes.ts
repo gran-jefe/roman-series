@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { parseRomanSeriesDocument } from "../lib/questionParser";
 import { resolveUserFromToken } from "../middleware/requireAuth";
 import { firebaseAdminAuth } from "../lib/firebaseAdmin";
+import { batchQuery } from "../lib/supabase";
 
 interface AdminDeps {
   supabaseAdmin: SupabaseClient;
@@ -179,6 +180,218 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     } catch (error) {
       console.error("[admin/stats] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/activity - Recent user activity feed, merged from
+  // sessions, feedback, flagged questions, signups and subscriptions.
+  app.get("/api/admin/activity", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const limit = Math.min(parseInt((req.query.limit as string) || "50"), 200);
+      const typesParam = (req.query.types as string) || "";
+      const requestedTypes = typesParam
+        ? typesParam.split(",").map((t) => t.trim()).filter(Boolean)
+        : ["session", "feedback", "flag", "signup", "subscription"];
+      const search = ((req.query.search as string) || "").trim();
+
+      // Fetch a generous window per source, then merge + sort in memory —
+      // simplest way to produce one time-ordered feed across five tables
+      // without a dedicated activity_log table.
+      const perSourceLimit = Math.max(limit, 100);
+
+      // If searching, resolve matching profile ids first so every source
+      // can be filtered by user without a cross-table SQL join.
+      let matchingUserIds: Set<string> | null = null;
+      if (search) {
+        const safeSearch = search.replace(/[,()]/g, "");
+        const { data: matches } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
+          .limit(500);
+        matchingUserIds = new Set((matches || []).map((m: any) => m.id));
+      }
+
+      interface ActivityEvent {
+        id: string;
+        type: "session" | "feedback" | "flag" | "signup" | "subscription";
+        user_id: string;
+        timestamp: string;
+        description: string;
+        metadata?: Record<string, unknown>;
+      }
+
+      const events: ActivityEvent[] = [];
+      const userIdsNeeded = new Set<string>();
+      const subjectIdsNeeded = new Set<string>();
+
+      if (requestedTypes.includes("session")) {
+        const { data: sessions } = await supabaseAdmin
+          .from("sessions")
+          .select("id, user_id, subject_id, is_mock, is_hard_mode, is_recalled, completed, score, total_questions, started_at, ended_at")
+          .order("started_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (sessions || []).forEach((s: any) => {
+          if (matchingUserIds && !matchingUserIds.has(s.user_id)) return;
+          userIdsNeeded.add(s.user_id);
+          if (s.subject_id) subjectIdsNeeded.add(s.subject_id);
+
+          const kind = s.is_hard_mode ? "hard mode exam" : s.is_mock ? "mock exam" : s.is_recalled ? "recalled questions set" : "practice session";
+          const description = s.completed
+            ? `Scored ${s.total_questions > 0 ? Math.round((s.score / s.total_questions) * 100) : 0}% (${s.score}/${s.total_questions}) on a ${kind}`
+            : `Started a ${kind}`;
+
+          events.push({
+            id: `session_${s.id}`,
+            type: "session",
+            user_id: s.user_id,
+            timestamp: s.completed ? (s.ended_at || s.started_at) : s.started_at,
+            description,
+            metadata: { subject_id: s.subject_id, completed: s.completed },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("feedback")) {
+        const { data: feedback } = await supabaseAdmin
+          .from("feedback")
+          .select("id, user_id, rating, category, emoji_mood, message, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (feedback || []).forEach((f: any) => {
+          if (matchingUserIds && !matchingUserIds.has(f.user_id)) return;
+          userIdsNeeded.add(f.user_id);
+
+          events.push({
+            id: `feedback_${f.id}`,
+            type: "feedback",
+            user_id: f.user_id,
+            timestamp: f.created_at,
+            description: `Left ${f.rating}★ feedback on ${f.category}${f.message ? " with a comment" : ""}`,
+            metadata: { rating: f.rating, category: f.category, emoji_mood: f.emoji_mood, message: f.message },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("flag")) {
+        const { data: flags } = await supabaseAdmin
+          .from("flagged_questions")
+          .select("id, user_id, question_id, reason, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (flags || []).forEach((f: any) => {
+          if (matchingUserIds && !matchingUserIds.has(f.user_id)) return;
+          userIdsNeeded.add(f.user_id);
+
+          events.push({
+            id: `flag_${f.id}`,
+            type: "flag",
+            user_id: f.user_id,
+            timestamp: f.created_at,
+            description: f.reason ? `Flagged a question: "${f.reason}"` : "Flagged a question for review",
+            metadata: { question_id: f.question_id },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("signup")) {
+        const { data: signups } = await supabaseAdmin
+          .from("profiles")
+          .select("id, full_name, email, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (signups || []).forEach((p: any) => {
+          if (matchingUserIds && !matchingUserIds.has(p.id)) return;
+          userIdsNeeded.add(p.id);
+
+          events.push({
+            id: `signup_${p.id}`,
+            type: "signup",
+            user_id: p.id,
+            timestamp: p.created_at,
+            description: "Created an account",
+          });
+        });
+      }
+
+      if (requestedTypes.includes("subscription")) {
+        const { data: subs } = await supabaseAdmin
+          .from("subscriptions")
+          .select("id, user_id, plan, amount, status, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (subs || []).forEach((s: any) => {
+          if (matchingUserIds && !matchingUserIds.has(s.user_id)) return;
+          userIdsNeeded.add(s.user_id);
+
+          const nairaAmount = s.amount ? Math.round(s.amount / 100).toLocaleString() : null;
+          const description =
+            s.status === "active"
+              ? `Purchased ${s.plan}${nairaAmount ? ` (₦${nairaAmount})` : ""}`
+              : `Started checkout for ${s.plan}`;
+
+          events.push({
+            id: `subscription_${s.id}`,
+            type: "subscription",
+            user_id: s.user_id,
+            timestamp: s.created_at,
+            description,
+            metadata: { plan: s.plan, status: s.status },
+          });
+        });
+      }
+
+      // Attach user display info
+      const profiles = await batchQuery<{ id: string; full_name: string; email: string }>(
+        "profiles",
+        "id",
+        Array.from(userIdsNeeded),
+        "id, full_name, email"
+      );
+      const profileMap = new Map(profiles.map((p) => [p.id, p]));
+
+      const subjects = await batchQuery<{ id: string; name: string }>(
+        "subjects",
+        "id",
+        Array.from(subjectIdsNeeded),
+        "id, name"
+      );
+      const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
+
+      const enriched = events
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, limit)
+        .map((e) => {
+          const user = profileMap.get(e.user_id);
+          const subjectName = e.metadata?.subject_id ? subjectMap.get(e.metadata.subject_id as string) : undefined;
+          return {
+            ...e,
+            user_name: user?.full_name || "Unknown user",
+            user_email: user?.email || null,
+            subject_name: subjectName || null,
+          };
+        });
+
+      res.json({
+        status: "success",
+        data: { events: enriched },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/activity] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",

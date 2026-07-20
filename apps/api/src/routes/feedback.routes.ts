@@ -87,6 +87,45 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
     }
   });
 
+  // GET /api/feedback/me - Check whether the current user has ever submitted feedback
+  app.get("/api/feedback/me", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { data: existing, error } = await supabaseAdmin
+        .from("feedback")
+        .select("id, created_at")
+        .eq("user_id", req.userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[Feedback] Failed to check feedback status:", error);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to check feedback status",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        data: {
+          has_submitted: !!existing,
+          last_submitted_at: existing?.created_at ?? null,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[feedback/me] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // GET /api/feedback - Get all feedback (admin only)
   app.get("/api/feedback", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {

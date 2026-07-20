@@ -968,9 +968,12 @@ export default function DashboardPage() {
               <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy">
                 <Activity className="w-5 h-5" /> Recent Practice Sessions
               </h3>
-              <span className="text-sm text-gray-500">
-                {sessions.length} total
-              </span>
+              <Link
+                href="/sessions"
+                className="text-sm font-semibold text-forest hover:underline flex items-center gap-1"
+              >
+                View All <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
             <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
               <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
@@ -1009,7 +1012,14 @@ export default function DashboardPage() {
                     return (
                       <tr
                         key={session.id}
-                        className="border-b hover:bg-gray-50 transition-colors"
+                        onClick={() =>
+                          session.completed &&
+                          router.push(`/practice/results?sessionId=${session.id}`)
+                        }
+                        className={`border-b hover:bg-gray-50 transition-colors ${
+                          session.completed ? "cursor-pointer" : ""
+                        }`}
+                        title={session.completed ? "View correction" : "Session not completed"}
                       >
                         <td className="px-6 py-4 text-sm">
                           <div className="flex items-center text-gray-900 gap-2">

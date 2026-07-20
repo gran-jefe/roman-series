@@ -8,17 +8,26 @@ import api from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
 import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions } from "@/lib/subscription";
 import CountdownBanner from "./CountdownBanner";
+import { FeedbackPromptModal } from "./FeedbackPromptModal";
+import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"];
 const EXCLUDE_NAVBAR_ROUTES = ["/practice/session", "/practice/mock/session"];
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, logout, profile } = useContext(AuthContext) || {};
+  const { isAuthenticated, loading, logout, profile, user } = useContext(AuthContext) || {};
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [subscription, setSubscription] = useState<{ subscription_status: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const feedbackPrompt = useFeedbackPrompt({
+    isAuthenticated: !!isAuthenticated,
+    loading: !!loading,
+    pathname,
+    userId: user?.id,
+    isAdmin: profile?.role === "admin",
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -232,6 +241,13 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         </nav>
       )}
       <div className={shouldShowNavbar ? "pt-[60px]" : ""}>{children}</div>
+
+      {feedbackPrompt.showPrompt && (
+        <FeedbackPromptModal
+          onSkip={feedbackPrompt.skip}
+          onSubmitted={feedbackPrompt.submitted}
+        />
+      )}
     </>
   );
 }

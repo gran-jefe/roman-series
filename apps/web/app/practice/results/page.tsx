@@ -88,16 +88,16 @@ export default function PracticeResultsPage() {
               percentage: Math.round(
                 (session.score / session.total_questions) * 100
               ),
-              answers: session.session_answers.map((answer: { question_id: string; selected_option_id: string; is_correct: boolean; question: { body: string; explanation: string; options: { id: string; label: string; body: string; is_correct: boolean }[] } }) => ({
+              answers: session.session_answers.map((answer: { question_id: string; selected_option_id: string; is_correct: boolean; questions: { body: string; explanation: string; options: { id: string; label: string; body: string; is_correct: boolean }[] } }) => ({
                 question_id: answer.question_id,
-                question_body: answer.question?.body || "Question not found",
+                question_body: answer.questions?.body || "Question not found",
                 selected_option_id: answer.selected_option_id,
                 is_correct: answer.is_correct,
-                correct_option_id: answer.question?.options?.find(
+                correct_option_id: answer.questions?.options?.find(
                   (o: { id: string; is_correct: boolean }) => o.is_correct
                 )?.id,
-                explanation: answer.question?.explanation,
-                options: answer.question?.options || [],
+                explanation: answer.questions?.explanation,
+                options: answer.questions?.options || [],
               })),
             };
             setResults(reconstructedResults);

@@ -582,7 +582,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       if (session.completed) {
         const { data: answers } = await supabaseAdmin
           .from("session_answers")
-          .select("*, questions(*)")
+          .select("*, questions(*, options(*))")
           .eq("session_id", id);
         sessionWithAnswers = { ...session, session_answers: answers || [] };
       }
