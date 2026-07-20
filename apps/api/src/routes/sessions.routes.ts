@@ -390,10 +390,15 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
 
       console.log("[wrong-questions] Fetching wrong answers from", userSessionIds.length, "sessions");
 
-      // Get all answers (correct and wrong) with session timestamps
+      // Get all answers (correct and wrong). Use the answer's own created_at
+      // (the moment it was submitted) rather than the parent session's
+      // created_at (session start time) — sessions can overlap or be
+      // submitted out of start-time order, which previously let a
+      // since-corrected question's stale wrong answer outrank its real
+      // latest (correct) answer and stay stuck in the error bank.
       const { data: allAnswers, error: answersError } = await supabaseAdmin
         .from("session_answers")
-        .select("question_id, is_correct, sessions(created_at)")
+        .select("question_id, is_correct, created_at")
         .in("session_id", userSessionIds)
         .order("question_id");
 
@@ -415,8 +420,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Build a map of each question's most recent answer
       const latestAnswerMap = new Map<string, { is_correct: boolean; created_at: string }>();
       allAnswers.forEach((answer: any) => {
-        const sessionData = answer.sessions || {};
-        const createdAt = sessionData.created_at || new Date().toISOString();
+        const createdAt = answer.created_at || new Date().toISOString();
         const existing = latestAnswerMap.get(answer.question_id);
 
         // Keep the most recent answer
@@ -435,8 +439,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       >();
       allAnswers.forEach((answer: any) => {
         if (!answer.is_correct) {
-          const sessionData = answer.sessions || {};
-          const createdAt = sessionData.created_at || new Date().toISOString();
+          const createdAt = answer.created_at || new Date().toISOString();
           const existing = questionMap.get(answer.question_id);
           const newData = {
             times_wrong: (existing?.times_wrong ?? 0) + 1,
@@ -1241,22 +1244,17 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Get wrong answers from user's sessions, respecting plan limits
-      let wrongQuery = supabaseAdmin
+      // Get every answer (correct and wrong) so we can check each question's
+      // MOST RECENT attempt, not just whether it was ever wrong — otherwise a
+      // question the student has since answered correctly would still be
+      // accepted as "in error bank" here, inconsistent with /wrong-questions.
+      const { data: allAnswers, error: wrongError } = await supabaseAdmin
         .from("session_answers")
-        .select("question_id")
-        .in("session_id", userSessionIds)
-        .eq("is_correct", false)
-        .order("created_at", { ascending: false });
-
-      if (planLimits.error_bank_limit) {
-        wrongQuery = wrongQuery.limit(planLimits.error_bank_limit);
-      }
-
-      const { data: wrongAnswers, error: wrongError } = await wrongQuery;
+        .select("question_id, is_correct, created_at")
+        .in("session_id", userSessionIds);
 
       if (wrongError) {
-        console.error("[error-bank/start] Wrong answers query error:", wrongError);
+        console.error("[error-bank/start] Answers query error:", wrongError);
         res.status(500).json({
           status: "error",
           message: "Failed to verify wrong answers",
@@ -1265,7 +1263,22 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      if (!wrongAnswers || wrongAnswers.length === 0) {
+      // Track each question's most recent attempt (by its own created_at).
+      const latestByQuestion = new Map<string, { is_correct: boolean; created_at: string }>();
+      (allAnswers || []).forEach((a: any) => {
+        const existing = latestByQuestion.get(a.question_id);
+        if (!existing || a.created_at > existing.created_at) {
+          latestByQuestion.set(a.question_id, { is_correct: a.is_correct, created_at: a.created_at });
+        }
+      });
+
+      const validIds = Array.from(latestByQuestion.entries())
+        .filter(([, latest]) => !latest.is_correct)
+        .sort(([, a], [, b]) => (a.created_at < b.created_at ? 1 : -1)) // most recently attempted first
+        .slice(0, planLimits.error_bank_limit || undefined)
+        .map(([questionId]) => questionId);
+
+      if (validIds.length === 0) {
         res.status(400).json({
           status: "error",
           message: "You have no wrong answers yet",
@@ -1274,7 +1287,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      const validIds = wrongAnswers.map((a: any) => a.question_id);
       const allValid = question_ids.every((id: string) => validIds.includes(id));
 
       if (!allValid) {
