@@ -10,8 +10,11 @@ import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions } from
 import CountdownBanner from "./CountdownBanner";
 import { FeedbackPromptModal } from "./FeedbackPromptModal";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
+import { InstallPrompt } from "./InstallPrompt";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"];
+const INSTALL_PROMPT_EXCLUDED_PREFIXES = ["/practice/session", "/practice/mock/session", "/admin"];
+
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding", "/offline"];
 const EXCLUDE_NAVBAR_ROUTES = ["/practice/session", "/practice/mock/session"];
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -248,6 +251,11 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           onSubmitted={feedbackPrompt.submitted}
         />
       )}
+
+      {!feedbackPrompt.showPrompt &&
+        !INSTALL_PROMPT_EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) && (
+          <InstallPrompt />
+        )}
     </>
   );
 }
