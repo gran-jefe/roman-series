@@ -87,19 +87,28 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
     }
   });
 
-  // GET /api/feedback/me - Check whether the current user has ever submitted feedback
+  // GET /api/feedback/me - Check whether the current user has ever submitted
+  // feedback, and whether they've completed at least one session (so brand-new
+  // users aren't asked to rate an app they haven't used yet).
   app.get("/api/feedback/me", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
-      const { data: existing, error } = await supabaseAdmin
-        .from("feedback")
-        .select("id, created_at")
-        .eq("user_id", req.userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const [feedbackRes, sessionRes] = await Promise.all([
+        supabaseAdmin
+          .from("feedback")
+          .select("id, created_at")
+          .eq("user_id", req.userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", req.userId)
+          .eq("completed", true),
+      ]);
 
-      if (error) {
-        console.error("[Feedback] Failed to check feedback status:", error);
+      if (feedbackRes.error) {
+        console.error("[Feedback] Failed to check feedback status:", feedbackRes.error);
         res.status(500).json({
           status: "error",
           message: "Failed to check feedback status",
@@ -108,11 +117,22 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
         return;
       }
 
+      if (sessionRes.error) {
+        console.error("[Feedback] Failed to check session history:", sessionRes.error);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to check session history",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       res.json({
         status: "success",
         data: {
-          has_submitted: !!existing,
-          last_submitted_at: existing?.created_at ?? null,
+          has_submitted: !!feedbackRes.data,
+          last_submitted_at: feedbackRes.data?.created_at ?? null,
+          has_completed_session: (sessionRes.count ?? 0) > 0,
         },
         timestamp: new Date().toISOString(),
       });

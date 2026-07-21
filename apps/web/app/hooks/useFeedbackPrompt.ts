@@ -54,7 +54,8 @@ export function useFeedbackPrompt({
     api
       .get("/api/feedback/me")
       .then((res) => {
-        if (!cancelled && res.data?.data?.has_submitted === false) {
+        const data = res.data?.data;
+        if (!cancelled && data?.has_submitted === false && data?.has_completed_session === true) {
           setNeedsFeedback(true);
         }
       })
