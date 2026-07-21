@@ -7,7 +7,7 @@
 // app installs, opens instantly on repeat visits, and degrades gracefully
 // (rather than a browser error screen) when there's no network.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const SHELL_CACHE = `roman-series-shell-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline";
 
@@ -74,8 +74,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone));
+          // Only cache genuinely successful, non-opaque responses — caching
+          // a transient 404/500 would otherwise "poison" that URL and keep
+          // serving the failure forever, even after the server recovers.
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
         .catch(async () => {
@@ -93,8 +98,10 @@ self.addEventListener("fetch", (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          const clone = response.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone));
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone));
+          }
           return response;
         });
       })

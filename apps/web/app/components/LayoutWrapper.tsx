@@ -246,10 +246,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       <div className={shouldShowNavbar ? "pt-[60px]" : ""}>{children}</div>
 
       {feedbackPrompt.showPrompt && (
-        <FeedbackPromptModal
-          onSkip={feedbackPrompt.skip}
-          onSubmitted={feedbackPrompt.submitted}
-        />
+        <FeedbackPromptModal onSubmitted={feedbackPrompt.submitted} />
       )}
 
       {!feedbackPrompt.showPrompt &&

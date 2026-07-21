@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
-// Feedback prompt goes live from this date onward (Africa/Lagos local date).
+// Feedback prompt is mandatory from this date onward (Africa/Lagos local date).
 const FEEDBACK_PROMPT_START_DATE = "2026-07-21";
 
+// Routes where it's unsafe or nonsensical to hard-block: the feedback page
+// itself, a live timed exam already in progress, brand-new users still
+// setting up their profile, and admins.
 const EXCLUDED_PREFIXES = [
   "/feedback",
   "/practice/session",
@@ -37,7 +40,7 @@ export function useFeedbackPrompt({
   userId,
   isAdmin,
 }: UseFeedbackPromptArgs) {
-  // Whether this user is due for a feedback ask today (fetched once per session).
+  // Whether this user still owes feedback (fetched once per session).
   const [needsFeedback, setNeedsFeedback] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
 
@@ -45,9 +48,6 @@ export function useFeedbackPrompt({
   useEffect(() => {
     if (loading || !isAuthenticated || !userId || isAdmin) return;
     if (todayString() < FEEDBACK_PROMPT_START_DATE) return;
-
-    const snoozeKey = `feedback_prompt_snoozed_${userId}`;
-    if (localStorage.getItem(snoozeKey) === todayString()) return;
 
     let cancelled = false;
 
@@ -65,26 +65,17 @@ export function useFeedbackPrompt({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, isAuthenticated, userId, isAdmin]);
 
-  // Only surface the modal once the user lands on a route where it's safe to interrupt.
+  // Block every route except the small safe-list above — no skip, no snooze.
   useEffect(() => {
     setShowPrompt(needsFeedback && !isExcludedRoute(pathname));
   }, [needsFeedback, pathname]);
-
-  const skip = () => {
-    if (userId) {
-      localStorage.setItem(`feedback_prompt_snoozed_${userId}`, todayString());
-    }
-    setNeedsFeedback(false);
-    setShowPrompt(false);
-  };
 
   const submitted = () => {
     setNeedsFeedback(false);
     setShowPrompt(false);
   };
 
-  return { showPrompt, skip, submitted };
+  return { showPrompt, submitted };
 }

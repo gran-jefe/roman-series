@@ -32,11 +32,10 @@ const RATING_LABELS = {
 };
 
 interface FeedbackPromptModalProps {
-  onSkip: () => void;
   onSubmitted: () => void;
 }
 
-export function FeedbackPromptModal({ onSkip, onSubmitted }: FeedbackPromptModalProps) {
+export function FeedbackPromptModal({ onSubmitted }: FeedbackPromptModalProps) {
   const [step, setStep] = useState<Step>("mood");
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
@@ -129,16 +128,6 @@ export function FeedbackPromptModal({ onSkip, onSubmitted }: FeedbackPromptModal
             </div>
           ) : (
             <div className="p-6 md:p-10">
-              {/* Skip */}
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={onSkip}
-                  className="text-sm text-gray-400 hover:text-gray-600 font-medium"
-                >
-                  Maybe later
-                </button>
-              </div>
-
               {/* Progress dots */}
               <div className="flex justify-center gap-2 mb-8">
                 {(["mood", "rating", "category", "message"] as Step[]).map((s, idx) => (
@@ -159,10 +148,10 @@ export function FeedbackPromptModal({ onSkip, onSubmitted }: FeedbackPromptModal
               {step === "mood" && (
                 <div className="animate-fade-in">
                   <h2 className="text-2xl md:text-3xl font-bold text-navy mb-2 text-center">
-                    Quick one before you dive in 🎯
+                    One quick thing before you continue 🎯
                   </h2>
                   <p className="text-center text-gray-500 mb-8">
-                    How are you feeling about Roman Series so far?
+                    Tell us how Roman Series is going so far — it only takes a moment.
                   </p>
 
                   <div className="grid grid-cols-5 gap-3">
