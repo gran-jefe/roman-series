@@ -10,6 +10,7 @@ import type { SessionResult, UserStats } from "types";
 import { CardSkeleton } from "@/components/skeletons";
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, BarChart3, Home } from "lucide-react";
 import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 
 interface SessionMeta {
   subject: { id: string; name: string } | null;
@@ -168,6 +169,7 @@ export default function PracticeResultsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
+      <ContentWatermark />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
         {/* Score Hero Card */}

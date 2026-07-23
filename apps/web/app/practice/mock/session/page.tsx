@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 import toast from "react-hot-toast";
 import type { StartSessionResponse, Subject } from "types";
 
@@ -408,6 +409,7 @@ export default function MockSessionPage() {
 
   return (
     <div className="min-h-screen bg-blush flex flex-col">
+      <ContentWatermark />
       {/* NAVBAR - Fixed top */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-navy text-white h-14 flex items-center justify-between px-4 shadow-lg">
         <div className="leading-tight">

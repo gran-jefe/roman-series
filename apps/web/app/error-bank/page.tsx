@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 import type { ErrorBankQuestion } from "types";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
@@ -29,6 +31,7 @@ const getSubjectColor = (subjectName: string): string => {
 };
 
 export default function ErrorBankPage() {
+  useContentProtection();
   const router = useRouter();
   const { user, loading, profile } = useAuth();
   const { checkErrorBankAccess } = useFeatureAccess();
@@ -132,7 +135,7 @@ export default function ErrorBankPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-    
+      <ContentWatermark />
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-12">

@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
 import { Lock, Calendar, AlertCircle } from "lucide-react";
 import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 
 interface RecalledQuestion {
   id: string;
@@ -124,6 +125,7 @@ export default function RecalledQuestionsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
+      <ContentWatermark />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Hero Header */}
         <div className="mb-10 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
