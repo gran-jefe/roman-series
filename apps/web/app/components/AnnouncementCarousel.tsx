@@ -1,14 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const ANNOUNCEMENTS = [
+interface Announcement {
+  icon: string;
+  title: string;
+  message: ReactNode;
+}
+
+const ANNOUNCEMENTS: Announcement[] = [
   {
     icon: "🛠️",
     title: "Scheduled Maintenance",
     message:
       "Maintenance complete! Everything is back up and running normally. If you run into any issues, reach out — we're happy to help: 0906 177 0885, 0703 834 1818, granjefetech@gmail.com, roman.series.edu@gmail.com",
+  },
+  {
+    icon: "📲",
+    title: "Install Roman Series as an App",
+    message: (
+      <>
+        You can now install Roman Series on your device for one-tap, full-screen access — no
+        app store needed.{" "}
+        <span className="font-semibold">iPhone/iPad:</span> open this site in Safari, tap the{" "}
+        Share icon, then &quot;Add to Home Screen&quot;.{" "}
+        <span className="font-semibold">Android:</span> tap the menu (⋮) in Chrome, then
+        &quot;Install app&quot; or &quot;Add to Home screen&quot;.{" "}
+        <span className="font-semibold">Desktop (Chrome/Edge):</span> click the install icon in
+        the address bar, or open the menu and choose &quot;Install Roman Series&quot;.
+      </>
+    ),
   },
   {
     icon: "📚",
