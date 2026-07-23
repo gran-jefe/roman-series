@@ -69,6 +69,10 @@ export default function RecalledQuestionsPage() {
 
     if (isElite) {
       fetchFilters();
+      // Fire-and-forget: logs one activity-feed entry for this visit. Runs
+      // once per mount (not per filter change) since this page has no
+      // scored submission to hang tracking off of otherwise.
+      api.post("/api/recalled-questions/track-view").catch(() => {});
     }
   }, [isElite]);
 

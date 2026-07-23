@@ -199,7 +199,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       const typesParam = (req.query.types as string) || "";
       const requestedTypes = typesParam
         ? typesParam.split(",").map((t) => t.trim()).filter(Boolean)
-        : ["session", "feedback", "flag", "signup", "subscription"];
+        : ["session", "feedback", "flag", "signup", "subscription", "analytics"];
       const search = ((req.query.search as string) || "").trim();
 
       // Fetch a generous window per source, then merge + sort in memory —
@@ -222,7 +222,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
 
       interface ActivityEvent {
         id: string;
-        type: "session" | "feedback" | "flag" | "signup" | "subscription";
+        type: "session" | "feedback" | "flag" | "signup" | "subscription" | "analytics";
         user_id: string;
         timestamp: string;
         description: string;
@@ -234,18 +234,39 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       const subjectIdsNeeded = new Set<string>();
 
       if (requestedTypes.includes("session")) {
-        const { data: sessions } = await supabaseAdmin
+        const { data: sessions, error: sessionsError } = await supabaseAdmin
           .from("sessions")
-          .select("id, user_id, subject_id, is_mock, is_hard_mode, is_recalled, completed, score, total_questions, started_at, ended_at")
+          .select(
+            "id, user_id, subject_id, is_mock, is_recalled_questions_session, is_error_bank_session, completed, score, total_questions, started_at, ended_at"
+          )
           .order("started_at", { ascending: false })
           .limit(perSourceLimit);
+
+        if (sessionsError) {
+          console.error("[admin/activity] Sessions query error:", sessionsError);
+        }
 
         (sessions || []).forEach((s: any) => {
           if (matchingUserIds && !matchingUserIds.has(s.user_id)) return;
           userIdsNeeded.add(s.user_id);
           if (s.subject_id) subjectIdsNeeded.add(s.subject_id);
 
-          const kind = s.is_hard_mode ? "hard mode exam" : s.is_mock ? "mock exam" : s.is_recalled ? "recalled questions set" : "practice session";
+          // Recalled questions is a browse-only feature (no score), so it
+          // gets its own description rather than being forced into the
+          // scored-session template below.
+          if (s.is_recalled_questions_session) {
+            events.push({
+              id: `session_${s.id}`,
+              type: "session",
+              user_id: s.user_id,
+              timestamp: s.ended_at || s.started_at,
+              description: "Viewed recalled questions",
+              metadata: { subject_id: s.subject_id, completed: s.completed },
+            });
+            return;
+          }
+
+          const kind = s.is_error_bank_session ? "error bank review" : s.is_mock ? "mock exam" : "practice session";
           const description = s.completed
             ? `Scored ${s.total_questions > 0 ? Math.round((s.score / s.total_questions) * 100) : 0}% (${s.score}/${s.total_questions}) on a ${kind}`
             : `Started a ${kind}`;
@@ -350,6 +371,31 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
             timestamp: s.created_at,
             description,
             metadata: { plan: s.plan, status: s.status },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("analytics")) {
+        // analytics_reports has a unique index on user_id (it's a one-row-
+        // per-user cache, refreshed on regeneration), so this surfaces each
+        // user's most recent report generation - the same "one row per
+        // user" shape as the signup source above.
+        const { data: reports } = await supabaseAdmin
+          .from("analytics_reports")
+          .select("id, user_id, generated_at")
+          .order("generated_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (reports || []).forEach((r: any) => {
+          if (matchingUserIds && !matchingUserIds.has(r.user_id)) return;
+          userIdsNeeded.add(r.user_id);
+
+          events.push({
+            id: `analytics_${r.id}`,
+            type: "analytics",
+            user_id: r.user_id,
+            timestamp: r.generated_at,
+            description: "Generated an AI analytics report",
           });
         });
       }

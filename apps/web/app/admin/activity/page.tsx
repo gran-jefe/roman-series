@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 
-type EventType = "session" | "feedback" | "flag" | "signup" | "subscription";
+type EventType = "session" | "feedback" | "flag" | "signup" | "subscription" | "analytics";
 
 interface ActivityEvent {
   id: string;
@@ -26,9 +26,10 @@ const TYPE_META: Record<EventType, { emoji: string; label: string; colour: strin
   flag: { emoji: "🚩", label: "Flag", colour: "bg-red-50 text-red-700 border-red-200" },
   signup: { emoji: "🎉", label: "Signup", colour: "bg-green-50 text-green-700 border-green-200" },
   subscription: { emoji: "💳", label: "Payment", colour: "bg-amber-50 text-amber-700 border-amber-200" },
+  analytics: { emoji: "📊", label: "Analytics", colour: "bg-teal-50 text-teal-700 border-teal-200" },
 };
 
-const ALL_TYPES: EventType[] = ["session", "feedback", "flag", "signup", "subscription"];
+const ALL_TYPES: EventType[] = ["session", "feedback", "flag", "signup", "subscription", "analytics"];
 
 function timeAgo(isoDate: string): string {
   const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);

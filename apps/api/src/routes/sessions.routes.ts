@@ -1321,6 +1321,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           total_questions: questions.length,
           completed: false,
           started_at: new Date().toISOString(),
+          is_error_bank_session: true,
         })
         .select("id")
         .single();

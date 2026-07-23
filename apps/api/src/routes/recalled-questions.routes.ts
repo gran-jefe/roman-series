@@ -102,6 +102,53 @@ export function registerRecalledQuestionsRoutes(app: Express, deps: RecalledQues
      });
    }
  });
+  // POST /api/recalled-questions/track-view - Log one activity-feed entry per
+  // page visit (Elite only). Recalled questions are a browse-only feature
+  // (no scored submission), so this is the only signal that a user engaged
+  // with the section at all - called once on page load, not on every filter
+  // change, to avoid flooding the feed with near-duplicate entries.
+  app.post("/api/recalled-questions/track-view", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", req.userId)
+        .single();
+
+      if (profileError || !profile || profile.subscription_status !== "elite") {
+        res.status(403).json({
+          status: "error",
+          message: "Recalled questions are available for Elite members only.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const { error: insertError } = await supabaseAdmin.from("sessions").insert({
+        user_id: req.userId,
+        total_questions: 0,
+        completed: true,
+        is_recalled_questions_session: true,
+        started_at: now,
+        ended_at: now,
+      });
+
+      if (insertError) {
+        console.error("[recalled-questions/track-view] Insert error:", insertError);
+      }
+
+      res.json({ status: "success", timestamp: now });
+    } catch (error) {
+      console.error("[recalled-questions/track-view] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // POST /api/admin/recalled-questions - Upload recalled question (Admin only)
   app.post("/api/admin/recalled-questions", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
