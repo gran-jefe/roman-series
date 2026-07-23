@@ -146,6 +146,108 @@ export function registerFeedbackRoutes(app: Express, deps: FeedbackDeps) {
     }
   });
 
+  // GET /api/feedback/stats - Aggregate counts for the admin graphical report
+  // (rating distribution, category breakdown, mood breakdown, daily volume
+  // over the last 30 days). Feedback volume is small enough on this platform
+  // to aggregate in memory rather than reach for PostgREST group-by syntax.
+  app.get("/api/feedback/stats", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      if (req.userRole !== "admin") {
+        res.status(403).json({
+          status: "error",
+          message: "Access denied. Admin only.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: rows, error } = await supabaseAdmin
+        .from("feedback")
+        .select("rating, category, emoji_mood, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5000);
+
+      if (error) {
+        console.error("[feedback/stats] Query error:", error);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to fetch feedback stats",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const feedback = rows || [];
+
+      const ratingCounts: Record<string, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+      const categoryCounts: Record<string, number> = {
+        general: 0,
+        questions: 0,
+        ui: 0,
+        performance: 0,
+        features: 0,
+        other: 0,
+      };
+      const moodCounts: Record<string, number> = {
+        love: 0,
+        like: 0,
+        okay: 0,
+        better: 0,
+        frustrated: 0,
+      };
+
+      let ratingSum = 0;
+      feedback.forEach((f: any) => {
+        if (f.rating >= 1 && f.rating <= 5) {
+          ratingCounts[String(f.rating)] = (ratingCounts[String(f.rating)] || 0) + 1;
+          ratingSum += f.rating;
+        }
+        if (f.category in categoryCounts) {
+          categoryCounts[f.category] += 1;
+        }
+        if (f.emoji_mood && f.emoji_mood in moodCounts) {
+          moodCounts[f.emoji_mood] += 1;
+        }
+      });
+
+      // Daily volume for the last 30 days, zero-filled so the line doesn't
+      // skip gaps.
+      const days = 30;
+      const volumeByDay: { date: string; count: number }[] = [];
+      const dayBuckets = new Map<string, number>();
+      feedback.forEach((f: any) => {
+        const day = (f.created_at as string).slice(0, 10);
+        dayBuckets.set(day, (dayBuckets.get(day) || 0) + 1);
+      });
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        volumeByDay.push({ date: key, count: dayBuckets.get(key) || 0 });
+      }
+
+      res.json({
+        status: "success",
+        data: {
+          total: feedback.length,
+          average_rating: feedback.length ? Math.round((ratingSum / feedback.length) * 10) / 10 : 0,
+          rating_counts: ratingCounts,
+          category_counts: categoryCounts,
+          mood_counts: moodCounts,
+          volume_by_day: volumeByDay,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[feedback/stats] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // GET /api/feedback - Get all feedback (admin only)
   app.get("/api/feedback", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {

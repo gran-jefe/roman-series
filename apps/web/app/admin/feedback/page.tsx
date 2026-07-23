@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { FeedbackCharts, type FeedbackStats } from "./FeedbackCharts";
 
 interface Feedback {
   id: string;
@@ -55,6 +56,7 @@ export default function AdminFeedbackPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | "">("");
   const [selectedRating, setSelectedRating] = useState<number | "">("");
+  const [stats, setStats] = useState<FeedbackStats | null>(null);
 
   // Check admin access
   useEffect(() => {
@@ -91,6 +93,25 @@ export default function AdminFeedbackPage() {
       fetchFeedback();
     }
   }, [loading, profile?.role, pagination.page, pagination.limit]);
+
+  // Fetch aggregate stats for the graphical report (independent of the
+  // paginated table above, so charts always reflect the full data set).
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get("/api/feedback/stats");
+        if (res.data.status === "success") {
+          setStats(res.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch feedback stats:", error);
+      }
+    };
+
+    if (!loading && profile?.role === "admin") {
+      fetchStats();
+    }
+  }, [loading, profile?.role]);
 
   const filteredFeedback = feedbackList.filter((f) => {
     if (selectedCategory && f.category !== selectedCategory) return false;
@@ -159,6 +180,9 @@ export default function AdminFeedbackPage() {
           </button>
         </div>
       </div>
+
+      {/* Graphical Report */}
+      {stats && <FeedbackCharts stats={stats} />}
 
       {/* Filters */}
       <div className="bg-white border-b shadow-sm p-4 max-w-7xl mx-auto">
