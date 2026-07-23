@@ -25,14 +25,15 @@ const ANNOUNCEMENTS: Announcement[] = [
     title: "Install Roman Series as an App",
     message: (
       <>
-        You can now install Roman Series on your device for one-tap, full-screen access — no
-        app store needed.{" "}
-        <span className="font-semibold">iPhone/iPad:</span> open this site in Safari, tap the{" "}
-        Share icon, then &quot;Add to Home Screen&quot;.{" "}
-        <span className="font-semibold">Android:</span> tap the menu (⋮) in Chrome, then
-        &quot;Install app&quot; or &quot;Add to Home screen&quot;.{" "}
-        <span className="font-semibold">Desktop (Chrome/Edge):</span> click the install icon in
-        the address bar, or open the menu and choose &quot;Install Roman Series&quot;.
+        You can now install Roman Series on your device for one-tap, full-screen
+        access — no app store needed.{" "}
+        <span className="font-semibold">iPhone/iPad:</span> open this site in
+        Safari, tap the Share icon, then &quot;Add to Home Screen&quot;.{" "}
+        <span className="font-semibold">Android:</span> tap the menu (⋮) in
+        Chrome, then &quot;Install app&quot; or &quot;Add to Home screen&quot;.{" "}
+        <span className="font-semibold">Desktop (Chrome/Edge):</span> click the
+        install icon in the address bar, or open the menu and choose
+        &quot;Install Roman Series&quot;.
       </>
     ),
   },
@@ -45,7 +46,7 @@ const ANNOUNCEMENTS: Announcement[] = [
     ctaHref: "/practice/recalled-questions",
   },
   {
-    icon: "🌿",
+    icon: "❗",
     title: "New Biology Area: Plant Morphology",
     message:
       "Based on popular request, we've added a dedicated question bank for Plant Morphology under Biology — one of the most challenging topics for Post-UTME students.",
@@ -92,7 +93,7 @@ export function AnnouncementCarousel() {
     const timeout = setTimeout(() => {
       setIndex(pendingIndexRef.current);
       setVisible(true);
-    }, 300);
+    }, 900);
     return () => clearTimeout(timeout);
   }, [visible]);
 
