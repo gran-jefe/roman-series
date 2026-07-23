@@ -18,6 +18,7 @@ const NAV_LINKS = [
   { href: "/admin/flagged-questions", label: "Flagged Questions" },
   { href: "/admin/feedback", label: "Feedback" },
   { href: "/admin/recalled-questions", label: "Recalled Questions" },
+  { href: "/admin/biology-focus", label: "Biology Focus" },
 ];
 
 export default function AdminLayout({

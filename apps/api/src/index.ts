@@ -25,6 +25,7 @@ import { registerFlaggingRoutes } from "./routes/flagging.routes";
 import { registerPlansRoutes } from "./routes/plans";
 import { registerRecalledQuestionsRoutes } from "./routes/recalled-questions.routes";
 import { registerFeedbackRoutes } from "./routes/feedback.routes";
+import { registerBiologyFocusRoutes } from "./routes/biology-focus.routes";
 
 // Initialize Supabase clients
 const supabaseUrl = process.env.SUPABASE_URL || "";
@@ -194,6 +195,8 @@ registerPlansRoutes(app, { supabaseAdmin });
 registerRecalledQuestionsRoutes(app, { supabaseAdmin, upload });
 
 registerFeedbackRoutes(app, { supabaseAdmin });
+
+registerBiologyFocusRoutes(app, { supabaseAdmin });
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)
