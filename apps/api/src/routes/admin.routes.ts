@@ -611,7 +611,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
 
     try {
       const { id } = req.params;
-      const { role, subscription_status, duration_days, amount_naira } = req.body;
+      const { role, subscription_status, duration_days, amount_naira, subject_combination } = req.body;
 
       if (
         subscription_status &&
@@ -625,8 +625,45 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         return;
       }
 
+      if (subject_combination !== undefined) {
+        if (!Array.isArray(subject_combination) || subject_combination.some((s) => typeof s !== "string")) {
+          res.status(400).json({
+            status: "error",
+            message: "subject_combination must be an array of subject IDs",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (subject_combination.length > 0) {
+          const { data: validSubjects, error: subjectsError } = await supabaseAdmin
+            .from("subjects")
+            .select("id")
+            .in("id", subject_combination);
+
+          if (subjectsError) {
+            res.status(500).json({
+              status: "error",
+              message: "Failed to validate subjects",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+
+          if ((validSubjects || []).length !== subject_combination.length) {
+            res.status(400).json({
+              status: "error",
+              message: "One or more subject IDs are invalid",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+        }
+      }
+
       const updateData: any = {};
       if (role) updateData.role = role;
+      if (subject_combination !== undefined) updateData.subject_combination = subject_combination;
 
       if (subscription_status) {
         updateData.subscription_status = subscription_status;

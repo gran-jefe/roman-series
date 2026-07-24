@@ -147,6 +147,10 @@ export default function AdminUsersPage() {
   const [editAmountNaira, setEditAmountNaira] = useState("");
   const [savingPlan, setSavingPlan] = useState(false);
 
+  const [editingSubjectsUser, setEditingSubjectsUser] = useState<User | null>(null);
+  const [editSubjectIds, setEditSubjectIds] = useState<string[]>([]);
+  const [savingSubjects, setSavingSubjects] = useState(false);
+
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -420,6 +424,40 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleOpenEditSubjects = (user: User) => {
+    setEditingSubjectsUser(user);
+    setEditSubjectIds(user.subject_combination || []);
+  };
+
+  const toggleEditSubject = (subjectId: string) => {
+    setEditSubjectIds((prev) =>
+      prev.includes(subjectId) ? prev.filter((id) => id !== subjectId) : [...prev, subjectId]
+    );
+  };
+
+  const handleSaveSubjects = async () => {
+    if (!editingSubjectsUser) return;
+
+    setSavingSubjects(true);
+    try {
+      await api.patch(`/api/admin/users/${editingSubjectsUser.id}`, {
+        subject_combination: editSubjectIds,
+      });
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingSubjectsUser.id ? { ...u, subject_combination: editSubjectIds } : u
+        )
+      );
+      toast.success(`${editingSubjectsUser.full_name}'s subjects updated`);
+      setEditingSubjectsUser(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update subjects");
+    } finally {
+      setSavingSubjects(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deletingUser) return;
 
@@ -435,6 +473,8 @@ export default function AdminUsersPage() {
       setIsDeleting(false);
     }
   };
+
+  const subjectNameById = new Map(subjectOptions.map((s) => [s.id, s.name]));
 
   const canAnnounce = selectAllMatching || selectedIds.size > 0;
   const allOnPageSelected = users.length > 0 && users.every((u) => selectedIds.has(u.id));
@@ -563,6 +603,7 @@ export default function AdminUsersPage() {
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Email</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Plan</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Course</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Subjects</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Joined</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-navy">Actions</th>
             </tr>
@@ -578,7 +619,7 @@ export default function AdminUsersPage() {
               </>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500">
                   No users match these filters
                 </td>
               </tr>
@@ -614,6 +655,23 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">{user.target_course || "—"}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="flex items-center gap-2 max-w-[220px]">
+                      <span className="text-gray-700 truncate">
+                        {(user.subject_combination || []).length > 0
+                          ? user.subject_combination!
+                              .map((id) => subjectNameById.get(id) || "Unknown")
+                              .join(", ")
+                          : "—"}
+                      </span>
+                      <button
+                        onClick={() => handleOpenEditSubjects(user)}
+                        className="text-xs text-forest hover:underline flex-shrink-0"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
@@ -858,6 +916,61 @@ export default function AdminUsersPage() {
                 className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
               >
                 {savingPlan ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit subjects modal */}
+      {editingSubjectsUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-navy mb-1">Edit Subjects</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {editingSubjectsUser.full_name} · {editingSubjectsUser.email}
+            </p>
+
+            <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 mb-4 space-y-1">
+              {subjectOptions.length === 0 ? (
+                <p className="text-xs text-gray-500 px-1 py-1">No subjects found</p>
+              ) : (
+                subjectOptions.map((subject) => (
+                  <label
+                    key={subject.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer text-sm text-gray-800"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editSubjectIds.includes(subject.id)}
+                      onChange={() => toggleEditSubject(subject.id)}
+                      className="rounded border-gray-300 text-forest focus:ring-forest"
+                    />
+                    {subject.name}
+                  </label>
+                ))
+              )}
+            </div>
+
+            <p className="text-xs text-gray-500 mb-4">
+              Use this to add a subject the student is missing, or fix one selected by mistake
+              during signup.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingSubjectsUser(null)}
+                disabled={savingSubjects}
+                className="flex-1 px-4 py-2 border border-gray-300 text-navy rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSubjects}
+                disabled={savingSubjects}
+                className="flex-1 px-4 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 disabled:opacity-50 transition"
+              >
+                {savingSubjects ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
