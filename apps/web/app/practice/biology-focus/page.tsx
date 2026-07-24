@@ -69,6 +69,9 @@ export default function BiologyFocusPage() {
 
     if (hasAccess) {
       fetchContent();
+      // Fire-and-forget: logs one activity-feed entry for this visit. Runs
+      // once per mount, mirroring /api/recalled-questions/track-view.
+      api.post("/api/biology-focus/track-view").catch(() => {});
     }
   }, [hasAccess]);
 

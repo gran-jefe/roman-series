@@ -151,6 +151,57 @@ export function registerBiologyFocusRoutes(app: Express, deps: BiologyFocusDeps)
     }
   );
 
+  // POST /api/biology-focus/track-view - Log one activity-feed entry per page
+  // visit (Elite only), same rationale as /api/recalled-questions/track-view:
+  // Biology Focus is browse-only (study guide + question bank with no scored
+  // submission tied to the page itself), so this is the only signal that a
+  // user engaged with the section - fired once on page load.
+  app.post(
+    "/api/biology-focus/track-view",
+    requireAuth(supabaseAdmin),
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        const { data: profile, error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .select("subscription_status")
+          .eq("id", req.userId)
+          .single();
+
+        if (profileError || !profile || profile.subscription_status !== "elite") {
+          res.status(403).json({
+            status: "error",
+            message: "Biology: Plant Morphology Focus is available for Elite members only.",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        const now = new Date().toISOString();
+        const { error: insertError } = await supabaseAdmin.from("sessions").insert({
+          user_id: req.userId,
+          total_questions: 0,
+          completed: true,
+          is_biology_focus_session: true,
+          started_at: now,
+          ended_at: now,
+        });
+
+        if (insertError) {
+          console.error("[biology-focus/track-view] Insert error:", insertError);
+        }
+
+        res.json({ status: "success", timestamp: now });
+      } catch (error) {
+        console.error("[biology-focus/track-view] Error:", error);
+        res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  );
+
   // GET /api/admin/biology-focus/content - Fetch current Area of Concentration
   // markdown for the admin editor (admin-only, no Elite check - admins must
   // be able to see/edit this content regardless of their own subscription).

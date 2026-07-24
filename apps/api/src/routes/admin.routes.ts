@@ -237,7 +237,7 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
         const { data: sessions, error: sessionsError } = await supabaseAdmin
           .from("sessions")
           .select(
-            "id, user_id, subject_id, is_mock, is_recalled_questions_session, is_error_bank_session, completed, score, total_questions, started_at, ended_at"
+            "id, user_id, subject_id, is_mock, is_recalled_questions_session, is_error_bank_session, is_biology_focus_session, completed, score, total_questions, started_at, ended_at"
           )
           .order("started_at", { ascending: false })
           .limit(perSourceLimit);
@@ -251,9 +251,9 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           userIdsNeeded.add(s.user_id);
           if (s.subject_id) subjectIdsNeeded.add(s.subject_id);
 
-          // Recalled questions is a browse-only feature (no score), so it
-          // gets its own description rather than being forced into the
-          // scored-session template below.
+          // Recalled questions and Biology Focus are browse-only features (no
+          // score), so they get their own description rather than being
+          // forced into the scored-session template below.
           if (s.is_recalled_questions_session) {
             events.push({
               id: `session_${s.id}`,
@@ -261,6 +261,18 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
               user_id: s.user_id,
               timestamp: s.ended_at || s.started_at,
               description: "Viewed recalled questions",
+              metadata: { subject_id: s.subject_id, completed: s.completed },
+            });
+            return;
+          }
+
+          if (s.is_biology_focus_session) {
+            events.push({
+              id: `session_${s.id}`,
+              type: "session",
+              user_id: s.user_id,
+              timestamp: s.ended_at || s.started_at,
+              description: "Viewed Biology: Plant Morphology Focus",
               metadata: { subject_id: s.subject_id, completed: s.completed },
             });
             return;
