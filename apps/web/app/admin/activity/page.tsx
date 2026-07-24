@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
+import { ActivityChart, type TimeseriesData } from "./ActivityChart";
 
 type EventType = "session" | "feedback" | "flag" | "signup" | "subscription" | "analytics";
 
@@ -30,6 +31,7 @@ const TYPE_META: Record<EventType, { emoji: string; label: string; colour: strin
 };
 
 const ALL_TYPES: EventType[] = ["session", "feedback", "flag", "signup", "subscription", "analytics"];
+const RANGE_OPTIONS = [7, 30, 90] as const;
 
 function timeAgo(isoDate: string): string {
   const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
@@ -52,6 +54,9 @@ export default function AdminActivityPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [chartDays, setChartDays] = useState<(typeof RANGE_OPTIONS)[number]>(30);
+  const [chartData, setChartData] = useState<TimeseriesData | null>(null);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && profile?.role !== "admin") {
@@ -91,6 +96,32 @@ export default function AdminActivityPage() {
     const interval = setInterval(fetchActivity, 30000);
     return () => clearInterval(interval);
   }, [autoRefresh, fetchActivity]);
+
+  const fetchChart = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        types: selectedTypes.join(","),
+        days: String(chartDays),
+      });
+      if (search) params.set("search", search);
+
+      const res = await api.get(`/api/admin/activity/timeseries?${params}`);
+      if (res.data.status === "success") {
+        setChartData(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch activity chart:", error);
+    } finally {
+      setChartLoading(false);
+    }
+  }, [selectedTypes, search, chartDays]);
+
+  useEffect(() => {
+    if (!loading && profile?.role === "admin") {
+      setChartLoading(true);
+      fetchChart();
+    }
+  }, [loading, profile?.role, fetchChart]);
 
   const toggleType = (type: EventType) => {
     setSelectedTypes((prev) =>
@@ -133,6 +164,25 @@ export default function AdminActivityPage() {
 
       {/* Filters */}
       <div className="bg-white border rounded-lg shadow-sm p-4 mb-6 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mr-1">
+            Chart range
+          </span>
+          {RANGE_OPTIONS.map((n) => (
+            <button
+              key={n}
+              onClick={() => setChartDays(n)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                chartDays === n
+                  ? "bg-navy text-white border-navy"
+                  : "bg-gray-50 text-gray-500 border-gray-200 hover:border-navy/30"
+              }`}
+            >
+              {n}d
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap gap-2">
           {ALL_TYPES.map((type) => {
             const meta = TYPE_META[type];
@@ -179,6 +229,8 @@ export default function AdminActivityPage() {
           )}
         </form>
       </div>
+
+      <ActivityChart data={chartData} loading={chartLoading} />
 
       {/* Feed */}
       {isLoading ? (

@@ -458,6 +458,110 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     }
   });
 
+  // GET /api/admin/activity/timeseries - Daily event counts per activity
+  // type, for charting. Unlike /api/admin/activity (which caps at the most
+  // recent N rows per source and can under-represent history once volume is
+  // high), this buckets by day over an explicit window so older days are
+  // never silently dropped - pages through each source table in batches of
+  // 1000 (Supabase's per-query cap) rather than trusting a single .select().
+  app.get("/api/admin/activity/timeseries", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const daysParam = parseInt((req.query.days as string) || "30");
+      const days = [7, 30, 90].includes(daysParam) ? daysParam : 30;
+      const typesParam = (req.query.types as string) || "";
+      const requestedTypes = typesParam
+        ? typesParam.split(",").map((t) => t.trim()).filter(Boolean)
+        : ["session", "feedback", "flag", "signup", "subscription", "analytics"];
+      const search = ((req.query.search as string) || "").trim();
+
+      let matchingUserIds: Set<string> | null = null;
+      if (search) {
+        const safeSearch = search.replace(/[,()]/g, "");
+        const { data: matches } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
+          .limit(500);
+        matchingUserIds = new Set((matches || []).map((m: any) => m.id));
+      }
+
+      // Day buckets, oldest -> newest, as YYYY-MM-DD (UTC).
+      const dayKeys: string[] = [];
+      const cutoff = new Date();
+      cutoff.setUTCHours(0, 0, 0, 0);
+      cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
+      for (let i = 0; i < days; i++) {
+        const d = new Date(cutoff);
+        d.setUTCDate(d.getUTCDate() + i);
+        dayKeys.push(d.toISOString().slice(0, 10));
+      }
+      const cutoffIso = cutoff.toISOString();
+
+      const SOURCES: Record<
+        string,
+        { table: string; timestampCol: string; userIdCol: string }
+      > = {
+        session: { table: "sessions", timestampCol: "started_at", userIdCol: "user_id" },
+        feedback: { table: "feedback", timestampCol: "created_at", userIdCol: "user_id" },
+        flag: { table: "flagged_questions", timestampCol: "created_at", userIdCol: "user_id" },
+        signup: { table: "profiles", timestampCol: "created_at", userIdCol: "id" },
+        subscription: { table: "subscriptions", timestampCol: "created_at", userIdCol: "user_id" },
+        analytics: { table: "analytics_reports", timestampCol: "generated_at", userIdCol: "user_id" },
+      };
+
+      const bucketFor = (iso: string) => iso.slice(0, 10);
+
+      const series = await Promise.all(
+        requestedTypes
+          .filter((t) => SOURCES[t])
+          .map(async (type) => {
+            const { table, timestampCol, userIdCol } = SOURCES[type];
+            const counts = new Map<string, number>();
+            const pageSize = 1000;
+
+            for (let from = 0; ; from += pageSize) {
+              const { data, error } = await supabaseAdmin
+                .from(table)
+                .select(`${timestampCol}, ${userIdCol}`)
+                .gte(timestampCol, cutoffIso)
+                .range(from, from + pageSize - 1);
+
+              if (error) {
+                console.error(`[admin/activity/timeseries] ${table} query error:`, error);
+                break;
+              }
+
+              (data || []).forEach((row: any) => {
+                if (matchingUserIds && !matchingUserIds.has(row[userIdCol])) return;
+                const key = bucketFor(row[timestampCol]);
+                counts.set(key, (counts.get(key) || 0) + 1);
+              });
+
+              if (!data || data.length < pageSize) break;
+            }
+
+            return { type, counts: dayKeys.map((k) => counts.get(k) || 0) };
+          })
+      );
+
+      res.json({
+        status: "success",
+        data: { days: dayKeys, series },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/activity/timeseries] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // GET /api/admin/users
   app.get("/api/admin/users", async (req: Request, res: Response) => {
     const userId = await checkAdminAuth(req, res, supabaseAdmin);
