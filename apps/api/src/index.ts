@@ -16,6 +16,7 @@ import { registerAuthMigrationRoutes } from "./routes/auth-migration.routes";
 import { registerDataRoutes } from "./routes/data.routes";
 import { registerSessionsRoutes } from "./routes/sessions.routes";
 import { registerAdminRoutes } from "./routes/admin.routes";
+import { registerAnnouncementsRoutes } from "./routes/admin.announcements.routes";
 import { registerUploadRoutes } from "./routes/admin.upload.routes";
 import { registerPaymentsRoutes } from "./routes/payments.routes";
 import { registerLeaderboardRoutes } from "./routes/leaderboard.routes";
@@ -24,6 +25,7 @@ import { registerFlaggingRoutes } from "./routes/flagging.routes";
 import { registerPlansRoutes } from "./routes/plans";
 import { registerRecalledQuestionsRoutes } from "./routes/recalled-questions.routes";
 import { registerFeedbackRoutes } from "./routes/feedback.routes";
+import { registerBiologyFocusRoutes } from "./routes/biology-focus.routes";
 
 // Initialize Supabase clients
 const supabaseUrl = process.env.SUPABASE_URL || "";
@@ -87,7 +89,15 @@ app.use(cors({
 app.options('*', cors());
 
 // Body parsing middleware
-app.use(express.json({ limit: '50mb' }));
+// The `verify` callback stashes the raw request bytes on `req.rawBody` —
+// needed to compute the Paystack webhook's HMAC-SHA512 signature, which
+// must be over the exact bytes Paystack sent, not a re-serialized req.body.
+app.use(express.json({
+  limit: '50mb',
+  verify: (req: Request, _res: Response, buf: Buffer) => {
+    (req as any).rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Request logging middleware
@@ -161,6 +171,8 @@ registerAdminRoutes(app, {
   uploadCache,
 });
 
+registerAnnouncementsRoutes(app, { supabaseAdmin });
+
 registerUploadRoutes(app, { supabaseAdmin });
 
 registerPaymentsRoutes(app, {
@@ -180,9 +192,11 @@ registerFlaggingRoutes(app, { supabaseAdmin });
 
 registerPlansRoutes(app, { supabaseAdmin });
 
-registerRecalledQuestionsRoutes(app, { supabaseAdmin });
+registerRecalledQuestionsRoutes(app, { supabaseAdmin, upload });
 
 registerFeedbackRoutes(app, { supabaseAdmin });
+
+registerBiologyFocusRoutes(app, { supabaseAdmin });
 
 // Legacy inline routes removed - all routes now organized in route files
 // Auth routes (migrated to routes/auth.routes.ts)

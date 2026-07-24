@@ -8,6 +8,8 @@ import Link from "next/link";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
 import { Lock, Calendar, AlertCircle } from "lucide-react";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 
 interface RecalledQuestion {
   id: string;
@@ -37,6 +39,7 @@ interface Subject {
 
 
 export default function RecalledQuestionsPage() {
+  useContentProtection();
   const { profile, loading } = useAuth();
   const [questions, setQuestions] = useState<RecalledQuestion[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -67,6 +70,10 @@ export default function RecalledQuestionsPage() {
 
     if (isElite) {
       fetchFilters();
+      // Fire-and-forget: logs one activity-feed entry for this visit. Runs
+      // once per mount (not per filter change) since this page has no
+      // scored submission to hang tracking off of otherwise.
+      api.post("/api/recalled-questions/track-view").catch(() => {});
     }
   }, [isElite]);
 
@@ -108,8 +115,8 @@ export default function RecalledQuestionsPage() {
   if (!isElite) {
     return (
       <LockedFeature
-        featureName="Recalled UI-POSTUTME Questions"
-        description="Access to questions confirmed to have appeared in past Post-UTME exams from your target university"
+        featureName="Authentic and Updated UI-POSTUTME Questions (2019-2026)"
+        description="Access to questions confirmed to have appeared in past UI Post-Utme exams, including June 2026 questions for underage candidates. "
         currentPlan={profile?.subscription_status || "explorer"}
         icon="⭐"
       />
@@ -118,6 +125,7 @@ export default function RecalledQuestionsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
+      <ContentWatermark />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Hero Header */}
         <div className="mb-10 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">

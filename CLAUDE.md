@@ -67,24 +67,26 @@ Tables (with RLS policies):
 
 ### Feature Comparison
 
-| Feature | Explorer | Scholar | Elite |
-|---------|----------|---------|-------|
-| Subjects | 1–2 | All | All |
-| Daily question limit | 20/day | Unlimited | Unlimited |
-| Mock exams | 2 (lifetime) | 3/week | Unlimited |
-| Error bank | Last 10 | Full | Full |
-| Analytics | Basic | Detailed | Advanced |
-| Predicted score | ✗ | Basic | Advanced |
-| Percentile ranking | ✗ | ✗ | ✓ |
-| Cohort insights | ✗ | ✗ | ✓ |
-| Course comparison | ✗ | ✗ | ✓ |
-| **Recalled Questions** | **✗** | **✗** | **✓** |
-| Hard mode exams | ✗ | ✗ | ✓ |
+| Feature | Explorer | Elite |
+|---------|----------|-------|
+| Subjects | 1–2 | All |
+| Daily question limit | 20/day | Unlimited |
+| Mock exams | 2 (lifetime) | Unlimited |
+| Error bank | Last 10 | Full |
+| Analytics | Basic | Advanced |
+| Predicted score | ✗ | Advanced |
+| Percentile ranking | ✗ | ✓ |
+| Cohort insights | ✗ | ✓ |
+| Course comparison | ✗ | ✓ |
+| **Recalled Questions** | **✗** | **✓** |
+| Hard mode exams | ✗ | ✓ |
 
 ### Pricing
 - **Explorer (Free)**: 1–2 subjects, 20 questions/day, 1 mock exam, basic analytics
-- **Scholar (₦3,500/6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, detailed analytics, leaderboard ranking
-- **Elite (₦5,000/6 months)**: Scholar features + percentile ranking, cohort insights, recalled questions, hard-mode exams, advanced analytics
+- **Elite — 7 days (₦1,500)**: All subjects, unlimited practice, unlimited mock exams, full error bank, hard mode, recalled questions, percentile ranking, cohort insights, advanced analytics
+- **Elite — 3 days (₦1,000)**: Same full Elite feature set as above, shorter access window
+
+Both Elite options set `profiles.subscription_status = "elite"`; only the price and `subscription_expires_at` duration differ (see `apps/api/src/routes/payments.routes.ts` `ELITE_ACCESS_PRICING`). The old Scholar tier (₦3,500/6 months) is retired from sale but existing Scholar subscribers keep their access until natural expiry — `scholar` remains a valid `subscription_status` value in the DB and admin panel for that reason.
 
 ## API base URL
 - Dev: http://localhost:4000
@@ -136,7 +138,10 @@ Tables (with RLS policies):
 - Promo pricing display with countdown timer
 
 ### Admin Panel
-- User management (view, search, filter by plan)
+- User management (search; filter by plan, target course, subject, and signup date range, each single- or multi-select)
+- CSV export of the filtered user list
+- Bulk email announcements to a filtered/selected set of users (via Resend), with automatic fallback to an exportable recipient list (copy or CSV) when a send would exceed the free-tier quota
+- Announcement history log
 - Question upload via Word document parser
 - Question review and editing
 - Flagged questions review interface
@@ -197,12 +202,14 @@ SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
-JWT_SECRET=
-JWT_EXPIRY=86400
 PAYSTACK_SECRET_KEY=
 PAYSTACK_PUBLIC_KEY=
 NEXT_PUBLIC_API_URL=
 GROQ_API_KEY=
+RESEND_API_KEY=
+EMAIL_FROM_ADDRESS=Roman Series <announcements@romanseries.com.ng>
+EMAIL_DAILY_LIMIT=100
+EMAIL_MONTHLY_LIMIT=3000
 COUNTDOWN_MODE=false
 COUNTDOWN_END_DATE=
 ```

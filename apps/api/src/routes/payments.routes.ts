@@ -1,6 +1,8 @@
 import { Express, Request, Response } from "express";
 import { SupabaseClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 import getFlutterwave from "../lib/flutterwave";
+import { initializeTransaction, verifyTransaction } from "../lib/paystack";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 
 interface PaymentsDeps {
@@ -13,6 +15,53 @@ interface PaymentsDeps {
 // so the amount charged server-side always agrees with what the frontend advertises.
 const PROMO_END_DATE = new Date(2026, 6, 12, 23, 59, 59, 999); // Sunday, July 12, 2026
 const isPromoActive = () => Date.now() < PROMO_END_DATE.getTime();
+
+// Pricing in kobo — use Launch Week discount prices while the promo is active
+// (must match the Scholar/Elite prices advertised on pricing/page.tsx and
+// upgrade/page.tsx), otherwise fall back to regular price.
+// Used by the Flutterwave /upgrade route only — see PAYSTACK_PROMO_PRICING
+// below for why Paystack routes don't use this.
+const getPlanPricing = (): Record<string, number> =>
+  isPromoActive()
+    ? {
+        explorer: 0,       // Free
+        scholar: 250000,   // ₦2,500 (discount)
+        elite: 350000,     // ₦3,500 (discount)
+      }
+    : {
+        explorer: 0,       // Free
+        scholar: 350000,   // ₦3,500 (regular)
+        elite: 500000,     // ₦5,000 (regular)
+      };
+
+// Paystack checkout keeps the Launch Week discount price regardless of
+// PROMO_END_DATE, for now — always ₦2,500/₦3,500, never the regular price.
+// Unlike getPlanPricing() above, this is NOT date-gated on purpose.
+// Kept only for the legacy Scholar/Elite paystack/upgrade route below —
+// new purchases go through ELITE_ACCESS_PRICING instead.
+const PAYSTACK_PROMO_PRICING: Record<string, number> = {
+  explorer: 0,       // Free
+  scholar: 250000,   // ₦2,500
+  elite: 350000,     // ₦3,500
+};
+
+// "Emergency Access" pricing — the current standing offer, replacing the
+// old Scholar/Elite tiers for new purchases. Both durations grant full
+// Elite feature access (profiles.subscription_status is set to "elite"
+// either way); only the price and subscription length differ. The exact
+// duration is inferred from the kobo amount actually charged (see
+// resolveAccessDurationDays) rather than a new subscription_status value,
+// so no DB schema change is needed.
+const ELITE_ACCESS_PRICING: Record<number, number> = {
+  7: 150000, // ₦1,500 — 7-day access
+  3: 100000, // ₦1,000 — 3-day access
+};
+
+const resolveAccessDurationDays = (amountKobo: number): number => {
+  if (amountKobo === ELITE_ACCESS_PRICING[7]) return 7;
+  if (amountKobo === ELITE_ACCESS_PRICING[3]) return 3;
+  return 180; // legacy Scholar/Elite purchases keep their original 6-month term
+};
 
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   const { supabaseAdmin, webUrl, flwWebhookHash } = deps;
@@ -417,20 +466,7 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      // Pricing in kobo — use Launch Week discount prices while the promo is
-      // active (must match the Scholar/Elite prices advertised on
-      // pricing/page.tsx and upgrade/page.tsx), otherwise fall back to regular price.
-      const planPricing: Record<string, number> = isPromoActive()
-        ? {
-            explorer: 0,       // Free
-            scholar: 250000,   // ₦2,500 (discount)
-            elite: 350000,     // ₦3,500 (discount)
-          }
-        : {
-            explorer: 0,       // Free
-            scholar: 350000,   // ₦3,500 (regular)
-            elite: 500000,     // ₦5,000 (regular)
-          };
+      const planPricing = getPlanPricing();
 
       const currentPlanPrice = planPricing[profile.subscription_status];
       const targetPlanPrice = planPricing[target_plan];
@@ -521,5 +557,439 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         timestamp: new Date().toISOString(),
       });
     }
+  });
+
+  // ============================================================
+  // Paystack routes — all NEW subscription purchases go through
+  // these; existing Flutterwave routes above are left untouched
+  // so already-active Flutterwave subscriptions keep working.
+  // ============================================================
+
+  app.post("/api/payments/paystack/initialize", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { plan, access_days } = req.body;
+      const accessDays = Number(access_days);
+
+      if (plan !== "elite" || ![7, 3].includes(accessDays)) {
+        res.status(400).json({
+          status: "error",
+          message: "Invalid plan. Must be 'elite' with access_days of 7 or 3",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", req.userId)
+        .single();
+
+      if (!profile?.email) {
+        res.status(400).json({
+          status: "error",
+          message: "Profile email not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const amountInKobo = ELITE_ACCESS_PRICING[accessDays];
+      const reference = `PS-${req.userId!.slice(0, 8)}-${Date.now()}`;
+
+      const { error: insertError } = await supabaseAdmin
+        .from("subscriptions")
+        .insert({
+          user_id: req.userId,
+          plan,
+          status: "pending",
+          paystack_reference: reference,
+          amount: amountInKobo,
+        });
+
+      if (insertError) {
+        console.error("[Paystack Initialize] Insert error:", insertError);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to initiate payment",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const paystackResponse = await initializeTransaction({
+        email: profile.email,
+        amount: amountInKobo,
+        reference,
+        callback_url: `${webUrl}/payment/callback`,
+        metadata: { user_id: req.userId, plan, access_days: accessDays },
+      });
+
+      res.json({
+        status: "success",
+        data: {
+          reference,
+          authorization_url: paystackResponse.data.authorization_url,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[payments/paystack/initialize] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  app.post("/api/payments/paystack/upgrade", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { target_plan } = req.body;
+
+      if (!target_plan || !["explorer", "scholar", "elite"].includes(target_plan)) {
+        res.status(400).json({
+          status: "error",
+          message: "Invalid target plan",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status, full_name, email")
+        .eq("id", req.userId)
+        .single();
+
+      if (!profile) {
+        res.status(401).json({
+          status: "error",
+          message: "Profile not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (profile.subscription_status === target_plan) {
+        res.status(400).json({
+          status: "error",
+          message: "You are already on this plan",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const currentPlanPrice = PAYSTACK_PROMO_PRICING[profile.subscription_status];
+      const targetPlanPrice = PAYSTACK_PROMO_PRICING[target_plan];
+      const upgradeDifference = Math.max(0, targetPlanPrice - currentPlanPrice);
+
+      if (upgradeDifference === 0) {
+        res.status(400).json({
+          status: "error",
+          message: "No upgrade cost for this plan transition",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (!profile.email) {
+        res.status(400).json({
+          status: "error",
+          message: "Profile email not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const reference = `PS-UPGRADE-${req.userId!.slice(0, 8)}-${Date.now()}`;
+
+      const { error: upgradeError } = await supabaseAdmin
+        .from("subscriptions")
+        .insert({
+          user_id: req.userId,
+          plan: target_plan,
+          amount: upgradeDifference,
+          upgraded_from: profile.subscription_status,
+          status: "pending",
+          paystack_reference: reference,
+        });
+
+      if (upgradeError) {
+        console.error("[Paystack Upgrade] Failed to create subscription:", upgradeError);
+        res.status(500).json({
+          status: "error",
+          message: "Failed to initiate payment",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const paystackResponse = await initializeTransaction({
+        email: profile.email,
+        amount: upgradeDifference,
+        reference,
+        callback_url: `${webUrl}/payment/callback`,
+        metadata: {
+          user_id: req.userId,
+          plan: target_plan,
+          upgraded_from: profile.subscription_status,
+        },
+      });
+
+      res.json({
+        status: "success",
+        data: {
+          reference,
+          authorization_url: paystackResponse.data.authorization_url,
+          upgrade_cost: upgradeDifference,
+          from_plan: profile.subscription_status,
+          to_plan: target_plan,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[payments/paystack/upgrade] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  app.post("/api/payments/paystack/verify", async (req: Request, res: Response) => {
+    const { reference } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({
+        status: "error",
+        message: "reference is required",
+      });
+    }
+
+    try {
+      const paystackResponse = await verifyTransaction(reference);
+
+      if (paystackResponse.data.status !== "success") {
+        return res.status(400).json({
+          status: "error",
+          message: "Transaction not successful",
+        });
+      }
+
+      const { data: subscription, error: subFindError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan, status")
+        .eq("paystack_reference", reference)
+        .single();
+
+      if (subFindError || !subscription) {
+        return res.status(404).json({
+          status: "error",
+          message: "Subscription record not found for this transaction",
+        });
+      }
+
+      // Already processed
+      if (subscription.status === "active") {
+        return res.json({
+          status: "success",
+          data: { plan: subscription.plan, already_active: true },
+        });
+      }
+
+      // Record the amount Paystack actually charged (in kobo), same as the
+      // Flutterwave verify path — the client may have charged a
+      // discounted/promo price. Duration is derived from this charged
+      // amount (see resolveAccessDurationDays) rather than always 180 days.
+      const amountChargedKobo = paystackResponse.data.amount || 0;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
+
+      const { error: subUpdateError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          status: "active",
+          expires_at: expiresAt.toISOString(),
+          amount: amountChargedKobo,
+        })
+        .eq("paystack_reference", reference);
+
+      if (subUpdateError) {
+        console.error("[Paystack Verify] Subscription update error:", subUpdateError);
+      }
+
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: subscription.plan,
+          subscription_expires_at: expiresAt.toISOString(),
+        })
+        .eq("id", subscription.user_id);
+
+      if (profileError) {
+        console.error("[Paystack Verify] Profile update failed:", profileError);
+        return res.status(500).json({
+          status: "error",
+          message: "Payment received but profile update failed. Contact support.",
+        });
+      }
+
+      return res.json({
+        status: "success",
+        data: {
+          plan: subscription.plan,
+          expires_at: expiresAt.toISOString(),
+        },
+      });
+    } catch (error: any) {
+      console.error("[Paystack Verify] Error:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Verification failed: " + error.message,
+      });
+    }
+  });
+
+  // Polled by the payment callback page while it waits for the webhook to
+  // land. Cheap fast path if the webhook already confirmed the payment;
+  // otherwise falls back to asking Paystack directly. Public (no requireAuth)
+  // — the callback page may hit this before Firebase auth has finished
+  // restoring the session.
+  app.get("/api/payments/paystack/status/:reference", async (req: Request, res: Response) => {
+    const { reference } = req.params;
+
+    try {
+      const { data: subscription } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, plan, status")
+        .eq("paystack_reference", reference)
+        .single();
+
+      if (!subscription) {
+        res.json({ status: "failed", subscription_active: false, plan: null });
+        return;
+      }
+
+      // Webhook may have already confirmed this — skip the Paystack call.
+      if (subscription.status === "active") {
+        res.json({ status: "success", subscription_active: true, plan: subscription.plan });
+        return;
+      }
+
+      const paystackResponse = await verifyTransaction(reference);
+      const paystackStatus = paystackResponse.data.status;
+
+      if (paystackStatus === "success") {
+        const amountChargedKobo = paystackResponse.data.amount || 0;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
+
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            status: "active",
+            expires_at: expiresAt.toISOString(),
+            amount: amountChargedKobo,
+          })
+          .eq("paystack_reference", reference);
+
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            subscription_status: subscription.plan,
+            subscription_expires_at: expiresAt.toISOString(),
+          })
+          .eq("id", subscription.user_id);
+
+        res.json({ status: "success", subscription_active: true, plan: subscription.plan });
+        return;
+      }
+
+      if (["failed", "abandoned", "reversed"].includes(paystackStatus)) {
+        res.json({ status: "failed", subscription_active: false, plan: null });
+        return;
+      }
+
+      res.json({ status: "pending", subscription_active: false, plan: null });
+    } catch (error) {
+      console.error("[Paystack Status] Error:", error);
+      // Transient — let the frontend keep polling rather than hard-failing.
+      res.json({ status: "pending", subscription_active: false, plan: null });
+    }
+  });
+
+  app.post("/api/payments/paystack/webhook", async (req: Request, res: Response) => {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    const signature = req.headers["x-paystack-signature"] as string | undefined;
+
+    if (!secretKey || !signature) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    if (!req.rawBody) {
+      return res.status(400).send("Missing request body");
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha512", secretKey)
+      .update(req.rawBody)
+      .digest("hex");
+
+    const signatureBuffer = Buffer.from(signature, "utf8");
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+    const isValid =
+      signatureBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+
+    if (!isValid) {
+      console.error("[Paystack Webhook] Signature mismatch");
+      return res.status(401).send("Unauthorized");
+    }
+
+    const payload = req.body;
+
+    if (payload.event === "charge.success") {
+      const reference = payload.data?.reference;
+
+      try {
+        const { data: subscription } = await supabaseAdmin
+          .from("subscriptions")
+          .select("user_id, plan, status")
+          .eq("paystack_reference", reference)
+          .single();
+
+        if (subscription && subscription.status !== "active") {
+          const amountChargedKobo = payload.data?.amount || 0;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + resolveAccessDurationDays(amountChargedKobo));
+
+          await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "active",
+              expires_at: expiresAt.toISOString(),
+            })
+            .eq("paystack_reference", reference);
+
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              subscription_status: subscription.plan,
+              subscription_expires_at: expiresAt.toISOString(),
+            })
+            .eq("id", subscription.user_id);
+
+          console.log("[Paystack Webhook] Payment processed for reference:", reference, "Plan:", subscription.plan, "User:", subscription.user_id);
+        }
+      } catch (err) {
+        console.error("[Paystack Webhook] Error processing:", err);
+      }
+    }
+
+    return res.status(200).json({ status: "success" });
   });
 }

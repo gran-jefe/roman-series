@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
               href="/pricing"
               className="inline-block px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition"
             >
-              Upgrade to Scholar
+              Get Elite Access
             </Link>
           </div>
         </main>
@@ -422,7 +422,22 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Key Info Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {/* Course Cutoff */}
+                <div className="p-5 rounded-lg border-l-4 bg-gray-50 border-gray-300">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">
+                    {prediction.cutoff.year} Course Cutoff
+                  </p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-navy">
+                        {prediction.cutoff.combined_cutoff ?? "—"}
+                      </p>
+                      <p className="text-xs text-gray-600">{prediction.cutoff.course}</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Your UTME Score */}
                 <div className={`p-5 rounded-lg border-l-4 ${prediction.utme_qualifies ? "bg-green-50 border-green-400" : "bg-amber-50 border-amber-400"}`}>
                   <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Your UTME Score</p>
@@ -460,6 +475,21 @@ export default function AnalyticsPage() {
                       <p className="text-xs text-gray-600">% minimum</p>
                     </div>
                   </div>
+                  {typeof prediction.raw_required_putme_score === "number" &&
+                    prediction.raw_required_putme_score < 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Your UTME score alone already clears this course&apos;s cutoff. UI still
+                        requires a minimum of 50% in Post-UTME for admission, so aim for that.
+                      </p>
+                    )}
+                  {typeof prediction.raw_required_putme_score === "number" &&
+                    prediction.raw_required_putme_score >= 0 &&
+                    prediction.raw_required_putme_score < 50 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Your calculated target is {prediction.raw_required_putme_score}%, but UI
+                        requires a minimum of 50% in Post-UTME for admission.
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -470,11 +500,11 @@ export default function AnalyticsPage() {
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold text-navy">Your Predicted Score</p>
                       <p className={`text-sm font-bold px-3 py-1 rounded-full ${
-                        (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0)
+                        (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity)
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
                       }`}>
-                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? 0) ? "✓ On Track" : "⚠ Below Cutoff"}
+                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity) ? "✓ On Track" : "⚠ Below Cutoff"}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -486,7 +516,9 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm font-bold text-navy">{(prediction.predicted_total ?? 0).toFixed(1)}</span>
-                        <span className="text-sm font-bold text-gray-500">Target: {prediction.cutoff?.combined_cutoff ?? 0}</span>
+                        <span className="text-sm font-bold text-gray-500">
+                          Target: {prediction.cutoff?.combined_cutoff ?? "—"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -496,7 +528,7 @@ export default function AnalyticsPage() {
                 {profile?.subscription_status === "explorer" && (
                   <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg flex items-center justify-center">
                     <div className="text-center">
-                      <p className="text-white font-semibold mb-3">Full prediction unlocked in Scholar plan</p>
+                      <p className="text-white font-semibold mb-3">Full prediction unlocked with Elite access</p>
                       <button
                         onClick={() => router.push("/pricing")}
                         className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
@@ -675,7 +707,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1">
                       <h3 className="font-bold text-navy mb-2">Unlock Detailed Analytics</h3>
                       <p className="text-sm text-gray-700 mb-4">
-                        Upgrade to Scholar to access Speed Analysis, Topic Mastery Tracking, Performance History, and more insights to boost your preparation.
+                        Get Elite access to unlock Speed Analysis, Topic Mastery Tracking, Performance History, and more insights to boost your preparation.
                       </p>
                       <button
                         onClick={() => router.push("/pricing")}
@@ -759,7 +791,7 @@ export default function AnalyticsPage() {
                       onClick={() => router.push("/pricing")}
                       className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
                     >
-                      Upgrade to Scholar
+                      Get Elite Access
                     </button>
                   </div>
                 </div>
@@ -810,7 +842,7 @@ export default function AnalyticsPage() {
                       onClick={() => router.push("/pricing")}
                       className="px-6 py-2 bg-forest text-white rounded-lg font-medium hover:shadow-md transition"
                     >
-                      Upgrade to Scholar
+                      Get Elite Access
                     </button>
                   </div>
                 </div>
@@ -1218,7 +1250,7 @@ export default function AnalyticsPage() {
       {showUpgradePrompt && (
         <UpgradePrompt
           title="Unlock Advanced Analytics"
-          message="Scholar and Elite plans unlock advanced analytics with deeper insights, performance trends, percentile rankings, and cohort comparisons to help you track your progress."
+          message="Elite access unlocks advanced analytics with deeper insights, performance trends, percentile rankings, and cohort comparisons to help you track your progress."
           feature="Advanced Analytics & Insights"
           onClose={() => setShowUpgradePrompt(false)}
         />

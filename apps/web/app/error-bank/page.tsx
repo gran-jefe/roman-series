@@ -8,8 +8,11 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 import type { ErrorBankQuestion } from "types";
 import toast from "react-hot-toast";
+import { X } from "lucide-react";
 
 // Color mapping for subjects
 const SUBJECT_COLORS: Record<string, string> = {
@@ -28,6 +31,7 @@ const getSubjectColor = (subjectName: string): string => {
 };
 
 export default function ErrorBankPage() {
+  useContentProtection();
   const router = useRouter();
   const { user, loading, profile } = useAuth();
   const { checkErrorBankAccess } = useFeatureAccess();
@@ -35,6 +39,7 @@ export default function ErrorBankPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<ErrorBankQuestion | null>(null);
 
   const errorBankAccess = checkErrorBankAccess();
   const isLimited = errorBankAccess.currentLimit && errorBankAccess.currentLimit > 0;
@@ -91,7 +96,7 @@ export default function ErrorBankPage() {
         <main className="max-w-6xl mx-auto px-4 py-12 text-center">
           <p className="text-gray-600 mb-4">{errorBankAccess.reason}</p>
           <Link href="/pricing" className="text-forest font-medium hover:underline">
-            Upgrade to Scholar
+            Get Elite Access
           </Link>
         </main>
       </div>
@@ -130,7 +135,7 @@ export default function ErrorBankPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-    
+      <ContentWatermark />
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-12">
@@ -147,7 +152,7 @@ export default function ErrorBankPage() {
                   onClick={() => setShowUpgradePrompt(true)}
                   className="text-blue-600 hover:underline font-medium"
                 >
-                  Upgrade to Scholar
+                  Get Elite Access
                 </button>{" "}
                 to access unlimited error history.
               </p>
@@ -257,7 +262,11 @@ export default function ErrorBankPage() {
                     </thead>
                     <tbody>
                       {subjectQuestions.map((q, idx) => (
-                        <tr key={q.id} className="border-b hover:bg-gray-50">
+                        <tr
+                          key={q.id}
+                          onClick={() => setSelectedQuestion(q)}
+                          className="border-b hover:bg-gray-50 cursor-pointer"
+                        >
                           <td className="px-6 py-4 text-sm text-gray-900">
                             <div className="max-w-md truncate">{q.body}</div>
                           </td>
@@ -281,11 +290,86 @@ export default function ErrorBankPage() {
         )}
       </main>
 
+      {/* Question Detail Modal */}
+      {selectedQuestion && (
+        <>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setSelectedQuestion(null)}
+          />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+              {/* Header */}
+              <div
+                className="px-6 py-4 flex items-center justify-between rounded-t-lg sticky top-0"
+                style={{ backgroundColor: getSubjectColor(selectedQuestion.subject_name) }}
+              >
+                <span className="text-white font-semibold">{selectedQuestion.subject_name}</span>
+                <button
+                  onClick={() => setSelectedQuestion(null)}
+                  className="p-1 hover:bg-white hover:bg-opacity-10 rounded transition text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-6">
+                <p className="text-gray-900 text-base leading-relaxed mb-6 whitespace-pre-wrap">
+                  {selectedQuestion.body}
+                </p>
+
+                <div className="space-y-3">
+                  {selectedQuestion.options.map((option) => (
+                    <div
+                      key={option.id}
+                      className="flex items-start gap-3 p-3 rounded-lg border-2 border-gray-200"
+                    >
+                      <span className="font-semibold text-navy">{option.label}.</span>
+                      <span className="text-gray-800">{option.body}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex items-center gap-4 text-sm text-gray-500">
+                  <span>
+                    Wrong {selectedQuestion.times_wrong} time{selectedQuestion.times_wrong !== 1 ? "s" : ""}
+                  </span>
+                  <span>
+                    Last seen {new Date(selectedQuestion.last_seen_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex gap-3">
+                <button
+                  onClick={() => setSelectedQuestion(null)}
+                  className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    const questionId = selectedQuestion.id;
+                    setSelectedQuestion(null);
+                    router.push(`/practice/error-bank?questions=${questionId}`);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-forest text-white font-medium rounded-lg hover:bg-opacity-90 transition"
+                >
+                  Practice This Question
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Upgrade Prompt */}
       {showUpgradePrompt && (
         <UpgradePrompt
           title="Unlock Full Error Bank"
-          message="Explorer users can view their 10 most recent errors. Scholar users get unlimited access to your entire error history, helping you focus on your weakest areas."
+          message="Explorer users can view their 10 most recent errors. Elite access unlocks your entire error history, helping you focus on your weakest areas."
           feature="Unlimited Error History"
           onClose={() => setShowUpgradePrompt(false)}
         />

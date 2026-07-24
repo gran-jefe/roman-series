@@ -6,19 +6,31 @@ import Link from "next/link";
 import Image from "next/image";
 import api from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
-import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions } from "@/lib/subscription";
+import { canAccessMockExam, canAccessHardMode, canAccessRecalledQuestions, canAccessBiologyFocus } from "@/lib/subscription";
 import CountdownBanner from "./CountdownBanner";
+import { FeedbackPromptModal } from "./FeedbackPromptModal";
+import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
+import { InstallPrompt } from "./InstallPrompt";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"];
+const INSTALL_PROMPT_EXCLUDED_PREFIXES = ["/practice/session", "/practice/mock/session", "/admin"];
+
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding", "/offline"];
 const EXCLUDE_NAVBAR_ROUTES = ["/practice/session", "/practice/mock/session"];
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, logout, profile } = useContext(AuthContext) || {};
+  const { isAuthenticated, loading, logout, profile, user } = useContext(AuthContext) || {};
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [subscription, setSubscription] = useState<{ subscription_status: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const feedbackPrompt = useFeedbackPrompt({
+    isAuthenticated: !!isAuthenticated,
+    loading: !!loading,
+    pathname,
+    userId: user?.id,
+    isAdmin: profile?.role === "admin",
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -73,6 +85,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const hasMockExamAccess = canAccessMockExam(subscription?.subscription_status);
   const hasHardModeAccess = canAccessHardMode(subscription?.subscription_status);
   const hasRecalledQuestionsAccess = canAccessRecalledQuestions(subscription?.subscription_status);
+  const hasBiologyFocusAccess = canAccessBiologyFocus(subscription?.subscription_status);
 
   return (
     <>
@@ -184,6 +197,21 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                       <span className="bg-purple-700 text-white text-xs font-bold px-2 py-0.5 rounded">Elite</span>
                     </a>
                   )}
+                  {hasBiologyFocusAccess && (
+                    <a
+                      href="/practice/biology-focus"
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3c-3 3-6 6-6 10a6 6 0 0012 0c0-4-3-7-6-10z" />
+                        </svg>
+                        Biology Focus<sup className="text-[9px] font-bold -translate-y-1">™</sup>
+                      </div>
+                      <span className="bg-purple-700 text-white text-xs font-bold px-2 py-0.5 rounded">Elite</span>
+                    </a>
+                  )}
                   <a
                     href="/analytics"
                     className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
@@ -232,6 +260,15 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         </nav>
       )}
       <div className={shouldShowNavbar ? "pt-[60px]" : ""}>{children}</div>
+
+      {feedbackPrompt.showPrompt && (
+        <FeedbackPromptModal onSubmitted={feedbackPrompt.submitted} />
+      )}
+
+      {!feedbackPrompt.showPrompt &&
+        !INSTALL_PROMPT_EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) && (
+          <InstallPrompt />
+        )}
     </>
   );
 }

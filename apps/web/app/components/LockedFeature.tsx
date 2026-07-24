@@ -104,8 +104,8 @@ export function LockedFeature({
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-navy">Everything from Scholar</h3>
-                <p className="text-sm text-gray-600 mt-1">Plus exclusive Elite features</p>
+                <h3 className="font-semibold text-navy">Unlimited Practice</h3>
+                <p className="text-sm text-gray-600 mt-1">All subjects, unlimited mock exams, full error bank</p>
               </div>
             </div>
           </div>
@@ -120,10 +120,9 @@ export function LockedFeature({
             </div>
             <div className="text-right">
               <div className="flex items-baseline gap-2 justify-end">
-                <div className="text-4xl font-bold">₦3,500</div>
-                <div className="text-lg text-gray-400 line-through">₦5,000</div>
+                <div className="text-4xl font-bold">₦1,000</div>
               </div>
-              <div className="text-sm text-gray-300">6 months</div>
+              <div className="text-sm text-gray-300">3 days · or ₦1,500 for 7 days</div>
             </div>
           </div>
 

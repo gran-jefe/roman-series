@@ -11,6 +11,8 @@ import { useAuth } from "@/context/AuthContext";
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Flutterwave's inline widget redirects here with these params. Paystack
+  // purchases redirect to /payment/callback instead — see that page.
   const transaction_id = searchParams.get("transaction_id");
   const tx_ref = searchParams.get("tx_ref");
   const status = searchParams.get("status");

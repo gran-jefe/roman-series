@@ -4,6 +4,8 @@ import multer from "multer";
 import crypto from "crypto";
 import { parseRomanSeriesDocument } from "../lib/questionParser";
 import { resolveUserFromToken } from "../middleware/requireAuth";
+import { firebaseAdminAuth } from "../lib/firebaseAdmin";
+import { batchQuery } from "../lib/supabase";
 
 interface AdminDeps {
   supabaseAdmin: SupabaseClient;
@@ -11,8 +13,65 @@ interface AdminDeps {
   uploadCache: Map<string, { parsed: any; expiresAt: number }>;
 }
 
+export interface ProfileFilters {
+  plans: string[];
+  courses: string[];
+  subjectIds: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
+function parseListParam(value: unknown): string[] {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value.map(String) : String(value).split(",");
+  return raw.map((s) => s.trim()).filter(Boolean);
+}
+
+// Query filters shared by the users list, the CSV export, and announcement
+// recipient resolution, so all three always agree on who matches a given
+// plan/course/subject/date-range combination.
+export function parseProfileFilters(query: Record<string, unknown>): ProfileFilters {
+  let dateTo = (query.date_to as string) || undefined;
+  // A date-only value (no time component) needs to be pushed to end-of-day,
+  // otherwise `.lte("created_at", ...)` would exclude everything from that day.
+  if (dateTo && /^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+    dateTo = `${dateTo}T23:59:59.999Z`;
+  }
+
+  return {
+    plans: parseListParam(query.plans),
+    courses: parseListParam(query.courses),
+    subjectIds: parseListParam(query.subjects),
+    dateFrom: (query.date_from as string) || undefined,
+    dateTo,
+    search: (query.search as string) || undefined,
+  };
+}
+
+export function applyProfileFilters<T extends { in: Function; overlaps: Function; gte: Function; lte: Function; or: Function }>(
+  query: T,
+  filters: ProfileFilters
+): T {
+  let q: any = query;
+  if (filters.plans.length) q = q.in("subscription_status", filters.plans);
+  if (filters.courses.length) q = q.in("target_course", filters.courses);
+  if (filters.subjectIds.length) q = q.overlaps("subject_combination", filters.subjectIds);
+  if (filters.dateFrom) q = q.gte("created_at", filters.dateFrom);
+  if (filters.dateTo) q = q.lte("created_at", filters.dateTo);
+  if (filters.search) {
+    // PostgREST's .or() syntax gives meaning to "," "(" ")" - strip them so a
+    // stray character in an admin's search box can't break the filter string.
+    const safeSearch = filters.search.replace(/[,()]/g, "");
+    if (safeSearch) {
+      q = q.or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`);
+    }
+  }
+  return q;
+}
+
 // Helper to check admin auth
-async function checkAdminAuth(
+export async function checkAdminAuth(
   req: Request,
   res: Response,
   supabaseAdmin: SupabaseClient
@@ -129,6 +188,380 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     }
   });
 
+  // GET /api/admin/activity - Recent user activity feed, merged from
+  // sessions, feedback, flagged questions, signups and subscriptions.
+  app.get("/api/admin/activity", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const limit = Math.min(parseInt((req.query.limit as string) || "50"), 200);
+      const typesParam = (req.query.types as string) || "";
+      const requestedTypes = typesParam
+        ? typesParam.split(",").map((t) => t.trim()).filter(Boolean)
+        : ["session", "feedback", "flag", "signup", "subscription", "analytics"];
+      const search = ((req.query.search as string) || "").trim();
+
+      // Fetch a generous window per source, then merge + sort in memory —
+      // simplest way to produce one time-ordered feed across five tables
+      // without a dedicated activity_log table.
+      const perSourceLimit = Math.max(limit, 100);
+
+      // If searching, resolve matching profile ids first so every source
+      // can be filtered by user without a cross-table SQL join.
+      let matchingUserIds: Set<string> | null = null;
+      if (search) {
+        const safeSearch = search.replace(/[,()]/g, "");
+        const { data: matches } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
+          .limit(500);
+        matchingUserIds = new Set((matches || []).map((m: any) => m.id));
+      }
+
+      interface ActivityEvent {
+        id: string;
+        type: "session" | "feedback" | "flag" | "signup" | "subscription" | "analytics";
+        user_id: string;
+        timestamp: string;
+        description: string;
+        metadata?: Record<string, unknown>;
+      }
+
+      const events: ActivityEvent[] = [];
+      const userIdsNeeded = new Set<string>();
+      const subjectIdsNeeded = new Set<string>();
+
+      if (requestedTypes.includes("session")) {
+        const { data: sessions, error: sessionsError } = await supabaseAdmin
+          .from("sessions")
+          .select(
+            "id, user_id, subject_id, is_mock, is_recalled_questions_session, is_error_bank_session, is_biology_focus_session, completed, score, total_questions, started_at, ended_at"
+          )
+          .order("started_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        if (sessionsError) {
+          console.error("[admin/activity] Sessions query error:", sessionsError);
+        }
+
+        (sessions || []).forEach((s: any) => {
+          if (matchingUserIds && !matchingUserIds.has(s.user_id)) return;
+          userIdsNeeded.add(s.user_id);
+          if (s.subject_id) subjectIdsNeeded.add(s.subject_id);
+
+          // Recalled questions and Biology Focus are browse-only features (no
+          // score), so they get their own description rather than being
+          // forced into the scored-session template below.
+          if (s.is_recalled_questions_session) {
+            events.push({
+              id: `session_${s.id}`,
+              type: "session",
+              user_id: s.user_id,
+              timestamp: s.ended_at || s.started_at,
+              description: "Viewed recalled questions",
+              metadata: { subject_id: s.subject_id, completed: s.completed },
+            });
+            return;
+          }
+
+          if (s.is_biology_focus_session) {
+            events.push({
+              id: `session_${s.id}`,
+              type: "session",
+              user_id: s.user_id,
+              timestamp: s.ended_at || s.started_at,
+              description: "Viewed Biology: Plant Morphology Focus",
+              metadata: { subject_id: s.subject_id, completed: s.completed },
+            });
+            return;
+          }
+
+          const kind = s.is_error_bank_session ? "error bank review" : s.is_mock ? "mock exam" : "practice session";
+          const description = s.completed
+            ? `Scored ${s.total_questions > 0 ? Math.round((s.score / s.total_questions) * 100) : 0}% (${s.score}/${s.total_questions}) on a ${kind}`
+            : `Started a ${kind}`;
+
+          events.push({
+            id: `session_${s.id}`,
+            type: "session",
+            user_id: s.user_id,
+            timestamp: s.completed ? (s.ended_at || s.started_at) : s.started_at,
+            description,
+            metadata: { subject_id: s.subject_id, completed: s.completed },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("feedback")) {
+        const { data: feedback } = await supabaseAdmin
+          .from("feedback")
+          .select("id, user_id, rating, category, emoji_mood, message, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (feedback || []).forEach((f: any) => {
+          if (matchingUserIds && !matchingUserIds.has(f.user_id)) return;
+          userIdsNeeded.add(f.user_id);
+
+          events.push({
+            id: `feedback_${f.id}`,
+            type: "feedback",
+            user_id: f.user_id,
+            timestamp: f.created_at,
+            description: `Left ${f.rating}★ feedback on ${f.category}${f.message ? " with a comment" : ""}`,
+            metadata: { rating: f.rating, category: f.category, emoji_mood: f.emoji_mood, message: f.message },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("flag")) {
+        const { data: flags } = await supabaseAdmin
+          .from("flagged_questions")
+          .select("id, user_id, question_id, reason, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (flags || []).forEach((f: any) => {
+          if (matchingUserIds && !matchingUserIds.has(f.user_id)) return;
+          userIdsNeeded.add(f.user_id);
+
+          events.push({
+            id: `flag_${f.id}`,
+            type: "flag",
+            user_id: f.user_id,
+            timestamp: f.created_at,
+            description: f.reason ? `Flagged a question: "${f.reason}"` : "Flagged a question for review",
+            metadata: { question_id: f.question_id },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("signup")) {
+        const { data: signups } = await supabaseAdmin
+          .from("profiles")
+          .select("id, full_name, email, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (signups || []).forEach((p: any) => {
+          if (matchingUserIds && !matchingUserIds.has(p.id)) return;
+          userIdsNeeded.add(p.id);
+
+          events.push({
+            id: `signup_${p.id}`,
+            type: "signup",
+            user_id: p.id,
+            timestamp: p.created_at,
+            description: "Created an account",
+          });
+        });
+      }
+
+      if (requestedTypes.includes("subscription")) {
+        const { data: subs } = await supabaseAdmin
+          .from("subscriptions")
+          .select("id, user_id, plan, amount, status, created_at")
+          .order("created_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (subs || []).forEach((s: any) => {
+          if (matchingUserIds && !matchingUserIds.has(s.user_id)) return;
+          userIdsNeeded.add(s.user_id);
+
+          const nairaAmount = s.amount ? Math.round(s.amount / 100).toLocaleString() : null;
+          const description =
+            s.status === "active"
+              ? `Purchased ${s.plan}${nairaAmount ? ` (₦${nairaAmount})` : ""}`
+              : `Started checkout for ${s.plan}`;
+
+          events.push({
+            id: `subscription_${s.id}`,
+            type: "subscription",
+            user_id: s.user_id,
+            timestamp: s.created_at,
+            description,
+            metadata: { plan: s.plan, status: s.status },
+          });
+        });
+      }
+
+      if (requestedTypes.includes("analytics")) {
+        // analytics_reports has a unique index on user_id (it's a one-row-
+        // per-user cache, refreshed on regeneration), so this surfaces each
+        // user's most recent report generation - the same "one row per
+        // user" shape as the signup source above.
+        const { data: reports } = await supabaseAdmin
+          .from("analytics_reports")
+          .select("id, user_id, generated_at")
+          .order("generated_at", { ascending: false })
+          .limit(perSourceLimit);
+
+        (reports || []).forEach((r: any) => {
+          if (matchingUserIds && !matchingUserIds.has(r.user_id)) return;
+          userIdsNeeded.add(r.user_id);
+
+          events.push({
+            id: `analytics_${r.id}`,
+            type: "analytics",
+            user_id: r.user_id,
+            timestamp: r.generated_at,
+            description: "Generated an AI analytics report",
+          });
+        });
+      }
+
+      // Attach user display info
+      const profiles = await batchQuery<{ id: string; full_name: string; email: string }>(
+        "profiles",
+        "id",
+        Array.from(userIdsNeeded),
+        "id, full_name, email"
+      );
+      const profileMap = new Map(profiles.map((p) => [p.id, p]));
+
+      const subjects = await batchQuery<{ id: string; name: string }>(
+        "subjects",
+        "id",
+        Array.from(subjectIdsNeeded),
+        "id, name"
+      );
+      const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
+
+      const enriched = events
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, limit)
+        .map((e) => {
+          const user = profileMap.get(e.user_id);
+          const subjectName = e.metadata?.subject_id ? subjectMap.get(e.metadata.subject_id as string) : undefined;
+          return {
+            ...e,
+            user_name: user?.full_name || "Unknown user",
+            user_email: user?.email || null,
+            subject_name: subjectName || null,
+          };
+        });
+
+      res.json({
+        status: "success",
+        data: { events: enriched },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/activity] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/activity/timeseries - Daily event counts per activity
+  // type, for charting. Unlike /api/admin/activity (which caps at the most
+  // recent N rows per source and can under-represent history once volume is
+  // high), this buckets by day over an explicit window so older days are
+  // never silently dropped - pages through each source table in batches of
+  // 1000 (Supabase's per-query cap) rather than trusting a single .select().
+  app.get("/api/admin/activity/timeseries", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const daysParam = parseInt((req.query.days as string) || "30");
+      const days = [7, 30, 90].includes(daysParam) ? daysParam : 30;
+      const typesParam = (req.query.types as string) || "";
+      const requestedTypes = typesParam
+        ? typesParam.split(",").map((t) => t.trim()).filter(Boolean)
+        : ["session", "feedback", "flag", "signup", "subscription", "analytics"];
+      const search = ((req.query.search as string) || "").trim();
+
+      let matchingUserIds: Set<string> | null = null;
+      if (search) {
+        const safeSearch = search.replace(/[,()]/g, "");
+        const { data: matches } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
+          .limit(500);
+        matchingUserIds = new Set((matches || []).map((m: any) => m.id));
+      }
+
+      // Day buckets, oldest -> newest, as YYYY-MM-DD (UTC).
+      const dayKeys: string[] = [];
+      const cutoff = new Date();
+      cutoff.setUTCHours(0, 0, 0, 0);
+      cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
+      for (let i = 0; i < days; i++) {
+        const d = new Date(cutoff);
+        d.setUTCDate(d.getUTCDate() + i);
+        dayKeys.push(d.toISOString().slice(0, 10));
+      }
+      const cutoffIso = cutoff.toISOString();
+
+      const SOURCES: Record<
+        string,
+        { table: string; timestampCol: string; userIdCol: string }
+      > = {
+        session: { table: "sessions", timestampCol: "started_at", userIdCol: "user_id" },
+        feedback: { table: "feedback", timestampCol: "created_at", userIdCol: "user_id" },
+        flag: { table: "flagged_questions", timestampCol: "created_at", userIdCol: "user_id" },
+        signup: { table: "profiles", timestampCol: "created_at", userIdCol: "id" },
+        subscription: { table: "subscriptions", timestampCol: "created_at", userIdCol: "user_id" },
+        analytics: { table: "analytics_reports", timestampCol: "generated_at", userIdCol: "user_id" },
+      };
+
+      const bucketFor = (iso: string) => iso.slice(0, 10);
+
+      const series = await Promise.all(
+        requestedTypes
+          .filter((t) => SOURCES[t])
+          .map(async (type) => {
+            const { table, timestampCol, userIdCol } = SOURCES[type];
+            const counts = new Map<string, number>();
+            const pageSize = 1000;
+
+            for (let from = 0; ; from += pageSize) {
+              const { data, error } = await supabaseAdmin
+                .from(table)
+                .select(`${timestampCol}, ${userIdCol}`)
+                .gte(timestampCol, cutoffIso)
+                .range(from, from + pageSize - 1);
+
+              if (error) {
+                console.error(`[admin/activity/timeseries] ${table} query error:`, error);
+                break;
+              }
+
+              (data || []).forEach((row: any) => {
+                if (matchingUserIds && !matchingUserIds.has(row[userIdCol])) return;
+                const key = bucketFor(row[timestampCol]);
+                counts.set(key, (counts.get(key) || 0) + 1);
+              });
+
+              if (!data || data.length < pageSize) break;
+            }
+
+            return { type, counts: dayKeys.map((k) => counts.get(k) || 0) };
+          })
+      );
+
+      res.json({
+        status: "success",
+        data: { days: dayKeys, series },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/activity/timeseries] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // GET /api/admin/users
   app.get("/api/admin/users", async (req: Request, res: Response) => {
     const userId = await checkAdminAuth(req, res, supabaseAdmin);
@@ -137,59 +570,42 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     try {
       const page = parseInt((req.query.page as string) || "1");
       const limit = Math.min(parseInt((req.query.limit as string) || "20"), 100);
-      const search = (req.query.search as string) || "";
+      const filters = parseProfileFilters(req.query as Record<string, unknown>);
 
-      const { data: profiles, error: profilesError } = await supabaseAdmin
+      // profiles.email (added in the Firebase Auth migration) is now the
+      // source of truth for user email, so this no longer needs to merge in
+      // supabaseAdmin.auth.admin.listUsers() - that call silently truncates
+      // at its own default page size and was capping this list at ~50 users.
+      let query = supabaseAdmin
         .from("profiles")
-        .select("id, full_name, role, subscription_status, created_at, target_university_id");
-
-      if (profilesError) throw profilesError;
-
-      const { data: authUsers, error: authError } =
-        await supabaseAdmin.auth.admin.listUsers();
-
-      if (authError) throw authError;
-
-      const emailMap = new Map(
-        authUsers.users.map((u: any) => [u.id, u.email])
-      );
-
-      const merged = (profiles || []).map((profile: any) => ({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: emailMap.get(profile.id) || "N/A",
-        role: profile.role || "user",
-        subscription_status: profile.subscription_status,
-        target_university_id: profile.target_university_id,
-        created_at: profile.created_at,
-      }));
-
-      let filtered = merged;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = merged.filter(
-          (u: any) =>
-            u.full_name?.toLowerCase().includes(searchLower) ||
-            u.email?.toLowerCase().includes(searchLower)
+        .select(
+          "id, full_name, email, role, subscription_status, target_course, subject_combination, target_university_id, created_at",
+          { count: "exact" }
         );
-      }
 
-      filtered.sort((a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      query = applyProfileFilters(query, filters);
 
       const start = (page - 1) * limit;
-      const end = start + limit;
-      const paginatedData = filtered.slice(start, end);
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(start, start + limit - 1);
+
+      if (error) throw error;
+
+      const users = (data || []).map((profile: any) => ({
+        ...profile,
+        email: profile.email || "N/A",
+        role: profile.role || "user",
+      }));
 
       res.json({
         status: "success",
-        data: paginatedData,
+        data: users,
         pagination: {
           page,
           limit,
-          total: filtered.length,
-          total_pages: Math.ceil(filtered.length / limit),
+          total: count || 0,
+          total_pages: Math.ceil((count || 0) / limit),
         },
         timestamp: new Date().toISOString(),
       });
@@ -203,25 +619,209 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
     }
   });
 
-  // PATCH /api/admin/users/:id
+  // GET /api/admin/users/filter-options - distinct target_course values in
+  // use, so the admin panel's course filter only shows real, selectable values
+  app.get("/api/admin/users/filter-options", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const courseSet = new Set<string>();
+      const pageSize = 1000;
+
+      // Supabase caps a single `.select()` at 1000 rows, so page through in
+      // batches (same pattern as the revenue query in /api/admin/stats above)
+      // rather than risk missing distinct values past the first page.
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("profiles")
+          .select("target_course")
+          .not("target_course", "is", null)
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        (data || []).forEach((p: any) => {
+          if (p.target_course) courseSet.add(p.target_course);
+        });
+        if (!data || data.length < pageSize) break;
+      }
+
+      const courses = Array.from(courseSet).sort((a, b) => a.localeCompare(b));
+
+      res.json({
+        status: "success",
+        data: { courses },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users/filter-options] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // GET /api/admin/users/export - CSV export of every user matching the given filters
+  app.get("/api/admin/users/export", async (req: Request, res: Response) => {
+    const userId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!userId) return;
+
+    try {
+      const filters = parseProfileFilters(req.query as Record<string, unknown>);
+      const rows: any[] = [];
+      const pageSize = 1000;
+
+      for (let from = 0; ; from += pageSize) {
+        let query = supabaseAdmin
+          .from("profiles")
+          .select("full_name, email, subscription_status, target_course, created_at");
+        query = applyProfileFilters(query, filters);
+
+        const { data, error } = await query
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+
+      const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const csvLines = [
+        ["Name", "Email", "Plan", "Target Course", "Joined"].join(","),
+        ...rows.map((r) =>
+          [
+            escapeCsv(r.full_name),
+            escapeCsv(r.email),
+            escapeCsv(r.subscription_status),
+            escapeCsv(r.target_course),
+            escapeCsv(new Date(r.created_at).toISOString().split("T")[0]),
+          ].join(",")
+        ),
+      ];
+
+      const filename = `users-export-${new Date().toISOString().split("T")[0]}.csv`;
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(csvLines.join("\n"));
+    } catch (error) {
+      console.error("[admin/users/export] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // PATCH /api/admin/users/:id - also used to manually grant/extend a paid
+  // plan when Flutterwave fails to process and the student pays another way
+  // (bank transfer, cash, etc.) - mirrors what a real successful payment does
+  // (profiles.subscription_expires_at + a subscriptions audit row) so manually
+  // granted plans behave identically to ones paid through Flutterwave.
   app.patch("/api/admin/users/:id", async (req: Request, res: Response) => {
     const userId = await checkAdminAuth(req, res, supabaseAdmin);
     if (!userId) return;
 
     try {
       const { id } = req.params;
-      const { role, subscription_status } = req.body;
+      const { role, subscription_status, duration_days, amount_naira, subject_combination } = req.body;
+
+      if (
+        subscription_status &&
+        !["explorer", "scholar", "elite"].includes(subscription_status)
+      ) {
+        res.status(400).json({
+          status: "error",
+          message: "subscription_status must be explorer, scholar, or elite",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (subject_combination !== undefined) {
+        if (!Array.isArray(subject_combination) || subject_combination.some((s) => typeof s !== "string")) {
+          res.status(400).json({
+            status: "error",
+            message: "subject_combination must be an array of subject IDs",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        if (subject_combination.length > 0) {
+          const { data: validSubjects, error: subjectsError } = await supabaseAdmin
+            .from("subjects")
+            .select("id")
+            .in("id", subject_combination);
+
+          if (subjectsError) {
+            res.status(500).json({
+              status: "error",
+              message: "Failed to validate subjects",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+
+          if ((validSubjects || []).length !== subject_combination.length) {
+            res.status(400).json({
+              status: "error",
+              message: "One or more subject IDs are invalid",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+        }
+      }
 
       const updateData: any = {};
       if (role) updateData.role = role;
-      if (subscription_status) updateData.subscription_status = subscription_status;
+      if (subject_combination !== undefined) updateData.subject_combination = subject_combination;
 
-      const { data } = await supabaseAdmin
+      if (subscription_status) {
+        updateData.subscription_status = subscription_status;
+
+        if (subscription_status === "explorer") {
+          updateData.subscription_expires_at = null;
+        } else {
+          const days = Number(duration_days) > 0 ? Number(duration_days) : 180;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + days);
+          updateData.subscription_expires_at = expiresAt.toISOString();
+
+          const { error: subError } = await supabaseAdmin.from("subscriptions").insert({
+            user_id: id,
+            plan: subscription_status,
+            status: "active",
+            paystack_reference: `MANUAL-${crypto.randomUUID()}`,
+            amount: Math.round((Number(amount_naira) || 0) * 100),
+            expires_at: expiresAt.toISOString(),
+          });
+
+          if (subError) {
+            console.error("[admin/users/:id] Manual subscription log error:", subError);
+          }
+        }
+      }
+
+      const { data, error: updateError } = await supabaseAdmin
         .from("profiles")
         .update(updateData)
         .eq("id", id)
         .select()
         .single();
+
+      if (updateError || !data) {
+        res.status(500).json({
+          status: "error",
+          message: "Failed to update user",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
 
       res.json({
         status: "success",
@@ -230,6 +830,98 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
       });
     } catch (error) {
       console.error("[admin/users/:id] Error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // DELETE /api/admin/users/:id - permanently deletes a user: the Firebase
+  // Auth account first, then the Supabase Auth user (whose id = profiles.id),
+  // which cascades to profiles/sessions/subscriptions/analytics_reports and,
+  // via auth.users directly, flagged_questions/recalled_questions too. Order
+  // matters: deleting Firebase first means a failure on the Supabase side
+  // leaves all data intact and safely retryable; the reverse order would
+  // risk cascading away all data while leaving a live, orphaned Firebase
+  // login - the same class of bug as the Firebase Orphaned Account Incident.
+  app.delete("/api/admin/users/:id", async (req: Request, res: Response) => {
+    const adminId = await checkAdminAuth(req, res, supabaseAdmin);
+    if (!adminId) return;
+
+    try {
+      const { id } = req.params;
+
+      if (id === adminId) {
+        res.status(400).json({
+          status: "error",
+          message: "You cannot delete your own account.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, firebase_uid, full_name, role")
+        .eq("id", id)
+        .single();
+
+      if (profileError || !profile) {
+        res.status(404).json({
+          status: "error",
+          message: "User not found",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (profile.role === "admin") {
+        res.status(403).json({
+          status: "error",
+          message: "Cannot delete an admin account.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (profile.firebase_uid) {
+        try {
+          await firebaseAdminAuth.deleteUser(profile.firebase_uid);
+        } catch (firebaseError: any) {
+          if (firebaseError?.code !== "auth/user-not-found") {
+            console.error("[admin/users/:id DELETE] Firebase delete failed:", firebaseError);
+            res.status(500).json({
+              status: "error",
+              message: "Failed to delete Firebase account — nothing was removed. Try again.",
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+        }
+      }
+
+      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(id);
+
+      if (authDeleteError) {
+        console.error("[admin/users/:id DELETE] Supabase delete failed:", authDeleteError);
+        res.status(500).json({
+          status: "error",
+          message:
+            "Firebase account was deleted, but removing the database record failed. Click delete again to retry.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.json({
+        status: "success",
+        message: "Account deleted.",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[admin/users/:id DELETE] Error:", error);
       res.status(500).json({
         status: "error",
         message: "Internal server error",
@@ -1201,10 +1893,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
-          // Set default values for prediction calculations
+          // Set default values for prediction calculations - UI's real
+          // aggregate formula is a fixed (UTME/8) + (PUTME/2), i.e. equal
+          // max contribution of 50 each, not a 60/40 split.
           utme_cutoff: 200,
-          utme_weight: 60,
-          putme_weight: 40,
+          utme_weight: 50,
+          putme_weight: 50,
           combined_cutoff: r.merit,
         }));
 
@@ -1302,10 +1996,12 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           merit_cutoff: r.merit,
           catch_cutoff: r.catch,
           elds_cutoff: r.elds,
-          // Set default values for prediction calculations
+          // Set default values for prediction calculations - UI's real
+          // aggregate formula is a fixed (UTME/8) + (PUTME/2), i.e. equal
+          // max contribution of 50 each, not a 60/40 split.
           utme_cutoff: 200,
-          utme_weight: 60,
-          putme_weight: 40,
+          utme_weight: 50,
+          putme_weight: 50,
           combined_cutoff: r.merit,
         }));
 
@@ -1436,8 +2132,8 @@ export function registerAdminRoutes(app: Express, deps: AdminDeps) {
           course,
           year,
           utme_cutoff,
-          utme_weight: utme_weight || 60,
-          putme_weight: putme_weight || 40,
+          utme_weight: utme_weight || 50,
+          putme_weight: putme_weight || 50,
           combined_cutoff,
           notes: notes || null,
         })
