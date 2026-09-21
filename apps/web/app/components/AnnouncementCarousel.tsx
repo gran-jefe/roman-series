@@ -15,10 +15,12 @@ interface Announcement {
 
 const ANNOUNCEMENTS: Announcement[] = [
   {
-    icon: "🛠️",
-    title: "Scheduled Maintenance",
+    icon: "🎯",
+    title: "UTME & Post-UTME 2026/2027 Season Live",
     message:
-      "Maintenance complete! Everything is back up and running normally. If you run into any issues, reach out — we're happy to help: 0906 177 0885, 0703 834 1818, granjefetech@gmail.com, roman.series.edu@gmail.com",
+      "Start preparing early for the upcoming JAMB UTME & University Post-UTME screenings with updated authentic questions, timed CBT simulations, and diagnostic weak-topic tracking.",
+    ctaLabel: "Start Practice",
+    ctaHref: "/practice/setup",
   },
   {
     icon: "📲",
@@ -52,14 +54,6 @@ const ANNOUNCEMENTS: Announcement[] = [
       "Based on popular request, we've added a dedicated question bank for Plant Morphology under Biology — one of the most challenging topics for Post-UTME students.",
     ctaLabel: "View Biology Focus",
     ctaHref: "/practice/biology-focus",
-  },
-  {
-    icon: "⚡",
-    title: "3-Day Full Access — ₦1,000",
-    message:
-      "Get unrestricted access to every subject, mock exam, and feature on the platform for 3 days at just ₦1,000. Perfect for a focused final push before your exam.",
-    ctaLabel: "View Pricing",
-    ctaHref: "/pricing",
   },
   {
     icon: "🔄",
