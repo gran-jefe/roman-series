@@ -118,7 +118,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
 
         if (data.migrated) {
-          await sendPasswordResetEmail(firebaseAuth, email);
+          const webUrl = process.env.NEXT_PUBLIC_WEB_URL || "http://localhost:3000";
+          await sendPasswordResetEmail(firebaseAuth, email, {
+            url: `${webUrl}/reset-password`,
+            handleCodeInApp: true,
+          });
           return { needsMigration: true };
         }
 

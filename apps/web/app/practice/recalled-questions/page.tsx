@@ -7,7 +7,9 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
-import { Lock, Calendar, AlertCircle } from "lucide-react";
+import { Lock, Calendar, AlertCircle, Archive, CheckCircle2, Lightbulb } from "lucide-react";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 
 interface RecalledQuestion {
   id: string;
@@ -37,6 +39,7 @@ interface Subject {
 
 
 export default function RecalledQuestionsPage() {
+  useContentProtection();
   const { profile, loading } = useAuth();
   const [questions, setQuestions] = useState<RecalledQuestion[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -67,6 +70,10 @@ export default function RecalledQuestionsPage() {
 
     if (isElite) {
       fetchFilters();
+      // Fire-and-forget: logs one activity-feed entry for this visit. Runs
+      // once per mount (not per filter change) since this page has no
+      // scored submission to hang tracking off of otherwise.
+      api.post("/api/recalled-questions/track-view").catch(() => {});
     }
   }, [isElite]);
 
@@ -108,8 +115,8 @@ export default function RecalledQuestionsPage() {
   if (!isElite) {
     return (
       <LockedFeature
-        featureName="Recalled UI-POSTUTME Questions"
-        description="Access to questions confirmed to have appeared in past Post-UTME exams from your target university"
+        featureName="Authentic and Updated UI-POSTUTME Questions (2019-2026)"
+        description="Access to questions confirmed to have appeared in past UI Post-Utme exams, including June 2026 questions for underage candidates. "
         currentPlan={profile?.subscription_status || "explorer"}
         icon="⭐"
       />
@@ -118,17 +125,20 @@ export default function RecalledQuestionsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
+      <ContentWatermark />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Hero Header */}
         <div className="mb-10 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-forest/15 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-4xl">🔐</span>
+            <div className="flex items-center gap-3.5 mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center flex-shrink-0">
+                <Archive className="w-6 h-6 text-amber-300" />
+              </div>
               <div>
                 <h1 className="text-3xl sm:text-4xl font-black">
-                  Recalled Questions 🎯
+                  Recalled Questions
                 </h1>
                 <p className="text-white/70 text-sm sm:text-base mt-1">
                   Authentic UI Post-UTME questions from 2019-2025
@@ -297,8 +307,9 @@ export default function RecalledQuestionsPage() {
                             </span>
 
                             {question.answer === option.label && (
-                              <span className="ml-auto text-xs font-black text-green-600">
-                                ✓ Correct
+                              <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-green-600">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Correct</span>
                               </span>
                             )}
                           </div>
@@ -310,8 +321,9 @@ export default function RecalledQuestionsPage() {
                   {/* Explanation */}
                   {question.note && (
                     <div className="bg-blue-50/50 border-l-4 border-blue-400 p-4 rounded-lg">
-                      <p className="text-xs font-bold text-blue-900 mb-1.5">
-                        💡 Explanation
+                      <p className="text-xs font-bold text-blue-900 mb-1.5 flex items-center gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Explanation</span>
                       </p>
                       <p className="text-sm text-blue-800 leading-relaxed">
                         {question.note}

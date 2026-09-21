@@ -65,3 +65,101 @@ body {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+.biology-focus-markdown h1,
+.biology-focus-markdown h2,
+.biology-focus-markdown h3 {
+  color: var(--navy);
+  font-weight: 900;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.biology-focus-markdown h1 {
+  font-size: 1.5rem;
+}
+
+.biology-focus-markdown h2 {
+  font-size: 1.25rem;
+}
+
+.biology-focus-markdown h3 {
+  font-size: 1.1rem;
+}
+
+.biology-focus-markdown h1:first-child,
+.biology-focus-markdown h2:first-child,
+.biology-focus-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.biology-focus-markdown p {
+  color: #374151;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+}
+
+.biology-focus-markdown strong {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.biology-focus-markdown ul,
+.biology-focus-markdown ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  color: #374151;
+}
+
+.biology-focus-markdown ul {
+  list-style-type: disc;
+}
+
+.biology-focus-markdown ol {
+  list-style-type: decimal;
+}
+
+.biology-focus-markdown li {
+  margin-bottom: 0.4rem;
+  line-height: 1.6;
+}
+
+.biology-focus-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.biology-focus-markdown th {
+  background: var(--navy);
+  color: #fff;
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+}
+
+.biology-focus-markdown td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.biology-focus-markdown tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+.biology-focus-markdown blockquote {
+  border-left: 4px solid var(--forest);
+  padding-left: 1rem;
+  color: #4b5563;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.biology-focus-markdown code {
+  background: #f3f4f6;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.85em;
+}

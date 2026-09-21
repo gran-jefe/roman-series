@@ -9,13 +9,16 @@ import { PageLoader } from "@/components/PageLoader";
 
 const NAV_LINKS = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/activity", label: "User Activity" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/announcements", label: "Announcements" },
   { href: "/admin/questions", label: "Questions" },
   { href: "/admin/review-answers", label: "Review Answers" },
   { href: "/admin/cutoff-marks", label: "Cut-off Marks" },
   { href: "/admin/flagged-questions", label: "Flagged Questions" },
   { href: "/admin/feedback", label: "Feedback" },
   { href: "/admin/recalled-questions", label: "Recalled Questions" },
+  { href: "/admin/biology-focus", label: "Biology Focus" },
 ];
 
 export default function AdminLayout({

@@ -497,6 +497,7 @@ export interface PredictionResult {
   current_practice_avg?: number;
   predicted_total?: number;
   required_putme_score?: number;
+  raw_required_putme_score?: number;
   post_utme_target?: number;
   gap_percentage?: number;
   status?: "on_track" | "at_risk" | "no_data";

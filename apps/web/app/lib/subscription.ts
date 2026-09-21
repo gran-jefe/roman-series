@@ -160,3 +160,7 @@ export function canAccessHardMode(status?: string | null): boolean {
 export function canAccessRecalledQuestions(status?: string | null): boolean {
   return isElite(status);
 }
+
+export function canAccessBiologyFocus(status?: string | null): boolean {
+  return isElite(status);
+}

@@ -17,7 +17,7 @@ export function useFeatureAccess() {
     if (features.mockExamsPerMonth === 0) {
       return {
         hasAccess: false,
-        reason: "Upgrade to Scholar or Elite to access mock exams",
+        reason: "Get Elite access to unlock mock exams",
       };
     }
 
@@ -64,7 +64,7 @@ export function useFeatureAccess() {
     }
     return {
       hasAccess: false,
-      reason: "Upgrade to Scholar or Elite to access the error bank",
+      reason: "Get Elite access to unlock the error bank",
     };
   };
 
@@ -74,7 +74,7 @@ export function useFeatureAccess() {
     }
     return {
       hasAccess: false,
-      reason: "Upgrade to Scholar or Elite to access advanced analytics",
+      reason: "Get Elite access to unlock advanced analytics",
     };
   };
 
@@ -93,7 +93,7 @@ export function useFeatureAccess() {
     }
     return {
       hasAccess: false,
-      reason: "Upgrade to Scholar or Elite to access the leaderboard",
+      reason: "Get Elite access to unlock the leaderboard",
     };
   };
 
@@ -103,7 +103,7 @@ export function useFeatureAccess() {
       return {
         hasAccess: false,
         reason:
-          "Upgrade to Scholar to preview your score, or Elite for full predicted scores",
+          "Get Elite access to unlock full predicted scores",
       };
     }
     return { hasAccess: true, reason: access };
@@ -116,7 +116,7 @@ export function useFeatureAccess() {
     }
     return {
       hasAccess: false,
-      reason: "Upgrade to Scholar or Elite to access weak topic analysis",
+      reason: "Get Elite access to unlock weak topic analysis",
     };
   };
 

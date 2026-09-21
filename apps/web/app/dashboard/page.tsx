@@ -7,11 +7,31 @@ import { useAuth } from "@/context/AuthContext";
 import { StatCardSkeleton, SessionRowSkeleton } from "@/components/skeletons";
 import { PageLoader } from "@/components/PageLoader";
 import { ProfileCompletionModal } from "@/components/ProfileCompletionModal";
-import { MaintenanceBanner } from "@/components/MaintenanceBanner";
+import { AnnouncementCarousel } from "@/components/AnnouncementCarousel";
 import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
-import { Calendar, BarChart3, Zap, CheckCircle, ChevronRight, Target, BookOpen, AlertCircle as ErrorIcon, TrendingUp, Flame, Activity } from "lucide-react";
+import {
+  Calendar,
+  BarChart3,
+  Zap,
+  CheckCircle,
+  ChevronRight,
+  Target,
+  BookOpen,
+  AlertCircle as ErrorIcon,
+  TrendingUp,
+  Flame,
+  Activity,
+  Award,
+  Sparkles,
+  Clock,
+  ShieldCheck,
+  ArrowUpRight,
+  GraduationCap,
+  Crown,
+} from "lucide-react";
+import Link from "next/link";
 
 interface Subscription {
   subscription_status: string;
@@ -22,14 +42,19 @@ interface SubjectWithCounts extends Subject {
   question_count?: number;
 }
 
-const subjectColours: Record<string, string> = {
-  Biology: "#1A7A4A",
-  Chemistry: "#8B2252",
-  Physics: "#7B4F1A",
-  Government: "#1E3A5F",
-  Literature: "#C4522A",
-  CRS: "#D97B20",
-  IRS: "#B0287A",
+const subjectColours: Record<string, { bg: string; border: string; text: string; light: string }> = {
+  Biology: { bg: "bg-emerald-600", border: "border-emerald-200", text: "text-emerald-700", light: "bg-emerald-50" },
+  Chemistry: { bg: "bg-rose-600", border: "border-rose-200", text: "text-rose-700", light: "bg-rose-50" },
+  Physics: { bg: "bg-amber-700", border: "border-amber-200", text: "text-amber-800", light: "bg-amber-50" },
+  Government: { bg: "bg-slate-700", border: "border-slate-200", text: "text-slate-800", light: "bg-slate-50" },
+  Literature: { bg: "bg-orange-600", border: "border-orange-200", text: "text-orange-700", light: "bg-orange-50" },
+  CRS: { bg: "bg-yellow-600", border: "border-yellow-200", text: "text-yellow-800", light: "bg-yellow-50" },
+  IRS: { bg: "bg-pink-600", border: "border-pink-200", text: "text-pink-700", light: "bg-pink-50" },
+  English: { bg: "bg-blue-600", border: "border-blue-200", text: "text-blue-700", light: "bg-blue-50" },
+  Mathematics: { bg: "bg-indigo-600", border: "border-indigo-200", text: "text-indigo-700", light: "bg-indigo-50" },
+  Commerce: { bg: "bg-teal-600", border: "border-teal-200", text: "text-teal-700", light: "bg-teal-50" },
+  Accounting: { bg: "bg-purple-600", border: "border-purple-200", text: "text-purple-700", light: "bg-purple-50" },
+  Economics: { bg: "bg-sky-600", border: "border-sky-200", text: "text-sky-700", light: "bg-sky-50" },
 };
 
 export default function DashboardPage() {
@@ -61,10 +86,7 @@ export default function DashboardPage() {
   // Fetch essential data first (blocks page render until done)
   useEffect(() => {
     const fetchEssentialData = async () => {
-      const token = localStorage.getItem("access_token");
-      console.log("[Dashboard] Token in storage:", token ? `${token.slice(0, 20)}...` : "MISSING");
       try {
-        // Get user profile
         let userProfile = profile;
         try {
           const meRes = await api.get("/api/auth/me");
@@ -72,7 +94,6 @@ export default function DashboardPage() {
           setUserName(meRes.data.data.profile.full_name);
           setTargetCourse(meRes.data.data.profile.target_course || "");
         } catch {
-          // Use profile from context if available
           if (profile?.full_name) {
             setUserName(profile.full_name);
           }
@@ -94,7 +115,6 @@ export default function DashboardPage() {
 
         // Get user's target university
         if (userProfile?.target_university_id) {
-          // Fetch all universities to find the user's selected one
           const uniRes = await api.get("/api/universities");
           const allUniversities = uniRes.data.data || [];
           const userUni = allUniversities.find(
@@ -104,12 +124,10 @@ export default function DashboardPage() {
           if (userUni) {
             setSelectedUniversity(userUni);
 
-            // Get subjects for user's university
             const subjectsRes = await api.get(
               `/api/subjects?universityId=${userProfile.target_university_id}`
             );
             const allSubjects = subjectsRes.data.data || [];
-            // Filter to only show user's selected subjects
             const userSubjects = allSubjects.filter((s: Subject) =>
               userProfile.subject_combination?.includes(s.id)
             );
@@ -135,9 +153,7 @@ export default function DashboardPage() {
         try {
           const subRes = await api.get("/api/payments/status");
           setSubscription(subRes.data.data);
-        } catch {
-          // Subscription endpoint error - continue without it
-        }
+        } catch {}
       })();
 
       // Fetch user stats
@@ -145,9 +161,7 @@ export default function DashboardPage() {
         try {
           const statsRes = await api.get("/api/stats/me");
           setStats(statsRes.data.data);
-        } catch {
-          // Stats endpoint error - continue without it
-        }
+        } catch {}
       })();
 
       // Fetch session history
@@ -156,7 +170,6 @@ export default function DashboardPage() {
           const sessionRes = await api.get("/api/sessions/history");
           setSessions(sessionRes.data.data || []);
         } catch {
-          // Sessions endpoint error - continue without it
         } finally {
           setSessionsLoaded(true);
         }
@@ -167,9 +180,7 @@ export default function DashboardPage() {
         try {
           const errorRes = await api.get("/api/sessions/wrong-questions");
           setErrorBank(errorRes.data.data?.questions || []);
-        } catch {
-          // Error bank endpoint error - continue without it
-        }
+        } catch {}
       })();
 
       // Fetch prediction
@@ -177,9 +188,7 @@ export default function DashboardPage() {
         try {
           const predRes = await api.get("/api/analytics/prediction");
           setPrediction(predRes.data.data);
-        } catch {
-          // Prediction endpoint error - continue without it
-        }
+        } catch {}
       })();
     }
   }, [essentialLoading]);
@@ -191,100 +200,148 @@ export default function DashboardPage() {
     );
   };
 
-  // Show loader only for essential data (profile, university, subjects)
+  // Show loader only for essential data
   if (essentialLoading) {
-    return <PageLoader message="Loading dashboard..." />;
+    return <PageLoader message="Loading your dashboard..." />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#FAF7F4]">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <MaintenanceBanner />
+  const avgScore =
+    stats && stats.avg_score_by_subject.length > 0
+      ? Math.round(
+          stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
+            stats.avg_score_by_subject.length
+        )
+      : 0;
 
-        {/* Welcome Header Band */}
-        <div className="mb-12 bg-gradient-to-r from-navy to-navy/90 text-white rounded-3xl p-8 sm:p-12 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-forest/15 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
-          <div className="relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-black mb-2">
-              Welcome back, {userName ? userName.split(" ")[0] : "User"}! 👋
-            </h2>
-            {selectedUniversity && (
-              <p className="text-white/70 text-sm sm:text-base font-medium">
-                Preparing for <span className="font-bold text-white">{selectedUniversity.name}</span>
-                {targetCourse && <span className="text-white/60"> • {targetCourse}</span>}
-              </p>
-            )}
+  const currentStatus = subscription?.subscription_status || "explorer";
+
+  return (
+    <div className="min-h-screen bg-[#FAF7F4] text-slate-800">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <AnnouncementCarousel />
+
+        {/* Welcome & Readiness Hero Header */}
+        <div className="mb-8 bg-gradient-to-br from-[#0D1B2A] via-[#12263F] to-[#1A3353] text-white rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden border border-white/10">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#1A7A4A]/20 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-60 h-60 bg-[#C4522A]/15 rounded-full blur-2xl translate-y-1/2 pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-emerald-300 mb-3">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                UTME & Post-UTME 2026/2027 Season Active
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight mb-2">
+                Welcome back, {userName ? userName.split(" ")[0] : "Candidate"}!
+              </h1>
+              {selectedUniversity ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-white/80 text-sm sm:text-base">
+                  <span className="font-semibold text-white flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-[#1A7A4A]" />
+                    {selectedUniversity.name}
+                  </span>
+                  {targetCourse && (
+                    <span className="text-white/60">• Course: <strong className="text-white">{targetCourse}</strong></span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-white/70 text-sm">
+                  Complete your study profile to unlock customized university benchmarks.
+                </p>
+              )}
+            </div>
+
+            {/* Quick Readiness Badge / Upgrade CTA */}
+            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
+              <div className="text-right">
+                <p className="text-xs uppercase font-bold text-white/60 tracking-wider">Plan Status</p>
+                <div className="text-sm sm:text-base font-extrabold capitalize text-white flex items-center justify-end gap-1.5">
+                  {currentStatus === "elite" ? (
+                    <span className="text-purple-300 flex items-center gap-1.5">
+                      <Crown className="w-4 h-4 text-purple-400" />
+                      Elite Access
+                    </span>
+                  ) : currentStatus === "scholar" ? (
+                    <span className="text-emerald-300 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      Scholar Tier
+                    </span>
+                  ) : (
+                    <span>Explorer (Free)</span>
+                  )}
+                </div>
+              </div>
+              {currentStatus !== "elite" && (
+                <Link
+                  href="/pricing"
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C4522A] to-amber-600 hover:brightness-110 text-white font-bold text-xs shadow-sm transition"
+                >
+                  Upgrade →
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="mb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* 4-Card Bento Metrics Grid */}
+        <div className="mb-10">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats ? (
               <>
                 {/* Total Sessions */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Total Sessions</p>
-                      <p className="text-4xl font-black text-navy">{stats.total_sessions}</p>
-                      <p className="text-xs text-gray-400 mt-2">practice sessions</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-navy/10 flex items-center justify-center flex-shrink-0">
-                      <Calendar className="w-6 h-6 text-forest" />
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-[#1A7A4A]/40 transition group">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sessions</span>
+                    <div className="w-10 h-10 rounded-xl bg-[#0D1B2A]/5 flex items-center justify-center text-[#1A7A4A] group-hover:scale-105 transition">
+                      <Calendar className="w-5 h-5" />
                     </div>
                   </div>
+                  <p className="text-2xl sm:text-4xl font-black text-[#0D1B2A] tracking-tight">
+                    {stats.total_sessions}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">completed drills</p>
                 </div>
 
                 {/* Average Score */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Average Score</p>
-                      <p className="text-4xl font-black text-forest">
-                        {stats.avg_score_by_subject.length > 0
-                          ? Math.round(
-                              stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
-                                stats.avg_score_by_subject.length
-                            )
-                          : 0}
-                        %
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">across all subjects</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-forest/10 flex items-center justify-center flex-shrink-0">
-                      <BarChart3 className="w-6 h-6 text-forest" />
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-[#1A7A4A]/40 transition group">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Accuracy</span>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition">
+                      <BarChart3 className="w-5 h-5" />
                     </div>
                   </div>
+                  <p className="text-2xl sm:text-4xl font-black text-[#1A7A4A] tracking-tight">
+                    {avgScore}%
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">across all subjects</p>
                 </div>
 
                 {/* Best Score */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Best Score</p>
-                      <p className="text-4xl font-black text-navy">{stats.best_score_percentage}%</p>
-                      <p className="text-xs text-gray-400 mt-2">personal record</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-gold/20 flex items-center justify-center flex-shrink-0">
-                      <Zap className="w-6 h-6 text-gold" />
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-[#1A7A4A]/40 transition group">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Personal Best</span>
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:scale-105 transition">
+                      <Zap className="w-5 h-5" />
                     </div>
                   </div>
+                  <p className="text-2xl sm:text-4xl font-black text-[#0D1B2A] tracking-tight">
+                    {stats.best_score_percentage}%
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">high score record</p>
                 </div>
 
                 {/* Questions Answered */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Questions Answered</p>
-                      <p className="text-4xl font-black text-navy">{stats.total_questions_answered}</p>
-                      <p className="text-xs text-gray-400 mt-2">total attempted</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-green-100/50 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-[#1A7A4A]/40 transition group">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Solved</span>
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-105 transition">
+                      <CheckCircle className="w-5 h-5" />
                     </div>
                   </div>
+                  <p className="text-2xl sm:text-4xl font-black text-[#0D1B2A] tracking-tight">
+                    {stats.total_questions_answered}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">questions attempted</p>
                 </div>
               </>
             ) : (
@@ -298,420 +355,367 @@ export default function DashboardPage() {
           </div>
         </div>
 
-
-        {/* Main Grid: 2/3 + 1/3 */}
+        {/* Main Grid: 2/3 Content + 1/3 Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
           {/* Left Column (2/3) */}
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-            {/* Mock Exam Section */}
+            
+            {/* Full Mock CBT Exam Launcher */}
             {selectedUniversity && (
-              <div>
-                <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy mb-4"><Target className="w-5 h-5" /> Mock PUTME Exam</h3>
-                <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1">
-                      <h4 className="text-xl md:text-2xl font-bold text-navy mb-2 md:mb-3">Full Mock Exam</h4>
-                      <p className="text-sm md:text-base text-gray-600 mb-4">Take a complete PUTME-style mock exam with {subjects.length} subjects and {subjects.length * 25} questions</p>
-
-                      {subscription?.subscription_status === "explorer" && mockExamLimit.hasExhausted && (
-                        <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-red-900">🔒 Mock Exam Limit Reached</p>
-                          <p className="text-xs text-red-800 mt-1">You&apos;ve used all {mockExamLimit.mockLimit} free mock exams. Upgrade to Scholar (₦2,500 - 3 mock exams per week) or Elite (₦3,500 - unlimited mock exams) for more attempts.</p>
-                        </div>
-                      )}
-
-                      {subscription?.subscription_status === "explorer" && !mockExamLimit.hasExhausted && (
-                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-blue-900">📅 Explorer Plan: 1 mock exam</p>
-                          <p className="text-xs text-blue-800 mt-1">You&apos;ve completed {mockExamLimit.completedMocks} of {mockExamLimit.mockLimit}. Upgrade to Scholar (₦2,500 - 3 mocks per week) or Elite (₦3,500 - unlimited mocks) for more attempts.</p>
-                        </div>
-                      )}
-
-                      {subscription?.subscription_status === "scholar" && (
-                        <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-blue-900">📅 Scholar Plan: 3 mock exams per week</p>
-                          <p className="text-xs text-blue-800 mt-1">You have 3 mock exams available each week. Upgrade to Elite (₦3,500) for unlimited anytime, plus hard mode and advanced analytics.</p>
-                        </div>
-                      )}
-
-                      {subscription?.subscription_status === "elite" && (
-                        <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4">
-                          <p className="text-sm font-semibold text-purple-900">⭐ Elite Plan: Unlimited mock exams</p>
-                          <p className="text-xs text-purple-800 mt-1">Take as many mock exams as you want, including hard mode with advanced difficulty and time-pressure diagnostics.</p>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
-                        <div className="text-center md:text-left">
-                          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Subjects</p>
-                          <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length}</p>
-                          <p className="text-xs text-gray-500 hidden md:block">{subjects.map(s => s.name).join(", ")}</p>
-                          <p className="text-xs text-gray-500 md:hidden">Subjects</p>
-                        </div>
-                        <div className="text-center md:text-left">
-                          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Questions</p>
-                          <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length * 25}</p>
-                          <p className="text-xs text-gray-500">25 each</p>
-                        </div>
-                        <div className="text-center md:text-left">
-                          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Duration</p>
-                          <p className="text-2xl md:text-3xl font-bold text-navy">90</p>
-                          <p className="text-xs text-gray-500">minutes</p>
-                        </div>
-                      </div>
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm hover:shadow-md hover:border-[#1A7A4A]/40 transition relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold mb-2 border border-emerald-200">
+                      <Target className="w-3.5 h-3.5 text-emerald-600" />
+                      Official Simulation
                     </div>
-                    {mockExamLimit.hasExhausted ? (
-                      <button
-                        onClick={() => {
-                          router.push("/pricing");
-                        }}
-                        className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-md"
-                      >
-                        Upgrade Now ⭐
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          router.push("/practice/mock/session");
-                        }}
-                        disabled={mockExamLimit.isLoading}
-                        className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-forest text-white hover:shadow-md disabled:opacity-50"
-                      >
-                        {mockExamLimit.isLoading ? "Loading..." : "Start Exam"}
-                      </button>
+                    <h2 className="text-xl sm:text-2xl font-black text-[#0D1B2A]">
+                      Full Mock UTME / Post-UTME Exam
+                    </h2>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Comprehensive simulation under authentic examination conditions ({subjects.length} subjects • {subjects.length * 25} questions).
+                    </p>
+                  </div>
+
+                  {/* Plan Limit Pill */}
+                  <div>
+                    {currentStatus === "explorer" && (
+                      <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        Explorer: 1 free mock
+                      </span>
+                    )}
+                    {currentStatus === "scholar" && (
+                      <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Scholar: 3 mocks/week
+                      </span>
+                    )}
+                    {currentStatus === "elite" && (
+                      <span className="inline-flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                        <Crown className="w-3 h-3 text-purple-600" />
+                        Elite: Unlimited
+                      </span>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Recalled Questions Section */}
-            <div>
-              <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h4 className="text-xl md:text-2xl font-bold text-navy">Recalled UI-POSTUTME Questions</h4>
-                      <span className="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">Elite Only</span>
-                    </div>
-                    <p className="text-sm md:text-base text-gray-600 mb-4">Questions confirmed to have appeared in past Post-UTME exams. Practice with authentic exam content from your target university.</p>
-                    {subscription?.subscription_status !== "elite" && (
-                      <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4">
-                        <p className="text-sm font-semibold text-purple-900">⭐ Elite Exclusive Feature</p>
-                        <p className="text-xs text-purple-800 mt-1">Upgrade to Elite (₦3,500/6 months) to unlock access to our database of recalled exam questions and gain advanced analytics.</p>
-                      </div>
-                    )}
-                    {subscription?.subscription_status === "elite" && (
-                      <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
-                        <p className="text-sm font-semibold text-green-900">✓ You have full access to this feature!</p>
-                      </div>
-                    )}
+                {/* Quota Exhaustion / Status Banner */}
+                {currentStatus === "explorer" && mockExamLimit.hasExhausted && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-sm text-amber-900">
+                    <p className="font-bold flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      You have used your free mock exam!
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      Upgrade to <strong>Scholar (₦2,500)</strong> for 3 mocks/week or <strong>Elite (₦3,500)</strong> for unlimited mocks all season.
+                    </p>
                   </div>
-                  {subscription?.subscription_status === "elite" ? (
+                )}
+
+                {/* Exam Attributes Grid */}
+                <div className="grid grid-cols-3 gap-3 p-4 bg-[#FAF7F4] rounded-2xl border border-slate-100 mb-6 text-center">
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase">Subjects</p>
+                    <p className="text-xl sm:text-2xl font-black text-[#0D1B2A]">{subjects.length}</p>
+                    <p className="text-[11px] text-slate-500 truncate max-w-[120px] mx-auto">
+                      {subjects.map((s) => s.name).join(", ")}
+                    </p>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase">Questions</p>
+                    <p className="text-xl sm:text-2xl font-black text-[#0D1B2A]">{subjects.length * 25}</p>
+                    <p className="text-[11px] text-slate-500">25 per subject</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase">Duration</p>
+                    <p className="text-xl sm:text-2xl font-black text-[#0D1B2A]">90</p>
+                    <p className="text-[11px] text-slate-500">minutes</p>
+                  </div>
+                </div>
+
+                {/* Action CTA */}
+                <div className="flex items-center justify-end">
+                  {mockExamLimit.hasExhausted ? (
                     <button
-                      onClick={() => {
-                        router.push("/practice/recalled-questions");
-                      }}
-                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-purple-600 text-white hover:shadow-md"
+                      onClick={() => router.push("/pricing")}
+                      className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold bg-[#C4522A] hover:bg-[#b04520] text-white shadow-sm transition"
                     >
-                      View Questions
+                      Upgrade Plan for More Mocks →
                     </button>
                   ) : (
                     <button
-                      onClick={() => {
-                        router.push("/pricing");
-                      }}
-                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-md"
+                      onClick={() => router.push("/practice/mock/session")}
+                      disabled={mockExamLimit.isLoading}
+                      className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-black bg-[#1A7A4A] hover:bg-[#15633c] text-white shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
                     >
-                      Upgrade Now ⭐
+                      <Target className="w-5 h-5" />
+                      {mockExamLimit.isLoading ? "Preparing Exam..." : "Start Timed Mock Exam"}
                     </button>
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Hard Mode Mock Exam Section */}
-            <div>
-              <div className="rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h4 className="text-xl md:text-2xl font-bold text-navy">Hard Mode Mock Exam</h4>
-                      <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Elite Only</span>
-                    </div>
-                    <p className="text-sm md:text-base text-gray-600 mb-4">Push yourself with the toughest questions from your subject pool. Practice under realistic exam pressure conditions.</p>
-
-                    <div className="grid grid-cols-3 gap-2 md:gap-6 mb-6">
-                      <div className="text-center md:text-left">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Subjects</p>
-                        <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length}</p>
-                        <p className="text-xs text-gray-500">Hard difficulty</p>
-                      </div>
-                      <div className="text-center md:text-left">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Questions</p>
-                        <p className="text-2xl md:text-3xl font-bold text-navy">{subjects.length * 25}</p>
-                        <p className="text-xs text-gray-500">25 each</p>
-                      </div>
-                      <div className="text-center md:text-left">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Duration</p>
-                        <p className="text-2xl md:text-3xl font-bold text-navy">60</p>
-                        <p className="text-xs text-gray-500">minutes</p>
-                      </div>
-                    </div>
-
-                    {subscription?.subscription_status !== "elite" && (
-                      <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
-                        <p className="text-sm font-semibold text-red-900">⭐ Elite Exclusive Feature</p>
-                        <p className="text-xs text-red-800 mt-1">Upgrade to Elite (₦3,500/6 months) to unlock hard mode exams with advanced difficulty filtering and time-pressure diagnostics.</p>
-                      </div>
-                    )}
-                  </div>
-                  {subscription?.subscription_status === "elite" ? (
-                    <button
-                      onClick={() => {
-                        router.push("/practice/mock/session?mode=hard");
-                      }}
-                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-red-600 text-white hover:shadow-md hover:bg-red-700"
-                    >
-                      Start Hard Exam
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        router.push("/pricing");
-                      }}
-                      className="w-full sm:w-auto px-6 py-3 md:py-2 rounded-lg font-medium whitespace-nowrap transition-all bg-gradient-to-r from-red-600 to-red-700 text-white hover:shadow-md"
-                    >
-                      Upgrade Now ⭐
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Subjects Section */}
-            {!selectedUniversity && (
-              <div className="bg-gradient-to-br from-forest/10 to-forest/5 border-2 border-forest/30 rounded-2xl p-8 sm:p-10 text-center">
-                <h3 className="text-xl sm:text-2xl font-black text-navy mb-4">
-                  📚 Set Up Your Learning Path
-                </h3>
-                <p className="text-gray-600 mb-6 text-sm sm:text-base">
-                  Select your target university and course to unlock personalized subject practice. This helps us recommend the right topics and resources for your exam.
-                </p>
-                <button
-                  onClick={() => router.push("/onboarding")}
-                  className="px-6 py-3 bg-forest text-white rounded-xl font-black hover:bg-forest/90 hover:shadow-lg transition-all"
-                >
-                  Complete Setup →
-                </button>
-              </div>
             )}
 
+            {/* Elite Special Modules: Recalled Questions & Hard Mode */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Recalled Questions */}
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                      Elite Exclusive
+                    </span>
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-black text-[#0D1B2A] mb-2">
+                    Recalled Past Questions
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Authentic exam questions recalled by students from recent cycles, annotated with complete solutions.
+                  </p>
+                </div>
+                {currentStatus === "elite" ? (
+                  <button
+                    onClick={() => router.push("/practice/recalled-questions")}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold bg-purple-600 hover:bg-purple-700 text-white text-xs transition"
+                  >
+                    Open Recalled Pool →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs border border-purple-200 transition"
+                  >
+                    Unlock with Elite (₦3,500)
+                  </button>
+                )}
+              </div>
+
+              {/* Hard Mode Mock */}
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                      Stress Mode
+                    </span>
+                    <Zap className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <h3 className="text-lg font-black text-[#0D1B2A] mb-2">
+                    Hard Mode Exam (60 Min)
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Test your speed under reduced time limits with high-difficulty analytical questions.
+                  </p>
+                </div>
+                {currentStatus === "elite" ? (
+                  <button
+                    onClick={() => router.push("/practice/mock/session?mode=hard")}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white text-xs transition"
+                  >
+                    Launch Hard Mode →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs border border-rose-200 transition"
+                  >
+                    Unlock with Elite (₦3,500)
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Practice Subjects Section */}
             {selectedUniversity && (
-              <div id="subjects-section" className="animate-fadeIn">
-                <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy mb-5">
-                  <BookOpen className="w-5 h-5" /> Practice Subjects
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3 sm:gap-4">
-                  {subjects.map(subject => (
-                    <div
-                      key={subject.id}
-                      onClick={() => handleSelectSubject(subject)}
-                      className="rounded-xl p-5 sm:p-6 text-white cursor-pointer shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-1 min-h-[100px] sm:min-h-[120px] flex flex-col justify-between border border-opacity-30 border-white/40"
-                      style={{ backgroundColor: subjectColours[subject.name] || "#7B68EE" }}
-                    >
-                      <div>
-                        <h4 className="font-black text-base sm:text-lg mb-1">{subject.name}</h4>
-                        <p className="text-xs sm:text-sm text-white/85">Tap to practice</p>
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#0D1B2A] flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-[#1A7A4A]" />
+                      Your Registered Subjects
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Select a subject to drill specific topics or start untimed practice
+                    </p>
+                  </div>
+                  <Link
+                    href="/practice/topics"
+                    className="text-xs font-bold text-[#1A7A4A] hover:underline flex items-center gap-1"
+                  >
+                    All Topics <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {subjects.map((subject) => {
+                    const theme = subjectColours[subject.name] || {
+                      bg: "bg-[#0D1B2A]",
+                      border: "border-slate-200",
+                      text: "text-slate-800",
+                      light: "bg-slate-50",
+                    };
+
+                    return (
+                      <div
+                        key={subject.id}
+                        onClick={() => handleSelectSubject(subject)}
+                        className={`group p-4 sm:p-5 rounded-2xl border ${theme.border} ${theme.light} hover:shadow-md cursor-pointer transition flex items-center justify-between`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl ${theme.bg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
+                            {subject.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-[#1A7A4A] transition">
+                              {subject.name}
+                            </h4>
+                            <p className="text-xs text-slate-500">
+                              Tap to choose topics
+                            </p>
+                          </div>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 group-hover:text-[#1A7A4A] group-hover:translate-x-0.5 transition shadow-sm">
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <ChevronRight className="w-5 h-5 inline-block opacity-85 text-white" />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right Column (1/3) */}
-          <div className="lg:col-span-1 space-y-5 sm:space-y-6">
-            {/* Target University Card */}
-            {selectedUniversity && (
-              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎓 Target University</h3>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h4 className="text-lg font-black text-navy mb-1">{selectedUniversity.name}</h4>
-                    <p className="text-xs font-bold text-forest mb-3 uppercase">{selectedUniversity.short_code}</p>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Course</p>
-                      <p className="text-sm font-bold text-navy">{profile?.target_course}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Right Column (1/3 Sidebar) */}
+          <div className="lg:col-span-1 space-y-6">
 
             {/* Error Bank Card */}
-            <div className="rounded-2xl shadow-sm border border-gray-100 p-6 bg-white hover:shadow-lg hover:border-forest/30 transition-all">
-              <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4"><ErrorIcon className="w-4 h-4" /> Error Bank</h3>
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <ErrorIcon className="w-4 h-4 text-[#C4522A]" /> Error Bank
+                </span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700">
+                  Targeted Revision
+                </span>
+              </div>
               {errorBank.length > 0 ? (
                 <>
-                  <p className="text-4xl font-black text-ember mb-2">{errorBank.length}</p>
-                  <p className="text-sm text-gray-600 mb-4">questions to review</p>
+                  <p className="text-3xl font-black text-[#C4522A] tracking-tight mb-1">
+                    {errorBank.length}
+                  </p>
+                  <p className="text-xs text-slate-600 mb-4 font-medium">
+                    missed questions waiting to be mastered
+                  </p>
                   <button
                     onClick={() => router.push("/error-bank")}
-                    className="w-full bg-ember text-white px-4 py-2.5 rounded-xl font-bold hover:bg-ember/90 hover:shadow-md transition-all text-sm"
+                    className="w-full bg-[#C4522A] hover:bg-[#b04520] text-white py-2.5 px-4 rounded-xl font-bold text-xs shadow-sm transition"
                   >
-                    Review Now →
+                    Clear Missed Questions →
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-4xl font-black text-forest mb-2">0</p>
-                  <p className="text-sm text-gray-600">No mistakes yet — keep practicing! 🎉</p>
+                  <p className="text-3xl font-black text-[#1A7A4A] mb-1">0</p>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Zero unreviewed errors! Keep up the momentum.
+                  </p>
+                  <button
+                    onClick={() => router.push("/practice/topics")}
+                    className="w-full bg-[#FAF7F4] hover:bg-slate-100 text-slate-700 py-2.5 px-4 rounded-xl font-bold text-xs border border-slate-200 transition"
+                  >
+                    Practice More Questions
+                  </button>
                 </>
               )}
             </div>
 
-            {/* Motivation Card */}
-            {stats && (
-              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4"><TrendingUp className="w-4 h-4" /> Your Progress</h3>
-
-                <div className="mb-5 flex items-center gap-3">
-                  <Flame className="w-6 h-6 text-orange-500" />
-                  <div>
-                    <p className="text-xs text-gray-500">Current Streak</p>
-                    <p className="text-lg font-black text-navy">Keep it up!</p>
-                  </div>
-                </div>
-
-                <div className="mb-5 p-4 bg-gradient-to-br from-forest/5 to-forest/10 rounded-xl border border-forest/10">
-                  <p className="text-xs font-bold text-forest mb-2 uppercase tracking-widest">Tip</p>
-                  <p className="text-sm text-navy font-medium">
-                    {stats.avg_score_by_subject.length === 0
-                      ? "Start your first practice session!"
-                      : (() => {
-                          const avgScore =
-                            stats.avg_score_by_subject.length > 0
-                              ? Math.round(
-                                  stats.avg_score_by_subject.reduce((sum, s) => sum + s.avg_percentage, 0) /
-                                    stats.avg_score_by_subject.length
-                                )
-                              : 0;
-                          if (avgScore < 40) return "Keep going — practice makes perfect! 💪";
-                          if (avgScore < 60) return "Good progress! Focus on weak topics.";
-                          if (avgScore < 80) return "You're getting there! Push for 80%. 💪";
-                          return "Outstanding! You're exam-ready! 🌟";
-                        })()}
+            {/* Target University & Department Benchmarks */}
+            {selectedUniversity && (
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                  <GraduationCap className="w-4 h-4 text-slate-500" />
+                  Target Department
+                </span>
+                <div className="mb-4">
+                  <h4 className="text-base font-black text-[#0D1B2A]">{selectedUniversity.name}</h4>
+                  <p className="text-xs font-bold text-[#1A7A4A] uppercase mt-0.5">
+                    {selectedUniversity.short_code} • {profile?.target_course || "Undergraduate Candidate"}
                   </p>
                 </div>
 
-                <button
-                  onClick={() => router.push("/analytics")}
-                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
-                >
-                  View Full Analytics →
-                </button>
-              </div>
-            )}
-
-            {/* Prediction Card */}
-            {prediction && prediction.locked ? (
-              <div className="bg-gradient-to-br from-forest/10 to-forest/5 rounded-2xl shadow-sm border-2 border-forest/30 p-6">
-                <h3 className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-3"><Target className="w-4 h-4" /> Admission Target</h3>
-                <p className="text-sm text-gray-700 mb-4">{prediction.preview_message}</p>
-                <button
-                  onClick={() => router.push("/pricing")}
-                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
-                >
-                  Upgrade to Scholar
-                </button>
-              </div>
-            ) : prediction && prediction.status !== "no_data" && (
-              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
-
-                <div className="space-y-3 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Your UTME Score</p>
-                    <div className="flex items-baseline gap-1">
-                      <p className="text-2xl font-bold text-navy">{prediction.utme_score ?? 0}</p>
-                      <p className="text-sm text-gray-500">/400</p>
-                      {prediction.utme_qualifies && (
-                        <span className="text-xs font-semibold text-green-600 ml-auto">✓ Qualifies</span>
-                      )}
+                {prediction && !prediction.locked && prediction.status !== "no_data" && (
+                  <div className="p-4 bg-[#FAF7F4] rounded-2xl border border-slate-100 space-y-3 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">UTME Score:</span>
+                      <strong className="text-slate-900 font-extrabold">{prediction.utme_score ?? 0} / 400</strong>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-2">
+                      <span className="text-slate-500">Required Post-UTME:</span>
+                      <strong className="text-emerald-700 font-extrabold">
+                        {Math.max(prediction.required_putme_score ?? 50, 50)}%
+                      </strong>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-2">
+                      <span className="text-slate-500">Current Average:</span>
+                      <strong className={((prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)) ? "text-emerald-600 font-extrabold" : "text-amber-600 font-extrabold"}>
+                        {prediction.current_practice_avg ?? 0}%
+                      </strong>
                     </div>
                   </div>
-
-                  <div className="border-t pt-3">
-                    <p className="text-xs text-gray-500 mb-1">Target Post-UTME Score</p>
-                    <p className="text-2xl font-bold text-navy">{prediction.required_putme_score ?? 0}%</p>
-                  </div>
-
-                  <div className="border-t pt-3">
-                    <p className="text-xs text-gray-500 mb-1">Your Current Average</p>
-                    <p className={`text-lg font-bold ${
-                      (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0)
-                        ? "text-green-600"
-                        : "text-amber-600"
-                    }`}>
-                      {prediction.current_practice_avg ?? 0}%
-                    </p>
-                    {(prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        ⚠ Need {(prediction.required_putme_score ?? 0) - (prediction.current_practice_avg ?? 0)}% more
-                      </p>
-                    )}
-                  </div>
-                </div>
+                )}
 
                 <button
                   onClick={() => router.push("/analytics")}
-                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
+                  className="w-full mt-4 text-xs font-bold text-[#1A7A4A] hover:bg-emerald-50 py-2 rounded-xl transition border border-emerald-200"
                 >
-                  View Detailed Prediction →
+                  View Full Admission Forecast →
                 </button>
               </div>
             )}
 
-            {prediction?.status === "no_data" && (
-              <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg hover:border-forest/30 transition-all">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">🎯 Admission Target</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Complete your profile with UTME score to see your admission prediction
-                </p>
-                <button
-                  onClick={() => router.push("/profile")}
-                  className="w-full px-4 py-2.5 bg-forest text-white rounded-xl font-bold hover:bg-forest/90 hover:shadow-md transition-all text-sm"
-                >
-                  Set UTME Score →
-                </button>
+            {/* Streak & Study Tips */}
+            <div className="bg-gradient-to-br from-[#0D1B2A] to-[#1A3353] text-white rounded-3xl p-6 shadow-md border border-white/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold">
+                  <Flame className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase font-bold text-white/60">Study Streak</p>
+                  <p className="text-sm font-extrabold text-white">Consistent practice builds speed</p>
+                </div>
               </div>
-            )}
+              <p className="text-xs text-white/80 leading-relaxed mb-4">
+                Solving at least 20 questions each day improves your question recognition time by over 40% before exam day.
+              </p>
+              <button
+                onClick={() => router.push("/practice/topics")}
+                className="w-full py-2.5 rounded-xl bg-white text-[#0D1B2A] hover:bg-white/90 font-extrabold text-xs transition"
+              >
+                Quick 10-Question Drill
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Recent Sessions */}
-        {!sessionsLoaded ? (
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy"><Activity className="w-5 h-5" /> Recent Practice Sessions</h3>
-            </div>
-            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
-              <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8" />
-              <table className="w-full min-w-full">
-                <thead className="bg-gray-50 border-b sticky top-0">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Type</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">University</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Score</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Questions</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Date</th>
-                  </tr>
-                </thead>
+        {/* Recent Practice Sessions */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg sm:text-xl font-black text-[#0D1B2A] flex items-center gap-2">
+              <Activity className="w-5 h-5 text-[#1A7A4A]" />
+              Recent Practice Sessions
+            </h3>
+            {sessions.length > 0 && (
+              <Link
+                href="/sessions"
+                className="text-xs font-bold text-[#1A7A4A] hover:underline flex items-center gap-1"
+              >
+                View Full History <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+          </div>
+
+          {!sessionsLoaded ? (
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+              <table className="w-full">
                 <tbody>
                   <SessionRowSkeleton />
                   <SessionRowSkeleton />
@@ -719,104 +723,94 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        ) : sessions.length > 0 ? (
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="flex items-center gap-2 text-lg sm:text-xl font-black text-navy"><Activity className="w-5 h-5" /> Recent Practice Sessions</h3>
-              <span className="text-sm text-gray-500">{sessions.length} total</span>
-            </div>
-            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto relative hover:shadow-lg hover:border-forest/30 transition-all">
-              <div className="absolute inset-y-0 right-0 pointer-events-none bg-gradient-to-l from-white to-transparent w-8 z-10" />
-              <table className="w-full min-w-full">
-                <thead className="bg-gray-50 border-b sticky top-0 z-20">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Type</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">University</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Score</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Questions</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.slice(0, 5).map(session => {
-                    const getSessionType = () => {
-                      if (session.is_mock) return "Mock";
-                      if (session.is_hard_mode) return "Hard Mode";
-                      if (session.is_recalled) return "Recalled";
-                      return session.subject_name || "Individual";
-                    };
+          ) : sessions.length > 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#FAF7F4] border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3.5">Session Type</th>
+                      <th className="px-6 py-3.5">Institution</th>
+                      <th className="px-6 py-3.5">Score</th>
+                      <th className="px-6 py-3.5">Questions</th>
+                      <th className="px-6 py-3.5">Date</th>
+                      <th className="px-6 py-3.5 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {sessions.slice(0, 5).map((session) => {
+                      const sessionType = session.is_mock
+                        ? "Mock Exam"
+                        : session.is_hard_mode
+                        ? "Hard Mode"
+                        : session.is_recalled
+                        ? "Recalled"
+                        : session.subject_name || "Individual Drill";
 
-                    const sessionType = getSessionType();
-                    const isMock = session.is_mock;
-
-                    return (
-                      <tr key={session.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm">
-                          <div className="flex items-center text-gray-900 gap-2">
-                            {!isMock && (
-                              <div
-                                className="w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: session.subject_colour_token || "#666" }}
-                              />
+                      return (
+                        <tr
+                          key={session.id}
+                          className="hover:bg-slate-50/80 transition"
+                        >
+                          <td className="px-6 py-4 font-bold text-slate-900">
+                            {sessionType}
+                          </td>
+                          <td className="px-6 py-4 text-xs font-semibold text-slate-600">
+                            {session.university_short_code || "General"}
+                          </td>
+                          <td className="px-6 py-4 font-black">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black ${
+                                session.percentage >= 60
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : session.percentage >= 50
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "bg-rose-50 text-rose-700 border border-rose-200"
+                              }`}
+                            >
+                              {session.percentage}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-slate-600">
+                            {session.total_questions || "—"} Qs
+                          </td>
+                          <td className="px-6 py-4 text-xs text-slate-500">
+                            {new Date(session.started_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {session.completed ? (
+                              <Link
+                                href={`/practice/results?sessionId=${session.id}`}
+                                className="inline-flex items-center gap-1 text-xs font-bold text-[#1A7A4A] hover:underline"
+                              >
+                                Review <ArrowUpRight className="w-3 h-3" />
+                              </Link>
+                            ) : (
+                              <span className="text-xs text-slate-400">Incomplete</span>
                             )}
-                            <span className="font-medium">{sessionType}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {session.university_short_code || "—"}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span
-                            className={`font-semibold ${
-                              session.percentage >= 50 ? "text-forest" : "text-red-600"
-                            }`}
-                          >
-                            {session.percentage}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {session.total_questions || "—"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                          {new Date(session.started_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-12">
-            <h3 className="text-lg sm:text-xl font-black text-navy mb-6">📊 Recent Practice Sessions</h3>
-            <div className="bg-white/95 rounded-2xl shadow-sm border border-gray-100 p-12 text-center hover:shadow-lg hover:border-forest/30 transition-all">
-              <p className="text-gray-500 text-sm">No practice sessions yet. Start with a subject above to begin!</p>
+          ) : (
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-10 text-center shadow-sm">
+              <p className="text-slate-500 text-sm font-medium">
+                No practice sessions recorded yet. Pick a subject above to launch your first session!
+              </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {showCompletionModal && (
-        <ProfileCompletionModal onComplete={() => setShowCompletionModal(false)} />
+        <ProfileCompletionModal
+          onComplete={() => setShowCompletionModal(false)}
+        />
       )}
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 }

@@ -610,8 +610,15 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         currentPracticeAvg = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
       }
 
-      // Build response based on whether we have UTME score and cutoff data
-      if (!profile.utme_score || !cutoffMarks || cutoffMarks.length === 0) {
+      // Build response based on whether we have UTME score and cutoff data.
+      // Use merit_cutoff as the actual admission aggregate target - it's the
+      // field that's really populated per course/year (the standard Merit-list
+      // cutoff); combined_cutoff is a separate column that isn't reliably
+      // populated by the current upload paths, so don't rely on it here.
+      const hasUsableCutoff =
+        cutoffMarks && cutoffMarks.length > 0 && cutoffMarks[0].merit_cutoff != null;
+
+      if (!profile.utme_score || !hasUsableCutoff) {
         const response: PredictionResult = {
           utme_score: profile.utme_score || null,
           cutoff: null,
@@ -641,12 +648,15 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       const predictedTotal = utmeContribution + putmeContribution;
 
       // Calculate required Post-UTME score. A strong UTME score can drive the
-      // raw formula negative — clamp to 50, the minimum PUTME score required
-      // for admission regardless of how high the UTME score is.
-      const requiredPutmeScore =
+      // raw formula below (or even under zero) the minimum PUTME score UI
+      // actually requires for admission - keep the unclamped value too so the
+      // UI can show "your calculated target is 45%, but UI requires 50%"
+      // instead of silently rounding up with no explanation.
+      const rawRequiredPutmeScore =
         cutoff.putme_weight > 0
-          ? Math.max(50, Math.ceil(((cutoff.combined_cutoff - utmeContribution) / cutoff.putme_weight) * 100))
+          ? Math.ceil(((cutoff.merit_cutoff - utmeContribution) / cutoff.putme_weight) * 100)
           : 50;
+      const requiredPutmeScore = Math.max(50, rawRequiredPutmeScore);
 
       // Calculate post_utme_target and gap_percentage
       const postUtmeTarget = requiredPutmeScore;
@@ -658,7 +668,10 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       // 1. UTME score must be >= 200 (minimum cutoff)
       // 2. PUTME score must be >= 50% (minimum percentage)
       // 3. Combined score must meet cutoff
-      const utmeQualifies = utmeScore >= cutoff.utme_cutoff;
+      // cutoff.utme_cutoff isn't populated on any current row either - fall
+      // back to JAMB's standard 200 minimum rather than let a null cutoff
+      // coerce this comparison to "always qualifies".
+      const utmeQualifies = utmeScore >= (cutoff.utme_cutoff ?? 200);
       const putmeMinimum = 50; // Minimum 50% required for PUTME
       const putmeQualifies = currentPracticeAvg >= putmeMinimum;
       const predictedTotalRounded = Math.round(predictedTotal * 10) / 10;
@@ -669,7 +682,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
       // Must meet both UTME and PUTME minimums
       if (!utmeQualifies || !putmeQualifies) {
         status = "at_risk";
-      } else if (predictedTotalRounded >= cutoff.combined_cutoff) {
+      } else if (predictedTotalRounded >= cutoff.merit_cutoff) {
         status = "on_track";
       } else if (currentPracticeAvg >= requiredPutmeScore) {
         status = "on_track";
@@ -683,8 +696,11 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         cutoff: {
           course: cutoff.course,
           year: cutoff.year,
-          utme_cutoff: cutoff.utme_cutoff,
-          combined_cutoff: cutoff.combined_cutoff,
+          utme_cutoff: cutoff.utme_cutoff ?? 200,
+          // Keep the "combined_cutoff" key for the frontend (unchanged
+          // contract) - the value now actually comes from merit_cutoff, the
+          // column that's really populated.
+          combined_cutoff: cutoff.merit_cutoff,
           utme_weight: cutoff.utme_weight,
           putme_weight: cutoff.putme_weight,
         },
@@ -694,6 +710,7 @@ export function registerAnalyticsRoutes(app: Express, deps: AnalyticsDeps) {
         current_practice_avg: currentPracticeAvg,
         predicted_total: predictedTotalRounded,
         required_putme_score: requiredPutmeScore,
+        raw_required_putme_score: rawRequiredPutmeScore,
         post_utme_target: postUtmeTarget,
         gap_percentage: gapPercentage,
         status,

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 import type { StudentQuestion } from "types";
 import { QuestionSkeleton } from "@/components/skeletons";
 import { ChevronLeft, ChevronRight, Flag, BookOpen, Clock, Loader2 } from "lucide-react";
@@ -422,6 +423,7 @@ export default function PracticeSessionPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4] flex flex-col">
+      <ContentWatermark />
       {/* Top Bar with Time */}
       <div className="bg-navy text-white px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-lg z-40">
         <div className="flex flex-col">

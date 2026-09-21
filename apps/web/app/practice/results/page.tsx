@@ -9,6 +9,8 @@ import { UpgradePrompt } from "@/components/UpgradePrompt";
 import type { SessionResult, UserStats } from "types";
 import { CardSkeleton } from "@/components/skeletons";
 import { CheckCircle, XCircle, ChevronDown, ChevronUp, Trophy, BarChart3, Home } from "lucide-react";
+import { useContentProtection } from "@/hooks/useContentProtection";
+import { ContentWatermark } from "@/components/ContentWatermark";
 
 interface SessionMeta {
   subject: { id: string; name: string } | null;
@@ -17,6 +19,7 @@ interface SessionMeta {
 }
 
 export default function PracticeResultsPage() {
+  useContentProtection();
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
@@ -86,16 +89,16 @@ export default function PracticeResultsPage() {
               percentage: Math.round(
                 (session.score / session.total_questions) * 100
               ),
-              answers: session.session_answers.map((answer: { question_id: string; selected_option_id: string; is_correct: boolean; question: { body: string; explanation: string; options: { id: string; label: string; body: string; is_correct: boolean }[] } }) => ({
+              answers: session.session_answers.map((answer: { question_id: string; selected_option_id: string; is_correct: boolean; questions: { body: string; explanation: string; options: { id: string; label: string; body: string; is_correct: boolean }[] } }) => ({
                 question_id: answer.question_id,
-                question_body: answer.question?.body || "Question not found",
+                question_body: answer.questions?.body || "Question not found",
                 selected_option_id: answer.selected_option_id,
                 is_correct: answer.is_correct,
-                correct_option_id: answer.question?.options?.find(
+                correct_option_id: answer.questions?.options?.find(
                   (o: { id: string; is_correct: boolean }) => o.is_correct
                 )?.id,
-                explanation: answer.question?.explanation,
-                options: answer.question?.options || [],
+                explanation: answer.questions?.explanation,
+                options: answer.questions?.options || [],
               })),
             };
             setResults(reconstructedResults);
@@ -166,6 +169,7 @@ export default function PracticeResultsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F4]">
+      <ContentWatermark />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
         {/* Score Hero Card */}
@@ -242,7 +246,7 @@ export default function PracticeResultsPage() {
               <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center max-w-sm mx-4">
                 <h3 className="text-lg font-black text-navy mb-2">Advanced Analytics Locked</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  Upgrade to Scholar to unlock full performance insights, detailed score predictions, and how you compare to peers.
+                  Get Elite access to unlock full performance insights, detailed score predictions, and how you compare to peers.
                 </p>
                 <button
                   onClick={() => setShowUpgradePrompt(false)}
@@ -309,7 +313,7 @@ export default function PracticeResultsPage() {
               <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center max-w-sm mx-4">
                 <h3 className="text-lg font-black text-navy mb-2">Full Answer Review Locked</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  Upgrade to Scholar to access complete answer reviews, detailed explanations, and performance analytics.
+                  Get Elite access to unlock complete answer reviews, detailed explanations, and performance analytics.
                 </p>
                 <button
                   onClick={() => setShowUpgradePrompt(false)}

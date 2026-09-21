@@ -390,10 +390,15 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
 
       console.log("[wrong-questions] Fetching wrong answers from", userSessionIds.length, "sessions");
 
-      // Get all answers (correct and wrong) with session timestamps
+      // Get all answers (correct and wrong). Use the answer's own created_at
+      // (the moment it was submitted) rather than the parent session's
+      // created_at (session start time) — sessions can overlap or be
+      // submitted out of start-time order, which previously let a
+      // since-corrected question's stale wrong answer outrank its real
+      // latest (correct) answer and stay stuck in the error bank.
       const { data: allAnswers, error: answersError } = await supabaseAdmin
         .from("session_answers")
-        .select("question_id, is_correct, sessions(created_at)")
+        .select("question_id, is_correct, created_at")
         .in("session_id", userSessionIds)
         .order("question_id");
 
@@ -415,8 +420,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Build a map of each question's most recent answer
       const latestAnswerMap = new Map<string, { is_correct: boolean; created_at: string }>();
       allAnswers.forEach((answer: any) => {
-        const sessionData = answer.sessions || {};
-        const createdAt = sessionData.created_at || new Date().toISOString();
+        const createdAt = answer.created_at || new Date().toISOString();
         const existing = latestAnswerMap.get(answer.question_id);
 
         // Keep the most recent answer
@@ -435,8 +439,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       >();
       allAnswers.forEach((answer: any) => {
         if (!answer.is_correct) {
-          const sessionData = answer.sessions || {};
-          const createdAt = sessionData.created_at || new Date().toISOString();
+          const createdAt = answer.created_at || new Date().toISOString();
           const existing = questionMap.get(answer.question_id);
           const newData = {
             times_wrong: (existing?.times_wrong ?? 0) + 1,
@@ -579,7 +582,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       if (session.completed) {
         const { data: answers } = await supabaseAdmin
           .from("session_answers")
-          .select("*, questions(*)")
+          .select("*, questions(*, options(*))")
           .eq("session_id", id);
         sessionWithAnswers = { ...session, session_answers: answers || [] };
       }
@@ -965,6 +968,12 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
       // Fetch 25 questions per subject (100 total)
       let allQuestions: any[] = [];
       const questionsPerSubject = 25;
+      // Hard mode prefers questions the whole user base actually gets wrong a
+      // lot (see get_hard_question_ids), not a static per-question tag. 5
+      // attempts is a defensible floor before treating a wrong-rate as signal
+      // rather than noise; 0.5 means "most attempts get it wrong."
+      const HARD_MODE_MIN_ATTEMPTS = 5;
+      const HARD_MODE_WRONG_RATE_THRESHOLD = 0.5;
 
       // Questions currently flagged for review are excluded from mock exams
       // until an admin rectifies and clears the flag.
@@ -973,20 +982,32 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         .select("question_id");
       const flaggedQuestionIds = new Set((flaggedRows || []).map((f: any) => f.question_id));
 
+      // Question deduplication: prefer questions unseen in the user's last 5 mock sessions.
+      // Fetched once up front (not per subject) since it isn't subject-specific.
+      const { data: recentMockSessions } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("user_id", req.userId)
+        .eq("is_mock", true)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      const recentMockSessionIds = recentMockSessions?.map((s: any) => s.id) ?? [];
+      const seenMockIds = new Set<string>();
+      if (recentMockSessionIds.length > 0) {
+        const { data: recentMockAnswers } = await supabaseAdmin
+          .from("session_answers")
+          .select("question_id")
+          .in("session_id", recentMockSessionIds);
+        recentMockAnswers?.forEach((a: any) => seenMockIds.add(a.question_id));
+      }
+
       for (const subject of subjects) {
-        let query = supabaseAdmin
+        const { data: rawQuestionIds, error: idError } = await supabaseAdmin
           .from("questions")
-          .select("id")
+          .select("id, difficulty")
           .eq("subject_id", subject.id)
           .eq("university_id", profile.target_university_id);
-
-        // In hard mode, filter for medium and hard difficulty questions
-        if (mode === "hard") {
-          query = query.in("difficulty", ["medium", "hard"]);
-        }
-
-        const { data: rawQuestionIds, error: idError } = await query
-          .limit(100); // Get more than needed to have options for shuffling
 
         const questionIds = (rawQuestionIds || []).filter(
           (q: any) => !flaggedQuestionIds.has(q.id)
@@ -1001,28 +1022,35 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           return;
         }
 
-        // Question deduplication: prefer unseen questions from last 5 mock sessions
-        const { data: recentMockSessions } = await supabaseAdmin
-          .from("sessions")
-          .select("id")
-          .eq("user_id", req.userId)
-          .eq("is_mock", true)
-          .order("created_at", { ascending: false })
-          .limit(5);
+        // Hard mode cascade: prefer questions the whole user base actually
+        // gets wrong a lot (real, aggregate difficulty — not personalized to
+        // this user); fall back to the static difficulty tag for
+        // cold-start subjects without enough answer history yet; fall back
+        // to the full pool if neither yields enough for a 25-question block.
+        let candidateIds = questionIds;
+        if (mode === "hard") {
+          const { data: globalHardRows } = await supabaseAdmin.rpc("get_hard_question_ids", {
+            p_question_ids: questionIds.map((q: any) => q.id),
+            p_min_attempts: HARD_MODE_MIN_ATTEMPTS,
+            p_wrong_rate_threshold: HARD_MODE_WRONG_RATE_THRESHOLD,
+          });
+          const globalHardIds = new Set((globalHardRows || []).map((r: any) => r.question_id));
+          const globalHardPool = questionIds.filter((q: any) => globalHardIds.has(q.id));
 
-        const recentMockSessionIds = recentMockSessions?.map((s: any) => s.id) ?? [];
-        let seenMockIds = new Set<string>();
-        if (recentMockSessionIds.length > 0) {
-          const { data: recentMockAnswers } = await supabaseAdmin
-            .from("session_answers")
-            .select("question_id")
-            .in("session_id", recentMockSessionIds)
-            .eq("question_id", subject.id); // Filter by current subject
-          recentMockAnswers?.forEach((a: any) => seenMockIds.add(a.question_id));
+          const staticHardPool = questionIds.filter(
+            (q: any) => q.difficulty === "medium" || q.difficulty === "hard"
+          );
+
+          candidateIds =
+            globalHardPool.length >= questionsPerSubject
+              ? globalHardPool
+              : staticHardPool.length >= questionsPerSubject
+              ? staticHardPool
+              : questionIds;
         }
 
-        const unseenMockIds = questionIds.filter((q: any) => !seenMockIds.has(q.id));
-        const mockPoolToShuffle = unseenMockIds.length >= questionsPerSubject ? unseenMockIds : questionIds;
+        const unseenMockIds = candidateIds.filter((q: any) => !seenMockIds.has(q.id));
+        const mockPoolToShuffle = unseenMockIds.length >= questionsPerSubject ? unseenMockIds : candidateIds;
 
         // Shuffle and select 25 questions
         const shuffled = shuffleArray(mockPoolToShuffle);
@@ -1216,22 +1244,17 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      // Get wrong answers from user's sessions, respecting plan limits
-      let wrongQuery = supabaseAdmin
+      // Get every answer (correct and wrong) so we can check each question's
+      // MOST RECENT attempt, not just whether it was ever wrong — otherwise a
+      // question the student has since answered correctly would still be
+      // accepted as "in error bank" here, inconsistent with /wrong-questions.
+      const { data: allAnswers, error: wrongError } = await supabaseAdmin
         .from("session_answers")
-        .select("question_id")
-        .in("session_id", userSessionIds)
-        .eq("is_correct", false)
-        .order("created_at", { ascending: false });
-
-      if (planLimits.error_bank_limit) {
-        wrongQuery = wrongQuery.limit(planLimits.error_bank_limit);
-      }
-
-      const { data: wrongAnswers, error: wrongError } = await wrongQuery;
+        .select("question_id, is_correct, created_at")
+        .in("session_id", userSessionIds);
 
       if (wrongError) {
-        console.error("[error-bank/start] Wrong answers query error:", wrongError);
+        console.error("[error-bank/start] Answers query error:", wrongError);
         res.status(500).json({
           status: "error",
           message: "Failed to verify wrong answers",
@@ -1240,7 +1263,22 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      if (!wrongAnswers || wrongAnswers.length === 0) {
+      // Track each question's most recent attempt (by its own created_at).
+      const latestByQuestion = new Map<string, { is_correct: boolean; created_at: string }>();
+      (allAnswers || []).forEach((a: any) => {
+        const existing = latestByQuestion.get(a.question_id);
+        if (!existing || a.created_at > existing.created_at) {
+          latestByQuestion.set(a.question_id, { is_correct: a.is_correct, created_at: a.created_at });
+        }
+      });
+
+      const validIds = Array.from(latestByQuestion.entries())
+        .filter(([, latest]) => !latest.is_correct)
+        .sort(([, a], [, b]) => (a.created_at < b.created_at ? 1 : -1)) // most recently attempted first
+        .slice(0, planLimits.error_bank_limit || undefined)
+        .map(([questionId]) => questionId);
+
+      if (validIds.length === 0) {
         res.status(400).json({
           status: "error",
           message: "You have no wrong answers yet",
@@ -1249,7 +1287,6 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
         return;
       }
 
-      const validIds = wrongAnswers.map((a: any) => a.question_id);
       const allValid = question_ids.every((id: string) => validIds.includes(id));
 
       if (!allValid) {
@@ -1284,6 +1321,7 @@ export function registerSessionsRoutes(app: Express, deps: SessionsDeps) {
           total_questions: questions.length,
           completed: false,
           started_at: new Date().toISOString(),
+          is_error_bank_session: true,
         })
         .select("id")
         .single();

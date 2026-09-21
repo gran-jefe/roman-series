@@ -62,6 +62,65 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
         return;
       }
 
+      // The client already created the Firebase account before calling this
+      // endpoint (createUserWithEmailAndPassword), so from here on any early
+      // return that rejects the registration must also clean that up -
+      // otherwise it's left dangling: a real, working Firebase login with no
+      // linked profile, which surfaces later as "Unable to verify account" on
+      // every subsequent sign-in with no way to self-recover. This exact gap
+      // left 41 real users stuck within 3 days of the Firebase Auth migration
+      // (accounts that already existed pre-migration, and used "Sign Up"
+      // instead of "Forgot Password" not realizing they needed to migrate).
+      const { data: existingProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("id, firebase_uid")
+        .ilike("email", decoded.email)
+        .maybeSingle();
+
+      if (existingProfile?.firebase_uid) {
+        // Already a fully active account - this is a duplicate signup attempt.
+        await firebaseAdminAuth.deleteUser(decoded.uid).catch(() => {});
+        res.status(409).json({
+          status: "error",
+          message: "An account already exists with this email. Please sign in instead.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (existingProfile) {
+        // A legacy pre-migration profile with no Firebase account linked yet -
+        // link it to the account the client just created instead of creating
+        // a second, orphaned identity for the same email.
+        const { error: linkError } = await supabaseAdmin
+          .from("profiles")
+          .update({
+            firebase_uid: decoded.uid,
+            full_name,
+            ...(target_university_id ? { target_university_id } : {}),
+            ...(target_course ? { target_course } : {}),
+          })
+          .eq("id", existingProfile.id);
+
+        if (linkError) {
+          await firebaseAdminAuth.deleteUser(decoded.uid).catch(() => {});
+          res.status(500).json({
+            status: "error",
+            message: "Failed to activate existing account",
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+
+        res.status(200).json({
+          status: "success",
+          data: { user: { id: existingProfile.id, email: decoded.email } },
+          message: "Existing account activated successfully.",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       // A placeholder Supabase Auth user is still required: profiles.id has a
       // hard FK to auth.users(id). Nobody ever logs into this account directly.
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -70,6 +129,7 @@ export function registerAuthRoutes(app: Express, deps: AuthDeps) {
       });
 
       if (authError || !authData.user) {
+        await firebaseAdminAuth.deleteUser(decoded.uid).catch(() => {});
         res.status(400).json({
           status: "error",
           message: authError?.message || "Failed to create user",

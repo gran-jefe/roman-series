@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 import api from "@/lib/api";
@@ -11,6 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Flutterwave's inline widget redirects here with these params. Paystack
+  // purchases redirect to /payment/callback instead — see that page.
   const transaction_id = searchParams.get("transaction_id");
   const tx_ref = searchParams.get("tx_ref");
   const status = searchParams.get("status");
@@ -77,9 +80,11 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-lg border border-slate-200/80">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
           <h1 className="text-2xl font-bold text-navy mb-2">Payment Error</h1>
           <p className="text-gray-600 mb-6">{error}</p>
           <Link
@@ -94,9 +99,11 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center max-w-md">
-        <div className="text-6xl mb-4 animate-bounce">✓</div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-lg border border-slate-200/80">
+        <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-sm">
+          <CheckCircle2 className="w-10 h-10" />
+        </div>
         <h1 className="text-3xl font-bold text-forest mb-2">Payment Successful!</h1>
         <p className="text-gray-600 mb-8">
           Your subscription is now active. You have full access to all features.
