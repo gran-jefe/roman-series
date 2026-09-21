@@ -37,21 +37,14 @@ const getPlanPricing = (): Record<string, number> =>
 // Paystack checkout keeps the Launch Week discount price regardless of
 // PROMO_END_DATE, for now — always ₦2,500/₦3,500, never the regular price.
 // Unlike getPlanPricing() above, this is NOT date-gated on purpose.
-// Kept only for the legacy Scholar/Elite paystack/upgrade route below —
-// new purchases go through ELITE_ACCESS_PRICING instead.
+// Paystack checkout pricing for standard 6-month (full session) access
 const PAYSTACK_PROMO_PRICING: Record<string, number> = {
   explorer: 0,       // Free
-  scholar: 250000,   // ₦2,500
-  elite: 350000,     // ₦3,500
+  scholar: 250000,   // ₦2,500 (standard launch/promo discount from ₦3,500)
+  elite: 350000,     // ₦3,500 (standard launch/promo discount from ₦5,000)
 };
 
-// "Emergency Access" pricing — the current standing offer, replacing the
-// old Scholar/Elite tiers for new purchases. Both durations grant full
-// Elite feature access (profiles.subscription_status is set to "elite"
-// either way); only the price and subscription length differ. The exact
-// duration is inferred from the kobo amount actually charged (see
-// resolveAccessDurationDays) rather than a new subscription_status value,
-// so no DB schema change is needed.
+// Legacy emergency pricing alias retained for backwards compatibility
 const ELITE_ACCESS_PRICING: Record<number, number> = {
   7: 150000, // ₦1,500 — 7-day access
   3: 100000, // ₦1,000 — 3-day access
@@ -59,8 +52,7 @@ const ELITE_ACCESS_PRICING: Record<number, number> = {
 
 const resolveAccessDurationDays = (amountKobo: number): number => {
   if (amountKobo === ELITE_ACCESS_PRICING[7]) return 7;
-  if (amountKobo === ELITE_ACCESS_PRICING[3]) return 3;
-  return 180; // legacy Scholar/Elite purchases keep their original 6-month term
+  return 180; // Standard 6-month term for Scholar, Elite, and Scholar->Elite upgrades
 };
 
 export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
@@ -568,12 +560,12 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
   app.post("/api/payments/paystack/initialize", requireAuth(supabaseAdmin), async (req: AuthedRequest, res: Response) => {
     try {
       const { plan, access_days } = req.body;
-      const accessDays = Number(access_days);
 
-      if (plan !== "elite" || ![7, 3].includes(accessDays)) {
+      // Support standard 6-month plans ('scholar' or 'elite') as well as legacy access_days if provided
+      if (!plan || !["scholar", "elite"].includes(plan)) {
         res.status(400).json({
           status: "error",
-          message: "Invalid plan. Must be 'elite' with access_days of 7 or 3",
+          message: "Invalid plan. Must be 'scholar' or 'elite'",
           timestamp: new Date().toISOString(),
         });
         return;
@@ -594,7 +586,11 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         return;
       }
 
-      const amountInKobo = ELITE_ACCESS_PRICING[accessDays];
+      let amountInKobo = PAYSTACK_PROMO_PRICING[plan];
+      if (access_days && ELITE_ACCESS_PRICING[Number(access_days)]) {
+        amountInKobo = ELITE_ACCESS_PRICING[Number(access_days)];
+      }
+
       const reference = `PS-${req.userId!.slice(0, 8)}-${Date.now()}`;
 
       const { error: insertError } = await supabaseAdmin
@@ -622,7 +618,11 @@ export function registerPaymentsRoutes(app: Express, deps: PaymentsDeps) {
         amount: amountInKobo,
         reference,
         callback_url: `${webUrl}/payment/callback`,
-        metadata: { user_id: req.userId, plan, access_days: accessDays },
+        metadata: {
+          user_id: req.userId,
+          plan,
+          ...(access_days ? { access_days: Number(access_days) } : {}),
+        },
       });
 
       res.json({

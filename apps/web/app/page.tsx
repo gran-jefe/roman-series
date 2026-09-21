@@ -51,7 +51,7 @@ export default function LandingPage() {
   const FEATURES = [
     {
       title: "Predicted Score & Admission Likelihood",
-      desc: "Get real-time predictions of your Post-UTME score and admission probability for your target university",
+      desc: "Get real-time predictions of your UTME & Post-UTME score and admission probability for your target university",
       icon: "🎯",
     },
     {
@@ -341,39 +341,32 @@ export default function LandingPage() {
       highlighted: false,
     },
     {
-      name: "Elite — 7 Days",
-      price: "₦1,500",
-      duration: "7 days",
-      description: "Full exam-week access",
+      name: "Scholar",
+      price: "₦2,500",
+      duration: "6 months",
+      description: "Comprehensive UTME & Post-UTME preparation",
       features: [
-        "Unlimited practice, all subjects",
-        "Unlimited mock exams",
-        "Hard-mode mock exams",
-        "Access to authentic UI POST-UTME questions from 2019-2026",
+        "All subjects, unlimited practice",
+        "3 mock exams per week",
         "Full error bank",
-        "Advanced predictive scoring",
-        "Admission probability meter",
-        "Course-specific ranking",
-        "Percentile ranking (You're ahead of X%)",
-        "Smart weak-topic prioritisation",
-        "Advanced analytics dashboard",
-        "Time-pressure diagnostics",
-        "Extended leaderboard",
-        "Elite badge (blue tick on profile)",
+        "Topic performance breakdown",
+        "Peer comparison insights",
+        "Full global leaderboard",
+        "Priority student support",
       ],
       highlighted: true,
       badge: "Most Popular",
     },
     {
-      name: "Elite — 3 Days",
-      price: "₦1,000",
-      duration: "3 days",
-      description: "Quick final push",
+      name: "Elite",
+      price: "₦3,500",
+      duration: "6 months",
+      description: "For top performers aiming for high merit scores",
       features: [
-        "Unlimited practice, all subjects",
+        "Everything in Scholar",
         "Unlimited mock exams",
         "Hard-mode mock exams",
-        "Access to authentic UI POST-UTME questions from 2019-2026",
+        "Access to authentic UTME & Post-UTME questions",
         "Full error bank",
         "Advanced predictive scoring",
         "Admission probability meter",
@@ -382,10 +375,12 @@ export default function LandingPage() {
         "Smart weak-topic prioritisation",
         "Advanced analytics dashboard",
         "Time-pressure diagnostics",
+        "Recalled & challenge questions",
         "Extended leaderboard",
         "Elite badge (blue tick on profile)",
       ],
       highlighted: false,
+      badge: "Best Value",
     },
   ];
 
@@ -477,25 +472,25 @@ export default function LandingPage() {
             <sup className="text-xs font-bold text-white/50">™</sup>
           </div>
 
-          {/* UI-first badge */}
+          {/* UTME & Post-UTME badge */}
           <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 bg-white/10 border border-white/20 rounded-full backdrop-blur-sm">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
             <span className="text-white/80 text-sm font-semibold tracking-wide">
-              NOW LIVE – University of Ibadan · Other schools coming soon
+              NOW PREPARING · UTME &amp; Post-UTME 2026/2027
             </span>
           </div>
 
           {/* Main headline */}
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white mb-6 leading-[1.05] tracking-tight">
-            You Want UI.<br/>
+            Ace Your UTME &amp;<br/>
             <span className="bg-gradient-to-r from-green-400 via-emerald-300 to-forest bg-clip-text text-transparent">
-              We&apos;ll Get You There.
+              Post-UTME Exams.
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-lg sm:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
-            Practice with <strong className="text-white/90">9,600+ authentic UI Post-UTME questions</strong>. AI-powered analytics, real-time score prediction, and personalised study plans – everything you need to get admitted.
+            Practice with <strong className="text-white/90">authentic UTME &amp; Post-UTME questions</strong>. AI-powered analytics, real-time score prediction, and personalised study plans – everything you need to get admitted.
           </p>
 
           {/* CTA buttons */}
@@ -860,7 +855,7 @@ export default function LandingPage() {
                         ? "bg-forest text-white hover:bg-forest/90 hover:shadow-lg hover:shadow-forest/20"
                         : "border-2 border-gray-200 text-navy hover:border-forest hover:text-forest"
                       }`}>
-                    {plan.name === "Explorer" ? "Start Free" : "Get Elite Access"}
+                    {plan.name === "Explorer" ? "Start Free" : `Get ${plan.name}`}
                   </Link>
 
                   <div className="space-y-3 flex-1">
@@ -902,11 +897,11 @@ export default function LandingPage() {
         </div>
         <div className="relative max-w-3xl mx-auto text-center">
           <h2 className="text-3xl sm:text-5xl font-black text-white mb-4 leading-tight">
-            Your UI Admission<br/>
+            Your Dream Admission<br/>
             <span className="text-green-400">Starts Here.</span>
           </h2>
           <p className="text-white/50 text-lg mb-10 font-medium">
-            Join 5,000+ students already preparing.
+            Join 5,000+ students preparing for UTME &amp; Post-UTME.
             Start free – upgrade only when you&apos;re ready.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -937,7 +932,7 @@ export default function LandingPage() {
                 <span className="font-black">Roman Series<sup className="text-[0.6em] text-white/40">™</sup></span>
               </div>
               <p className="text-white/30 text-xs leading-relaxed">
-                Nigeria&apos;s most trusted UI Post-UTME preparation platform.
+                Nigeria&apos;s most trusted UTME &amp; Post-UTME preparation platform.
                 Built for Nigerian students who are serious about getting admitted.
               </p>
             </div>

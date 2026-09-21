@@ -12,7 +12,6 @@ import { useMockExamLimit } from "@/hooks/useMockExamLimit";
 import type { University, Subject, SessionHistoryItem, UserStats, ErrorBankQuestion, PredictionResult } from "types";
 import toast from "react-hot-toast";
 import { Calendar, BarChart3, Zap, CheckCircle, ChevronRight, Target, BookOpen, AlertCircle as ErrorIcon, TrendingUp, Flame, Activity } from "lucide-react";
-import { getPromoTimeLeft } from "@/lib/promo";
 import Link from "next/link";
 
 interface Subscription {
@@ -52,17 +51,7 @@ export default function DashboardPage() {
   // Loading state for essential data only
   const [essentialLoading, setEssentialLoading] = useState(true);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
-    const [timeLeft, setTimeLeft] = useState<string>("");
 
-  useEffect(() => {
-    const updateCountdown = () => {
-      setTimeLeft(getPromoTimeLeft());
-    };
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
   // Guard: redirect admins to /admin
   useEffect(() => {
     if (profile?.role === "admin") {
@@ -234,21 +223,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {timeLeft && (
-          <div className="bg-gradient-to-r from-ember via-orange-500 to-amber-500 text-white py-2.5 px-4 text-center text-sm font-semibold">
-            <span className="inline-flex items-center gap-2">
-              <span className="w-2 h-2 bg-white rounded-full animate-pulse inline-block"></span>
-              🔥 Launch Week Special – {timeLeft}
-              <Link
-                href="#pricing"
-                className="underline underline-offset-2 hover:no-underline ml-1"
-              >
-                Claim discount →
-              </Link>
-            </span>
-          </div>
-        )}
 
         {/* Stats Cards */}
         <div className="mb-12">

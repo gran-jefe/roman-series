@@ -27,8 +27,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Roman Series — Post-UTME Past Questions",
-  description: "Practice Post-UTME past questions for UI, OAU, UNILAG, ABU, FUTA and more. Timed practice, instant scoring, performance tracking.",
+  title: "Roman Series — UTME & Post-UTME Past Questions",
+  description: "Practice UTME and Post-UTME past questions with timed mock exams, instant scoring, weak topic diagnostics, and AI-powered performance tracking.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.png",
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
     title: "Roman Series",
   },
   openGraph: {
-    title: "Roman Series — Post-UTME Past Questions",
-    description: "Practice Post-UTME past questions for UI, OAU, UNILAG, ABU, FUTA and more.",
+    title: "Roman Series — UTME & Post-UTME Past Questions",
+    description: "Practice UTME and Post-UTME past questions with timed mock exams, instant scoring, and performance tracking.",
     type: "website",
   },
 };

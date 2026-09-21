@@ -7,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import { PageLoader } from "@/components/PageLoader";
 import api from "@/lib/api";
 import { Check } from "lucide-react";
-import { getPromoTimeLeft } from "@/lib/promo";
 
 export default function UpgradePage() {
   const router = useRouter();
@@ -15,27 +14,11 @@ export default function UpgradePage() {
   const { user, profile, loading } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
-  const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Paystack checkout keeps the Launch Week discount price for now,
-  // regardless of the promo countdown date — must match
-  // PAYSTACK_PROMO_PRICING in apps/api/src/routes/payments.routes.ts so the
-  // displayed price never diverges from what Paystack actually charges.
   const promoActive = true;
   const scholarPrice = 2500;
   const elitePrice = 3500;
   const upgradeCost = elitePrice - scholarPrice; // ₦1,000
-
-  // Countdown to the end of the Launch Week discount
-  useEffect(() => {
-    const updateCountdown = () => {
-      setTimeLeft(getPromoTimeLeft());
-    };
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -107,7 +90,7 @@ export default function UpgradePage() {
     "Advanced analytics dashboard",
     "Time-pressure diagnostics",
     "Hard-mode mock exams",
-    "Authentic and Updated UI-POSTUTME Questions (2019-2026)",
+    "Authentic and Updated UTME & Post-UTME Questions",
     "Extended leaderboard",
     "Elite badge (blue tick on profile)",
     "Performance trend forecasting",
@@ -135,15 +118,6 @@ export default function UpgradePage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-12">
-        {timeLeft && (
-          <div className="mb-8 p-4 bg-gradient-to-r from-ember to-amber-600 text-white rounded-lg text-center border border-amber-400">
-            <p className="font-semibold">
-              🎉 Launch Week Special! Limited-time discount pricing available
-            </p>
-            <p className="text-sm mt-1">Ends in: {timeLeft}</p>
-          </div>
-        )}
-
         {error && (
           <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-[#C4522A]">{error}</p>
@@ -263,8 +237,7 @@ export default function UpgradePage() {
                 <li>• Get advanced analytics to identify weak areas faster</li>
                 <li>• Practice hard-mode exams for extra challenge</li>
                 <li>
-                  • Access authentic and Updated UI-POSTUTME Questions
-                  (2019-2026)
+                  • Access authentic and updated UTME &amp; Post-UTME questions
                 </li>
                 <li>• See your percentile ranking among peers</li>
                 <li>• Get admission probability predictions</li>

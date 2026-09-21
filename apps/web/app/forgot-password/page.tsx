@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
             />
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">Roman Series<sup className="text-sm align-super">™</sup></h1>
-          <p className="text-gray-400">Ace Post-UTME Exams</p>
+          <p className="text-gray-400">Ace UTME &amp; Post-UTME Exams</p>
         </div>
 
         {/* Forgot Password Card */}

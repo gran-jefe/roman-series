@@ -83,10 +83,9 @@ Tables (with RLS policies):
 
 ### Pricing
 - **Explorer (Free)**: 1–2 subjects, 20 questions/day, 1 mock exam, basic analytics
-- **Elite — 7 days (₦1,500)**: All subjects, unlimited practice, unlimited mock exams, full error bank, hard mode, recalled questions, percentile ranking, cohort insights, advanced analytics
-- **Elite — 3 days (₦1,000)**: Same full Elite feature set as above, shorter access window
-
-Both Elite options set `profiles.subscription_status = "elite"`; only the price and `subscription_expires_at` duration differ (see `apps/api/src/routes/payments.routes.ts` `ELITE_ACCESS_PRICING`). The old Scholar tier (₦3,500/6 months) is retired from sale but existing Scholar subscribers keep their access until natural expiry — `scholar` remains a valid `subscription_status` value in the DB and admin panel for that reason.
+- **Scholar (₦2,500 discount / ₦3,500 regular, 6 months)**: All subjects, unlimited practice, 3 mock exams/week, full error bank, topic breakdown, peer comparison insights, full leaderboard
+- **Elite (₦3,500 discount / ₦5,000 regular, 6 months)**: All subjects, unlimited practice, unlimited mock exams, full error bank, hard mode, recalled questions, percentile ranking, cohort insights, advanced predictive scoring, AI analytics. Scholar users can upgrade to Elite for ₦1,000 difference.
+*(The previous exam-week 3-day / 7-day emergency access offers have concluded as the platform transitions to the upcoming UTME & Post-UTME cycle).*
 
 ## API base URL
 - Dev: http://localhost:4000
