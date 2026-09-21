@@ -11,6 +11,7 @@ import CountdownBanner from "./CountdownBanner";
 import { FeedbackPromptModal } from "./FeedbackPromptModal";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 import { InstallPrompt } from "./InstallPrompt";
+import { MessageSquare } from "lucide-react";
 
 const INSTALL_PROMPT_EXCLUDED_PREFIXES = ["/practice/session", "/practice/mock/session", "/admin"];
 
@@ -237,7 +238,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
                     className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-[#283D52] transition"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <span className="text-lg">💬</span>
+                    <MessageSquare className="w-5 h-5 text-gray-300" />
                     Feedback
                   </a>
                   <button

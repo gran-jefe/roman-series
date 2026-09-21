@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -114,8 +115,10 @@ export default function PaymentCallbackPage() {
   if (phase === "success") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blush px-4">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4 animate-bounce">✓</div>
+        <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-lg border border-slate-200/80">
+          <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-sm">
+            <CheckCircle2 className="w-10 h-10" />
+          </div>
           <h1 className="text-3xl font-bold text-forest mb-2">
             Payment confirmed!
           </h1>
@@ -131,8 +134,10 @@ export default function PaymentCallbackPage() {
   if (phase === "timeout") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blush px-4">
-        <div className="text-center max-w-md">
-          <div className="text-5xl mb-4">⏳</div>
+        <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-lg border border-slate-200/80">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <Clock className="w-8 h-8" />
+          </div>
           <h1 className="text-2xl font-bold text-navy mb-2">Still confirming...</h1>
           <p className="text-gray-600 mb-6">
             This can take a moment longer than usual. You can safely close this
@@ -160,8 +165,10 @@ export default function PaymentCallbackPage() {
   // phase === "failed"
   return (
     <div className="min-h-screen flex items-center justify-center bg-blush px-4">
-      <div className="text-center max-w-md">
-        <div className="text-6xl mb-4">⚠️</div>
+      <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow-lg border border-slate-200/80">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
         <h1 className="text-2xl font-bold text-navy mb-2">
           Payment could not be confirmed
         </h1>

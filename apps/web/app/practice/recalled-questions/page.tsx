@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { PageLoader } from "@/components/PageLoader";
 import toast from "react-hot-toast";
-import { Lock, Calendar, AlertCircle } from "lucide-react";
+import { Lock, Calendar, AlertCircle, Archive, CheckCircle2, Lightbulb } from "lucide-react";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { ContentWatermark } from "@/components/ContentWatermark";
 
@@ -132,11 +132,13 @@ export default function RecalledQuestionsPage() {
           <div className="absolute top-0 right-0 w-40 h-40 bg-forest/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-forest/15 rounded-full blur-2xl translate-x-[-20%] translate-y-1/3 pointer-events-none"></div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-4xl">🔐</span>
+            <div className="flex items-center gap-3.5 mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center flex-shrink-0">
+                <Archive className="w-6 h-6 text-amber-300" />
+              </div>
               <div>
                 <h1 className="text-3xl sm:text-4xl font-black">
-                  Recalled Questions 🎯
+                  Recalled Questions
                 </h1>
                 <p className="text-white/70 text-sm sm:text-base mt-1">
                   Authentic UI Post-UTME questions from 2019-2025
@@ -305,8 +307,9 @@ export default function RecalledQuestionsPage() {
                             </span>
 
                             {question.answer === option.label && (
-                              <span className="ml-auto text-xs font-black text-green-600">
-                                ✓ Correct
+                              <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-green-600">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Correct</span>
                               </span>
                             )}
                           </div>
@@ -318,8 +321,9 @@ export default function RecalledQuestionsPage() {
                   {/* Explanation */}
                   {question.note && (
                     <div className="bg-blue-50/50 border-l-4 border-blue-400 p-4 rounded-lg">
-                      <p className="text-xs font-bold text-blue-900 mb-1.5">
-                        💡 Explanation
+                      <p className="text-xs font-bold text-blue-900 mb-1.5 flex items-center gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Explanation</span>
                       </p>
                       <p className="text-sm text-blue-800 leading-relaxed">
                         {question.note}

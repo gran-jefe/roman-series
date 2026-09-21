@@ -10,6 +10,7 @@ import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { ContentWatermark } from "@/components/ContentWatermark";
 import toast from "react-hot-toast";
+import { BookOpen, Flag } from "lucide-react";
 import type { StartSessionResponse, Subject } from "types";
 
 interface Answer {
@@ -416,7 +417,12 @@ export default function MockSessionPage() {
           <p className="text-[9px] font-bold tracking-wide text-gray-400 leading-none">
             Roman Series<sup className="text-[0.6em]">™</sup>
           </p>
-          <p className="font-bold text-sm leading-tight">{hardMode ? "🔴 HARD MODE" : "Mock PUTME"}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {hardMode && (
+              <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            )}
+            <p className="font-bold text-sm leading-tight">{hardMode ? "HARD MODE" : "Mock PUTME"}</p>
+          </div>
           <p className="text-xs text-gray-300 leading-tight">{currentSubject} • Q{questionInSubject}/{currentBlock?.count ?? 25}</p>
         </div>
         <div className={`font-bold text-lg px-3 py-1 rounded ${
@@ -551,7 +557,10 @@ export default function MockSessionPage() {
                     onClick={() => setShowPassage(!showPassage)}
                     className="w-full flex items-center justify-between p-3 bg-blue-100 text-blue-900 font-semibold text-sm hover:bg-blue-200 transition-colors"
                   >
-                    <span>📖 {currentQ.passage.title}</span>
+                    <span className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-blue-700" />
+                      <span>{currentQ.passage.title}</span>
+                    </span>
                     <span>{showPassage ? "▲ Hide" : "▼ Read Passage"}</span>
                   </button>
                   {showPassage && (
@@ -607,14 +616,14 @@ export default function MockSessionPage() {
           {/* Flag */}
           <button
             onClick={handleToggleFlag}
-            className={`flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-sm flex-1 min-w-0 ${
+            className={`flex items-center justify-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-sm flex-1 min-w-0 ${
               flaggedQuestions.has(currentQ?.id)
                 ? "bg-amber-400 text-white"
                 : "border border-gray-300 text-navy hover:bg-gray-50"
             }`}
           >
-            {flaggedQuestions.has(currentQ?.id) ? "⚑" : "⚐"}
-            <span className="hidden sm:inline ml-1">Flag</span>
+            <Flag className={`w-4 h-4 ${flaggedQuestions.has(currentQ?.id) ? "fill-current" : ""}`} />
+            <span className="hidden sm:inline">Flag</span>
           </button>
 
           {/* Submit */}

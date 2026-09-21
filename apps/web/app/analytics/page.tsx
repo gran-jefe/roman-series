@@ -10,6 +10,26 @@ import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import type { AnalyticsOverview, TopicPerformance, SessionHistoryItem, PredictionResult } from "types";
 import toast from "react-hot-toast";
+import {
+  Flame,
+  GraduationCap,
+  Trophy,
+  Sparkles,
+  Box,
+  Download,
+  AlertCircle,
+  AlertTriangle,
+  Target,
+  CheckCircle2,
+  Lock,
+  Check,
+  X,
+  ArrowRight,
+  Lightbulb,
+  MapPin,
+  BarChart3,
+  TrendingUp,
+} from "lucide-react";
 
 // Color mapping for subjects
 const SUBJECT_COLORS: Record<string, string> = {
@@ -173,17 +193,18 @@ export default function AnalyticsPage() {
   // Check analytics access
   if (!analyticsAccess.hasAccess) {
     return (
-      <div className="min-h-screen bg-blush">
-        
-        <main className="max-w-7xl mx-auto px-6 py-12 text-center">
-          <div className="bg-white rounded-lg shadow p-12 max-w-md mx-auto">
-            <h2 className="text-2xl font-bold text-navy mb-4">Analytics Locked</h2>
-            <p className="text-gray-600 mb-6">{analyticsAccess.reason}</p>
+      <div className="min-h-screen bg-[#FAF7F4] text-slate-800">
+        <main className="max-w-xl mx-auto px-4 sm:px-6 py-16 text-center">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-8 sm:p-12">
+            <h2 className="text-2xl font-black text-[#0D1B2A] mb-3">Analytics Locked</h2>
+            <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+              {analyticsAccess.reason || "Performance Analytics and AI Weak-Area diagnostics are available on Scholar and Elite plans."}
+            </p>
             <Link
               href="/pricing"
-              className="inline-block px-6 py-2 bg-forest text-white rounded-lg font-medium hover:bg-opacity-90 transition"
+              className="inline-block px-8 py-3.5 bg-[#1A7A4A] hover:bg-[#15633c] text-white rounded-2xl font-black text-xs shadow-md transition"
             >
-              Get Elite Access
+              Upgrade to Scholar or Elite →
             </Link>
           </div>
         </main>
@@ -194,18 +215,20 @@ export default function AnalyticsPage() {
   
   if (!overview) {
     return (
-      <div className="min-h-screen bg-blush">
-       
-        <main className="max-w-7xl mx-auto px-6 py-12 text-center">
-          <p className="text-gray-600 mb-4">
-            No analytics data yet. Take some practice tests to get started!
-          </p>
-          <Link
-            href="/dashboard"
-            className="text-forest hover:underline font-medium"
-          >
-            Back to Dashboard
-          </Link>
+      <div className="min-h-screen bg-[#FAF7F4] text-slate-800">
+        <main className="max-w-xl mx-auto px-4 sm:px-6 py-16 text-center">
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-8 sm:p-12">
+            <h2 className="text-xl font-black text-[#0D1B2A] mb-2">No Practice Analytics Yet</h2>
+            <p className="text-slate-600 text-sm mb-6">
+              Complete your first topic drill or mock exam to start tracking your performance.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-block px-6 py-3 bg-[#1A7A4A] text-white rounded-2xl font-black text-xs hover:bg-[#15633c] transition"
+            >
+              Back to Dashboard →
+            </Link>
+          </div>
         </main>
       </div>
     );
@@ -252,7 +275,7 @@ export default function AnalyticsPage() {
       setFromCache(res.data.data.from_cache);
       setNextGenerationAt(res.data.data.expires_at);
       setShowReport(true);
-      const cacheMsg = res.data.data.from_cache ? "(from cache)" : "✨ Fresh!";
+      const cacheMsg = res.data.data.from_cache ? "(from cache)" : "(freshly generated)";
       toast.success(`Report generated ${cacheMsg}`);
     } catch (error) {
       console.error("Failed to generate report:", error);
@@ -301,24 +324,29 @@ export default function AnalyticsPage() {
   const cooldownRemaining = nextGenerationAt ? formatCooldown(nextGenerationAt) : "";
 
   return (
-    <div className="min-h-screen bg-blush">
-      {/* Navbar */}
-     
-
+    <div className="min-h-screen bg-[#FAF7F4] text-slate-800">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <div className="mb-12 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="mb-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-navy mb-2">Performance Analytics</h1>
-            <p className="text-gray-600 text-sm">Your detailed performance insights and progress tracking</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold mb-2 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              UTME & Post-UTME Performance Engine
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-[#0D1B2A] tracking-tight">
+              Performance Analytics
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              Track your topic mastery, speed diagnostics, and predictive university cutoff probabilities.
+            </p>
           </div>
           <button
             onClick={handleGenerateReport}
             disabled={reportLoading || !canGenerateReport}
-            className="px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap sm:flex-shrink-0"
+            className="px-6 py-3.5 bg-[#1A7A4A] hover:bg-[#15633c] text-white rounded-2xl font-black text-xs shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap sm:flex-shrink-0"
           >
-            {reportLoading ? "Generating..." : canGenerateReport ? "Generate Report" : `Available in ${cooldownRemaining}`}
+            {reportLoading ? "Generating Analysis..." : canGenerateReport ? "Generate AI Diagnostic" : `Available in ${cooldownRemaining}`}
           </button>
         </div>
 
@@ -329,27 +357,35 @@ export default function AnalyticsPage() {
               <div className="flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-navy">Your Personalised Study Report</h2>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full w-fit ${
                     fromCache
-                      ? "bg-gray-200 text-gray-700"
+                      ? "bg-slate-200 text-slate-700"
                       : "bg-green-100 text-green-700"
                   }`}>
-                    {fromCache ? "📦 From Cache" : "✨ Fresh"}
+                    {fromCache ? (
+                      <>
+                        <Box className="w-3.5 h-3.5" /> From Cache
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" /> Fresh Analysis
+                      </>
+                    )}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
               </div>
               <button
                 onClick={() => setShowReport(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl sm:flex-shrink-0"
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-slate-100 transition sm:flex-shrink-0"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mb-6 p-4 sm:p-6 bg-blush rounded-lg max-h-96 overflow-y-auto">
+            <div className="mb-6 p-4 sm:p-6 bg-[#FAF7F4] border border-slate-200/80 rounded-2xl max-h-96 overflow-y-auto">
               {report.split("\n\n").map((paragraph: string, idx: number) => (
-                <p key={idx} className="text-gray-700 leading-relaxed mb-4">
+                <p key={idx} className="text-slate-700 leading-relaxed mb-4 text-xs sm:text-sm">
                   {paragraph}
                 </p>
               ))}
@@ -358,9 +394,10 @@ export default function AnalyticsPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={handleDownloadPDF}
-                className="flex-1 px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-forest text-white rounded-lg font-medium hover:shadow-md transition-all"
               >
-                📥 Download as PDF
+                <Download className="w-4 h-4" />
+                <span>Download as PDF</span>
               </button>
               <button
                 onClick={() => setShowReport(false)}
@@ -377,7 +414,10 @@ export default function AnalyticsPage() {
           {/* Streak */}
           <div className="bg-white rounded-lg shadow-sm border-t-4 border-forest p-6">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Streak</p>
-            <p className="text-4xl font-bold text-navy mb-1">🔥 {overview.current_streak_days}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Flame className="w-8 h-8 text-amber-500 fill-amber-500" />
+              <p className="text-4xl font-bold text-navy">{overview.current_streak_days}</p>
+            </div>
             <p className="text-xs text-gray-500">days • Best: {overview.longest_streak_days}</p>
           </div>
 
@@ -415,7 +455,12 @@ export default function AnalyticsPage() {
           <div className="mb-12">
             <div className="bg-gradient-to-br from-forest/5 to-blue-50 rounded-lg shadow-lg border border-forest/10 p-6 sm:p-8">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-navy mb-2">🎓 Admission Prediction</h2>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-forest/10 flex items-center justify-center text-forest">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-navy">Admission Prediction</h2>
+                </div>
                 <p className="text-xs text-gray-600">
                   Based on <span className="font-semibold">{prediction.cutoff.year} admission cutoff</span> for <span className="font-semibold">{prediction.cutoff.course}</span>
                 </p>
@@ -446,8 +491,8 @@ export default function AnalyticsPage() {
                       <p className="text-3xl font-bold text-navy">{prediction.utme_score}</p>
                       <p className="text-xs text-gray-600">/400</p>
                     </div>
-                    <span className={`text-lg font-bold ${prediction.utme_qualifies ? "text-green-600" : "text-amber-600"}`}>
-                      {prediction.utme_qualifies ? "✓" : "✗"}
+                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${prediction.utme_qualifies ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                      {prediction.utme_qualifies ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
                     </span>
                   </div>
                 </div>
@@ -460,8 +505,8 @@ export default function AnalyticsPage() {
                       <p className="text-3xl font-bold text-navy">{prediction.current_practice_avg ?? 0}</p>
                       <p className="text-xs text-gray-600">%</p>
                     </div>
-                    <span className={`text-lg font-bold ${(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "text-green-600" : "text-blue-600"}`}>
-                      {(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "✓" : "→"}
+                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                      {(prediction.current_practice_avg ?? 0) >= Math.min(prediction.required_putme_score ?? 50, 50) ? <Check className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                     </span>
                   </div>
                 </div>
@@ -499,12 +544,22 @@ export default function AnalyticsPage() {
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold text-navy">Your Predicted Score</p>
-                      <p className={`text-sm font-bold px-3 py-1 rounded-full ${
+                      <p className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${
                         (prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity)
                           ? "bg-green-100 text-green-700"
                           : "bg-amber-100 text-amber-700"
                       }`}>
-                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity) ? "✓ On Track" : "⚠ Below Cutoff"}
+                        {(prediction.predicted_total ?? 0) >= (prediction.cutoff?.combined_cutoff ?? Infinity) ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>On Track</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="w-4 h-4" />
+                            <span>Below Cutoff</span>
+                          </>
+                        )}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -542,8 +597,11 @@ export default function AnalyticsPage() {
 
               {/* Disclaimer */}
               <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-700">
-                  <span className="font-semibold">ℹ️ Disclaimer:</span> This prediction uses the <span className="font-semibold">{prediction.cutoff.year} admission cutoff</span>. Actual cutoffs may vary annually. Use this as a guide, not a guarantee.
+                <p className="text-xs text-blue-700 flex items-start gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    <span className="font-semibold">Disclaimer:</span> This prediction uses the <span className="font-semibold">{prediction.cutoff.year} admission cutoff</span>. Actual cutoffs may vary annually. Use this as a guide, not a guarantee.
+                  </span>
                 </p>
               </div>
             </div>
@@ -551,30 +609,42 @@ export default function AnalyticsPage() {
             {/* Alerts Section */}
             <div className="mt-6 space-y-4">
               {!prediction.utme_qualifies && prediction.utme_qualifies !== undefined && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-red-900">⚠ UTME Below Minimum (200)</p>
-                  <p className="text-sm text-red-800 mt-1">Your score of {prediction.utme_score} doesn&apos;t qualify. You need 200+ for admission eligibility.</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-900">UTME Below Minimum (200)</p>
+                    <p className="text-sm text-red-800 mt-1">Your score of {prediction.utme_score} doesn&apos;t qualify. You need 200+ for admission eligibility.</p>
+                  </div>
                 </div>
               )}
 
               {!prediction.putme_qualifies && prediction.putme_qualifies !== undefined && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-red-900">⚠ Practice Score Below Minimum (50%)</p>
-                  <p className="text-sm text-red-800 mt-1">Current practice score: {prediction.current_practice_avg ?? 0}%. You need 50%+ in Post-UTME to qualify.</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-900">Practice Score Below Minimum (50%)</p>
+                    <p className="text-sm text-red-800 mt-1">Current practice score: {prediction.current_practice_avg ?? 0}%. You need 50%+ in Post-UTME to qualify.</p>
+                  </div>
                 </div>
               )}
 
               {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) < (prediction.required_putme_score ?? 0) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-amber-900">📌 Improve Your Score</p>
-                  <p className="text-sm text-amber-800 mt-1">Increase your practice score from {prediction.current_practice_avg ?? 0}% to {prediction.required_putme_score}% to reach the cutoff.</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                  <Target className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Improve Your Score</p>
+                    <p className="text-sm text-amber-800 mt-1">Increase your practice score from {prediction.current_practice_avg ?? 0}% to {prediction.required_putme_score}% to reach the cutoff.</p>
+                  </div>
                 </div>
               )}
 
               {(prediction.utme_qualifies ?? false) && (prediction.putme_qualifies ?? false) && (prediction.current_practice_avg ?? 0) >= (prediction.required_putme_score ?? 0) && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-green-900">✓ On Track for Admission</p>
-                  <p className="text-sm text-green-800 mt-1">Your scores meet the requirements. Keep practicing to maintain your edge!</p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">On Track for Admission</p>
+                    <p className="text-sm text-green-800 mt-1">Your scores meet the requirements. Keep practicing to maintain your edge!</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -703,7 +773,9 @@ export default function AnalyticsPage() {
               {profile?.subscription_status === "explorer" && (
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md border-2 border-blue-200 p-6">
                   <div className="flex items-start gap-4">
-                    <div className="text-3xl">🔒</div>
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                      <Lock className="w-6 h-6" />
+                    </div>
                     <div className="flex-1">
                       <h3 className="font-bold text-navy mb-2">Unlock Detailed Analytics</h3>
                       <p className="text-sm text-gray-700 mb-4">
@@ -991,8 +1063,8 @@ export default function AnalyticsPage() {
                               <p className="text-xs font-semibold text-gray-600 mb-2">Study Actions:</p>
                               <ul className="space-y-1">
                                 {item.study_actions.map((action: string, idx: number) => (
-                                  <li key={idx} className="text-xs text-gray-700 flex gap-2">
-                                    <span className="text-forest font-bold">✓</span>
+                                  <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                                    <Check className="w-3.5 h-3.5 text-forest mt-0.5 flex-shrink-0" />
                                     <span>{action}</span>
                                   </li>
                                 ))}
@@ -1010,7 +1082,10 @@ export default function AnalyticsPage() {
                             )}
                             {item.quick_tip && (
                               <div className="flex-1 p-2 bg-green-50 rounded border border-green-200">
-                                <p className="text-xs font-semibold text-green-900">💡 Exam Tip</p>
+                                <p className="text-xs font-semibold text-green-900 flex items-center gap-1">
+                                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Exam Tip</span>
+                                </p>
                                 <p className="text-xs text-green-700">{item.quick_tip}</p>
                               </div>
                             )}
@@ -1050,7 +1125,12 @@ export default function AnalyticsPage() {
                             <td className="px-4 py-2">
                               <div className="flex items-center gap-2">
                                 <span className="text-navy font-medium">{accuracy}%</span>
-                                {isTimePressure && <span className="text-xs text-red-600 font-semibold">⚠ Time Pressure</span>}
+                                {isTimePressure && (
+                                  <span className="inline-flex items-center gap-1 text-xs text-red-600 font-semibold">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    <span>Time Pressure</span>
+                                  </span>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1068,9 +1148,12 @@ export default function AnalyticsPage() {
             {/* Leaderboard Section */}
             {leaderboard && profile?.subscription_status === "explorer" && (
               <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6 relative">
-                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center p-4">
                   <div className="text-center">
-                    <p className="text-white font-semibold mb-3 text-lg">🏆 See Your Ranking</p>
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto mb-3 text-amber-400">
+                      <Trophy className="w-6 h-6" />
+                    </div>
+                    <p className="text-white font-semibold mb-2 text-lg">See Your Ranking</p>
                     <p className="text-gray-300 text-sm mb-4">Unlock the full leaderboard and see where you rank among all aspirants.</p>
                     <button
                       onClick={() => router.push("/pricing")}
@@ -1088,18 +1171,18 @@ export default function AnalyticsPage() {
                       <button className="px-3 py-1 rounded text-sm font-medium bg-gray-100 text-gray-700">This Week</button>
                     </div>
                   </div>
-                  <div className="text-center mb-6 p-4 bg-blush rounded-lg">
-                    <p className="text-4xl font-bold text-navy mb-1">—</p>
-                    <p className="text-sm text-gray-600">of 1000+ participants</p>
+                  <div className="text-center mb-6 p-4 bg-[#FAF7F4] border border-slate-200/80 rounded-2xl">
+                    <p className="text-4xl font-black text-[#0D1B2A] mb-1">—</p>
+                    <p className="text-xs text-slate-500 font-medium">of 1000+ participants</p>
                   </div>
                   <div className="space-y-2">
                     {[1, 2, 3, 4, 5].map((idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 rounded bg-gray-50">
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-500">#{idx}</span>
-                          <span className="text-sm font-medium text-navy">User</span>
+                          <span className="text-xs font-bold text-slate-500">#{idx}</span>
+                          <span className="text-xs font-semibold text-[#0D1B2A]">Aspirant</span>
                         </div>
-                        <span className="text-sm font-semibold text-navy">90%</span>
+                        <span className="text-xs font-black text-[#1A7A4A]">90%</span>
                       </div>
                     ))}
                   </div>
@@ -1109,9 +1192,9 @@ export default function AnalyticsPage() {
 
             {leaderboard && profile?.subscription_status !== "explorer" && (
               <div className="relative">
-                <div className="bg-white rounded-lg shadow-md border-t-4 border-forest p-6">
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 sm:p-8">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-navy">
+                    <h3 className="text-lg font-black text-[#0D1B2A]">
                       {leaderboardScope === "cohort" && profile?.target_course
                         ? `Top ${profile.target_course} Aspirants`
                         : "Top Performers"}
@@ -1119,20 +1202,20 @@ export default function AnalyticsPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setLeaderboardWindow("overall")}
-                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
                           leaderboardWindow === "overall"
-                            ? "bg-forest text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-[#1A7A4A] text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         }`}
                       >
                         All Time
                       </button>
                       <button
                         onClick={() => setLeaderboardWindow("weekly")}
-                        className={`px-3 py-1 rounded text-sm font-medium transition ${
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
                           leaderboardWindow === "weekly"
-                            ? "bg-forest text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-[#1A7A4A] text-white"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         }`}
                       >
                         This Week
@@ -1142,15 +1225,15 @@ export default function AnalyticsPage() {
 
                   {/* Elite User Scope Toggle */}
                   {profile?.subscription_status === "elite" && (
-                    <div className="mb-6 pb-6 border-b">
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Ranking Scope</p>
+                    <div className="mb-6 pb-6 border-b border-slate-100">
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Ranking Scope</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setLeaderboardScope("global")}
-                          className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                             leaderboardScope === "global"
-                              ? "bg-forest text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              ? "bg-[#0D1B2A] text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                           }`}
                           title="Compare your score with all students platform-wide"
                         >
@@ -1158,35 +1241,41 @@ export default function AnalyticsPage() {
                         </button>
                         <button
                           onClick={() => setLeaderboardScope("cohort")}
-                          className={`px-3 py-1 rounded text-sm font-medium transition ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                             leaderboardScope === "cohort"
-                              ? "bg-forest text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              ? "bg-[#0D1B2A] text-white"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                           }`}
                           title={`Compare your score with other ${profile?.target_course} applicants`}
                         >
                           My Course
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {leaderboardScope === "cohort" && profile?.target_course
-                          ? `📍 Comparing with other ${profile.target_course} applicants`
-                          : "📍 Comparing with all students platform-wide"}
+                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                        <span>
+                          {leaderboardScope === "cohort" && profile?.target_course
+                            ? `Comparing with other ${profile.target_course} applicants`
+                            : "Comparing with all students platform-wide"}
+                        </span>
                       </p>
                     </div>
                   )}
 
                   {/* Current User Rank Display */}
                   {leaderboard.current_user_rank !== null && (
-                    <div className="text-center mb-6 p-4 bg-blush rounded-lg">
-                      <p className="text-4xl font-bold text-navy mb-1">#{leaderboard.current_user_rank}</p>
-                      <p className="text-sm text-gray-600">
+                    <div className="text-center mb-6 p-4 bg-[#FAF7F4] border border-slate-200/80 rounded-2xl">
+                      <p className="text-3xl sm:text-4xl font-black text-[#0D1B2A] mb-1">#{leaderboard.current_user_rank}</p>
+                      <p className="text-xs text-slate-600 font-medium">
                         {leaderboardScope === "cohort" && profile?.target_course
                           ? `among ${profile.target_course} aspirants`
                           : `of ${leaderboard.total_participants} participants`}
                       </p>
                       {profile?.subscription_status === "elite" && leaderboard.percentile && (
-                        <p className="text-xs text-forest font-semibold mt-2">📊 {leaderboard.percentile.message}</p>
+                        <div className="flex items-center justify-center gap-1.5 text-xs text-[#1A7A4A] font-bold mt-2">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          <span>{leaderboard.percentile.message}</span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1206,7 +1295,12 @@ export default function AnalyticsPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-gray-500">#{entry.rank}</span>
                           <span className={`text-sm font-medium ${entry.is_current_user ? "text-forest font-bold" : "text-navy"}`}>
-                            {entry.name_initial} {entry.is_current_user && "👈 You"}
+                            {entry.name_initial}{" "}
+                            {entry.is_current_user && (
+                              <span className="ml-1 text-[10px] uppercase tracking-wide bg-forest text-white px-1.5 py-0.5 rounded-md font-bold">
+                                You
+                              </span>
+                            )}
                           </span>
                         </div>
                         <span className="text-sm font-semibold text-navy">{entry.avg_score}%</span>
@@ -1225,7 +1319,10 @@ export default function AnalyticsPage() {
                 <p className="text-sm font-semibold mb-3 text-gray-500" style={{ color: getSubjectColor(strongestTopic.subject_name) }}>
                   {strongestTopic.avg_percentage}% • {strongestTopic.subject_name}
                 </p>
-                <p className="text-xs text-gray-500">Keep this momentum! 🚀</p>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <span>Keep this momentum!</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                </p>
               </div>
             )}
 

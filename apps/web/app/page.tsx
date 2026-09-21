@@ -28,6 +28,7 @@ import {
   Flame,
   GraduationCap,
   Users,
+  Heart,
 } from "lucide-react";
 import { InteractiveQuestionDemo } from "@/components/InteractiveQuestionDemo";
 
@@ -114,37 +115,37 @@ export default function LandingPage() {
     {
       title: "Real-Time Cutoff & Admission Predictor",
       desc: "Instant statistical prediction of your combined aggregate score and department admission likelihood based on official university cutoff data.",
-      icon: "🎯",
+      icon: <Target className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "High Yield",
     },
     {
       title: "Identical CBT Exam Environment",
       desc: "Practice with the exact layout, countdown clock, question navigation, and keyboard hotkeys used in official UTME & Post-UTME screening tests.",
-      icon: "⏱️",
+      icon: <Clock className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "Exam Simulation",
     },
     {
       title: "Automated Error Bank & Memory Booster",
       desc: "Every mistake you make is automatically isolated in your personal Error Bank. Drill your failed questions until your mastery hits 100%.",
-      icon: "🧠",
+      icon: <Brain className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "Smart Retention",
     },
     {
       title: "Verified Step-by-Step Explanations",
       desc: "No more ambiguous or unverified answer keys. Every question contains comprehensive explanations crafted by top subject scholars.",
-      icon: "📚",
+      icon: <BookOpen className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "100% Verified",
     },
     {
       title: "Percentile & Cohort Benchmarking",
       desc: "See how your scores stack up against competitors aiming for the exact same course and department in your target university.",
-      icon: "🏆",
+      icon: <Trophy className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "Competitive Edge",
     },
     {
       title: "AI Weak-Topic Prioritisation",
       desc: "Receive actionable analytics that pinpoint exactly which chapters (e.g. Organic Chemistry, Plant Morphology) will give you the biggest score gain.",
-      icon: "📈",
+      icon: <TrendingUp className="w-6 h-6 text-[#1A7A4A]" />,
       badge: "Targeted Growth",
     },
   ];
@@ -183,7 +184,7 @@ export default function LandingPage() {
       author: "Bello Maryam Oladunni",
       role: "400-Level, Law, University of Ibadan",
       initial: "B",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "I attribute my success in gaining admission to study law at the University of Ibadan to the grace of God and the Roman Series. The support of Habeeb and these materials made this achievement possible.",
@@ -204,42 +205,42 @@ export default function LandingPage() {
       author: "Munirudeen Memunat B",
       role: "400-Level, Law, University of Ibadan",
       initial: "M",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "Thanks to the divine grace of God and the assistance provided by the Roman Series, I am now proud to say that I am a law student at the prestigious University of Ibadan.",
       author: "OSUNWA DAVID CHIBUIKE",
       role: "400-Level, Law, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman numeral past questions were exceptionally detailed. I passed with flying colors. Today, I take immense pride in declaring myself a bona fide Law student at the esteemed University of Ibadan.",
       author: "OLAYINKA TAIWO",
       role: "400-Level, Law, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "I began to see significant improvements through the daily and weekly tests. Alhamdulillah, I can confidently attribute my success in the Post-UTME to the invaluable assistance provided by the Roman Series.",
       author: "Adebayo Zaynab Anike",
       role: "400-Level, Law, University of Ibadan",
       initial: "A",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman Series by Mr. Habeeb A. Kasali is an invaluable resource. I have no regrets about acquiring these books; it stands as the finest decision I made in preparing for the UI POST UTME.",
       author: "Raji Adebisi",
       role: "400-Level, Law, University of Ibadan",
       initial: "R",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "Words alone cannot do justice to the incredible support that the Roman Series provided. It stands as the finest decision I made in terms of preparing for the UI POST UTME.",
       author: "Ayomide A. Awofeso",
       role: "400-Level, Law, University of Ibadan",
       initial: "A",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman Government Series is a remarkable resource that played a pivotal role in my success during the UI Post-UTME. I was admitted despite the discouraging stories I had heard.",
@@ -253,63 +254,63 @@ export default function LandingPage() {
       author: "Junaid Olapeju Habeebah",
       role: "400-Level, Law, University of Ibadan",
       initial: "J",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman Series served as an eye-opener, revealing numerous gaps in my knowledge. Mr. Habeeb became a valuable mentor. Today, I am immensely proud to declare that I am a Law student at UI.",
       author: "Mariam Oluwatoyosi Oyelaja",
       role: "400-Level, Law, University of Ibadan",
       initial: "M",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman Series stands as the ultimate key for tackling exams structured around the Roman numeral format. What truly sets it apart is the detailed answers and explanations for each question.",
       author: "OLASUPO AKOREDE JOHNSON",
       role: "400-Level, Law, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "This book has been an incredible blessing to me as I prepared for my Post-UTME. It equipped me with the knowledge to confidently tackle any UI POST UTME question.",
       author: "Bamigbade Ayomide Peter",
       role: "400-Level, Law, University of Ibadan",
       initial: "B",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "These roman series are not just a set of past questions, but a set of life-changing masterpiece carefully crafted using pundits in each field. Words can't completely corroborate the explicitness of this work.",
       author: "Fagbenro Rosheed Iyiola",
       role: "400-Level, Law, University of Ibadan",
       initial: "F",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The series are amazing eye openers to what UI plans to surprise you with in your Post UTME. By the grace of God, success will be yours. The Roman Series is a key to the gateway of success.",
       author: "Yahya Muaz Okikiola",
       role: "400-Level, Law, University of Ibadan",
       initial: "Y",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "Without the Roman series, I wouldn't have passed my PUTME. Dos Habeeb consistently encouraged us to practice diligently, and it proved invaluable.",
       author: "Abolade Joy",
       role: "400-Level, Philosophy, University of Ibadan",
       initial: "A",
-      score: "2nd Attempt ✅",
+      score: "Admitted (2nd Attempt)",
     },
     {
       text: "Before encountering this book, I never realized how both Government and Literature could be so vast yet simplified. This book unraveled the complex questions I had struggled with for years.",
       author: "LAWAL HALIMAH",
       role: "400-Level, CLA, University of Ibadan",
       initial: "L",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The New Roman Series was truly an eye-opener during my Post-UTME preparation. Having prepared with it gave me the confidence to stay focused. I highly recommend it to any UI Post-UTME aspirant.",
       author: "Omotayo Oreoluwa",
       role: "400-Level, Theatre Arts, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "By the grace of Allah and through the use of the Roman text, I was able to score 82 in my Post-UTME and gain admission into my preferred course, Medicine and Surgery.",
@@ -365,14 +366,14 @@ export default function LandingPage() {
       author: "Hameedah",
       role: "BMLS, University of Ibadan",
       initial: "H",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "Its well-structured past questions helped me understand the exam pattern, improve my speed and accuracy. I am delighted to have gained admission and strongly recommend it to every serious UI aspirant.",
       author: "Fatimat Zubair",
       role: "Nursing, University of Ibadan",
       initial: "F",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman Series exposed me to challenging questions and helped me develop the right mindset for the examination. What I appreciated most was that it trained me to think critically and approach questions strategically.",
@@ -386,21 +387,21 @@ export default function LandingPage() {
       author: "Oladeji Mahmud Olalekan",
       role: "200-Level, Engineering, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "Roman Series was an orientation designed to prepare students for the reality of the UI POST-UTME. During the exam, the questions looked familiar because they followed the same pattern.",
       author: "Alowonle Abdulsamad Ishola",
       role: "University of Ibadan",
       initial: "A",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "The Roman series helped me a lot during my post UTME. It served as an excellent guide when writing UI's exam. The questions had clear solutions and it was really easy to understand.",
       author: "Olajuwon Olaitan Folawe",
       role: "200-Level, Civil Engineering, University of Ibadan",
       initial: "O",
-      score: "✅ Admitted",
+      score: "Admitted",
     },
     {
       text: "I made sure to solve every question in the Roman Series and the practice greatly improved my confidence. I can confidently say that it contributed significantly to my success.",
@@ -1003,7 +1004,9 @@ export default function LandingPage() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-3xl">{feat.icon}</span>
+                    <div className="w-12 h-12 rounded-2xl bg-[#0D1B2A]/5 border border-slate-200/80 flex items-center justify-center flex-shrink-0">
+                      {feat.icon}
+                    </div>
                     <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-forest/10 text-forest">
                       {feat.badge}
                     </span>
@@ -1058,8 +1061,9 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-                {TESTIMONIALS[currentTestimonialIdx].score}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <span>{TESTIMONIALS[currentTestimonialIdx].score}</span>
               </span>
             </div>
 
@@ -1300,7 +1304,9 @@ export default function LandingPage() {
 
           <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-white/40 gap-4">
             <p>© {new Date().getFullYear()} Roman Series. All rights reserved.</p>
-            <p>Built with ❤️ for Nigerian university aspirants.</p>
+            <p className="inline-flex items-center gap-1.5">
+              Built with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> for Nigerian university aspirants.
+            </p>
           </div>
         </div>
       </footer>

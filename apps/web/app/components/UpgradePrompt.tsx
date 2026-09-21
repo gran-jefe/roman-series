@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 
 interface UpgradePromptProps {
   title: string;
@@ -51,8 +51,9 @@ export function UpgradePrompt({
           <div className="px-6 py-6">
             <p className="text-gray-700 text-base leading-relaxed mb-2">{message}</p>
             {feature && (
-              <p className="text-sm text-gray-500 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                ✨ {feature}
+              <p className="text-sm text-slate-700 mt-4 p-3 bg-blue-50/80 rounded-lg border border-blue-200 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                <span>{feature}</span>
               </p>
             )}
           </div>

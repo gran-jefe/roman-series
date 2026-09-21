@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Lock, Crown } from "lucide-react";
 
 interface LockedFeatureProps {
   featureName: string;
@@ -14,7 +15,7 @@ export function LockedFeature({
   featureName,
   description,
   currentPlan = "explorer",
-  icon = "🔒",
+  icon = <Lock className="w-10 h-10 text-purple-600" />,
   onUpgradeClick
 }: LockedFeatureProps) {
   const handleUpgradeClick = () => {
@@ -28,8 +29,8 @@ export function LockedFeature({
       <div className="max-w-2xl mx-auto">
         {/* Locked Icon and Header */}
         <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-5xl">{icon}</span>
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-purple-200/60">
+            {typeof icon === "string" ? <span className="text-4xl">{icon}</span> : icon}
           </div>
           <h1 className="text-4xl font-bold text-navy mb-4">
             {featureName} is Elite Only
@@ -42,7 +43,7 @@ export function LockedFeature({
           <div className="inline-block mb-8">
             <div className="bg-white px-6 py-3 rounded-full border-2 border-gray-200 shadow-sm">
               <p className="text-sm text-gray-600">
-                You're on <span className="font-bold text-navy capitalize">{currentPlan}</span> plan
+                You&apos;re on <span className="font-bold text-navy capitalize">{currentPlan}</span> plan
               </p>
             </div>
           </div>
@@ -52,9 +53,10 @@ export function LockedFeature({
             <Link
               href="/pricing"
               onClick={handleUpgradeClick}
-              className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-lg font-bold text-lg hover:shadow-lg transition-all transform hover:scale-105"
+              className="inline-flex items-center gap-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-all transform hover:scale-105"
             >
-              Upgrade Now to Elite ⭐
+              <span>Upgrade Now to Elite</span>
+              <Crown className="w-5 h-5 text-amber-300" />
             </Link>
           </div>
         </div>

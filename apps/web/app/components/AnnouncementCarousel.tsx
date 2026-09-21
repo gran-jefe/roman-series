@@ -3,10 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight,
+  Target,
+  Smartphone,
+  BookOpen,
+  AlertCircle,
+  RotateCw,
+} from "lucide-react";
 
 interface Announcement {
-  icon: string;
+  icon: ReactNode;
   title: string;
   message: ReactNode;
   ctaLabel?: string;
@@ -15,7 +24,7 @@ interface Announcement {
 
 const ANNOUNCEMENTS: Announcement[] = [
   {
-    icon: "🎯",
+    icon: <Target className="w-4 h-4 text-emerald-700" />,
     title: "UTME & Post-UTME 2026/2027 Season Live",
     message:
       "Start preparing early for the upcoming JAMB UTME & University Post-UTME screenings with updated authentic questions, timed CBT simulations, and diagnostic weak-topic tracking.",
@@ -23,7 +32,7 @@ const ANNOUNCEMENTS: Announcement[] = [
     ctaHref: "/practice/setup",
   },
   {
-    icon: "📲",
+    icon: <Smartphone className="w-4 h-4 text-blue-700" />,
     title: "Install Roman Series as an App",
     message: (
       <>
@@ -40,7 +49,7 @@ const ANNOUNCEMENTS: Announcement[] = [
     ),
   },
   {
-    icon: "📚",
+    icon: <BookOpen className="w-4 h-4 text-indigo-700" />,
     title: "New Recalled Questions Added",
     message:
       "Fresh recalled questions have been uploaded for Mathematics, Physics, Chemistry, Biology, and Use of English — practice with real questions students remember from recent exams.",
@@ -48,7 +57,7 @@ const ANNOUNCEMENTS: Announcement[] = [
     ctaHref: "/practice/recalled-questions",
   },
   {
-    icon: "❗",
+    icon: <AlertCircle className="w-4 h-4 text-amber-700" />,
     title: "New Biology Area: Plant Morphology",
     message:
       "Based on popular request, we've added a dedicated question bank for Plant Morphology under Biology — one of the most challenging topics for Post-UTME students.",
@@ -56,48 +65,41 @@ const ANNOUNCEMENTS: Announcement[] = [
     ctaHref: "/practice/biology-focus",
   },
   {
-    icon: "🔄",
+    icon: <RotateCw className="w-4 h-4 text-slate-700" />,
     title: "Recent Sessions Are Now Clickable",
     message:
-      "You can now click on any past mock exam in your Recent Sessions to review your corrections and see exactly where you went wrong — a great way to learn from every attempt.",
-    ctaLabel: "View Sessions",
-    ctaHref: "/sessions",
+      "You can now tap any completed session in your dashboard history to instantly open the full question-by-question review, see what you missed, and re-read the explanations.",
   },
 ];
 
-const AUTO_ADVANCE_MS = 5500;
+const AUTOPLAY_DELAY = 5500;
 const MAX_DOTS = 5;
 
 export function AnnouncementCarousel() {
   const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
   const [paused, setPaused] = useState(false);
-  const pendingIndexRef = useRef(0);
+  const [visible, setVisible] = useState(true);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const goTo = (next: number) => {
-    pendingIndexRef.current = (next + ANNOUNCEMENTS.length) % ANNOUNCEMENTS.length;
+  const total = ANNOUNCEMENTS.length;
+
+  const goTo = (newIndex: number) => {
     setVisible(false);
-  };
-
-  // Single commit path: whatever set `visible` false (auto-advance or manual
-  // nav) leaves the target in pendingIndexRef; this is the only place that
-  // applies it, so the two triggers never race to write `index` separately.
-  useEffect(() => {
-    if (visible) return;
-    const timeout = setTimeout(() => {
-      setIndex(pendingIndexRef.current);
+    setTimeout(() => {
+      setIndex((newIndex + total) % total);
       setVisible(true);
-    }, 900);
-    return () => clearTimeout(timeout);
-  }, [visible]);
+    }, 180);
+  };
 
   useEffect(() => {
     if (paused) return;
-    const timer = setInterval(() => {
+    timerRef.current = setTimeout(() => {
       goTo(index + 1);
-    }, AUTO_ADVANCE_MS);
-    return () => clearInterval(timer);
-  }, [paused, index]);
+    }, AUTOPLAY_DELAY);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [index, paused]);
 
   const current = ANNOUNCEMENTS[index];
 
@@ -109,7 +111,7 @@ export function AnnouncementCarousel() {
 
   return (
     <div
-      className="bg-forest/10 border border-forest/30 rounded-2xl px-4 sm:px-6 py-4 mb-8"
+      className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl px-4 sm:px-6 py-4 mb-8"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -118,14 +120,16 @@ export function AnnouncementCarousel() {
           visible ? "opacity-100" : "opacity-0"
         }`}
       >
-        <span className="text-xl flex-shrink-0 leading-none mt-0.5">{current.icon}</span>
-        <div className="flex-1 text-sm text-navy leading-relaxed min-w-0">
+        <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+          {current.icon}
+        </div>
+        <div className="flex-1 text-sm text-[#0D1B2A] leading-relaxed min-w-0">
           <span className="font-bold">{current.title}.</span> {current.message}
           {current.ctaHref && current.ctaLabel && (
             <div className="mt-2.5">
               <Link
                 href={current.ctaHref}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-forest hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1A7A4A] hover:underline"
               >
                 {current.ctaLabel}
                 <ArrowRight className="w-3.5 h-3.5" />
